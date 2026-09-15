@@ -72,7 +72,7 @@ export function CustomerFields({ draft, update, errors }: FieldsProps) {
       />
       <TextInput
         label="Local area"
-        hint="The town, city or areas you cover."
+        hint="Where your customers are (e.g. Kingston, London or UK)."
         value={draft.localArea}
         maxLength={200}
         onChange={(e) => update('localArea', e.target.value)}

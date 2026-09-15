@@ -45,8 +45,9 @@ export function imagePrompt(
 ): string {
   const spec = PLATFORM_SPECS[platform];
   const lines = [
-    `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a local business in ${profile.localArea}.`,
+    `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business.`,
     `What the business does: ${profile.description}`,
+    `Area served: ${profile.localArea}`,
     `The advert is about: ${topic}`,
     `Audience: ${profile.targetAudience}`,
     "Style: clean, modern and professional, suitable for a small local business. Realistic photography or a polished graphic, whichever suits the topic.",
