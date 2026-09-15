@@ -40,17 +40,17 @@ export function EditableAdvertText({ body, onSave, onRegenerate, regenerating, d
 
   return (
     <div className={styles.block}>
-      <label className="visually-hidden" htmlFor="advert-text">
+      <label className="visually-hidden" htmlFor="post-text">
         Advert text
       </label>
       <textarea
-        id="advert-text"
+        id="post-text"
         className={`${fieldStyles.control} ${styles.editor}`}
         value={text}
         maxLength={5000}
         onChange={(e) => setText(e.target.value)}
         disabled={regenerating}
-        data-testid="advert-text"
+        data-testid="post-text"
       />
       {error && (
         <p className={fieldStyles.error} role="alert">

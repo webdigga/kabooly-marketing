@@ -24,7 +24,7 @@ function formatDate(iso: string): string {
 
 function AdvertEntry({ advert }: { advert: Advert }) {
   return (
-    <Card title={advert.topic} description={formatDate(advert.createdAt)} testId="library-advert">
+    <Card title={advert.topic} description={formatDate(advert.createdAt)} testId="library-post">
       <ReadOnlyAdvertText body={advert.body} />
       {advert.images.length > 0 && (
         <div className={styles.images}>
@@ -47,7 +47,7 @@ export default function Library() {
   const loadFirst = useCallback(async () => {
     setStatus('loading')
     try {
-      const page = await api<Page>('/api/adverts')
+      const page = await api<Page>('/api/posts')
       setAdverts(page.adverts)
       setCursor(page.nextCursor)
       setStatus('ready')
@@ -66,7 +66,7 @@ export default function Library() {
     setLoadingMore(true)
     setMoreError(false)
     try {
-      const page = await api<Page>(`/api/adverts?before=${encodeURIComponent(cursor)}`)
+      const page = await api<Page>(`/api/posts?before=${encodeURIComponent(cursor)}`)
       setAdverts((list) => [...list, ...page.adverts])
       setCursor(page.nextCursor)
     } catch {

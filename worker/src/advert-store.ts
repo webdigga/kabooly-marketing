@@ -158,7 +158,8 @@ export async function makePlatformImage(env: Env, job: ImageJob, platform: Platf
   const prompt = imagePrompt(job.profile, job.advert.topic, platform, job.logo !== null);
   const raw = await generateImage(env, prompt, platform, job.logo);
   const fitted = await fitToPlatform(env, raw, platform);
-  const key = `${userPrefix(job.userId)}adverts/${job.advert.id}/${platform}-${crypto.randomUUID()}.jpg`;
+  // "posts", not "adverts": ad blockers block URLs containing the latter.
+  const key = `${userPrefix(job.userId)}posts/${job.advert.id}/${platform}-${crypto.randomUUID()}.jpg`;
   await env.FILES.put(key, fitted, { httpMetadata: { contentType: "image/jpeg" } });
 
   const [previous] = await db(env)

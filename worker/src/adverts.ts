@@ -26,6 +26,8 @@ import { parseJson } from "./validation";
 export const MAX_TOPIC_LENGTH = 200;
 const PAGE_SIZE = 12;
 
+// Ad blockers block any URL containing "/adverts/" (and similar words), so
+// no route or file path uses them. Saved adverts are "posts" in every URL.
 export const advertsApi = new Hono<AppEnv>();
 
 type AppContext = Context<AppEnv>;
@@ -96,7 +98,7 @@ advertsApi.post("/generations", async (c) => {
   );
 });
 
-advertsApi.get("/adverts", async (c) => {
+advertsApi.get("/posts", async (c) => {
   const userId = c.get("userId");
   const rows = await listAdverts(c.env, userId, decodeCursor(c.req.query("before")), PAGE_SIZE + 1);
   const page = rows.slice(0, PAGE_SIZE);
@@ -114,7 +116,7 @@ async function advertOr404(c: AppContext, id: string) {
   return advert ?? c.json({ error: "Not found" }, 404);
 }
 
-advertsApi.get("/adverts/:id", async (c) => {
+advertsApi.get("/posts/:id", async (c) => {
   const advert = await advertOr404(c, c.req.param("id"));
   if (advert instanceof Response) return advert;
   return c.json({ advert: advertJson(advert, await imagesFor(c.env, [advert.id])) });
@@ -122,7 +124,7 @@ advertsApi.get("/adverts/:id", async (c) => {
 
 const editBody = z.object({ body: z.string().trim().min(1).max(5000) });
 
-advertsApi.patch("/adverts/:id", async (c) => {
+advertsApi.patch("/posts/:id", async (c) => {
   const parsed = await parseJson(c, editBody);
   if (!parsed.ok) return parsed.response;
   const advert = await advertOr404(c, c.req.param("id"));
@@ -131,7 +133,7 @@ advertsApi.patch("/adverts/:id", async (c) => {
   return c.json({ advert: advertJson(updated, await imagesFor(c.env, [advert.id])) });
 });
 
-advertsApi.post("/adverts/:id/text", async (c) => {
+advertsApi.post("/posts/:id/text", async (c) => {
   const advert = await advertOr404(c, c.req.param("id"));
   if (advert instanceof Response) return advert;
   const profile = await requireProfile(c);
@@ -148,7 +150,7 @@ function isPlatform(value: string | undefined): value is Platform {
   return PLATFORMS.includes(value as Platform);
 }
 
-advertsApi.post("/adverts/:id/images/:platform", async (c) => {
+advertsApi.post("/posts/:id/images/:platform", async (c) => {
   const platform = c.req.param("platform");
   if (!isPlatform(platform)) return c.json({ error: "Not found" }, 404);
   const advert = await advertOr404(c, c.req.param("id"));

@@ -43,6 +43,10 @@ class_name = "GenerationLimiter"
 tag = "v1"
 new_sqlite_classes = ["GenerationLimiter"]
 
+# Keeps Worker logs in the dashboard (Workers > kabooly-marketing > Logs).
+[observability]
+enabled = true
+
 [vars]
 # The canonical auth origin. OAuth callbacks and session cookies hang off it.
 BETTER_AUTH_URL = "https://marketing.kabooly.com"

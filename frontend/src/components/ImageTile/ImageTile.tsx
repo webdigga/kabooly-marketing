@@ -48,7 +48,7 @@ export default function ImageTile({ platform, image, status, error, onRegenerate
         </span>
       </figcaption>
       <div className={styles.frame} style={{ aspectRatio: `${info.width} / ${info.height}` }}>
-        {image && <img src={image.url} alt={`${info.label} advert image`} className={busy ? styles.dim : undefined} />}
+        {image && <img src={image.url} alt={`${info.label} image`} className={busy ? styles.dim : undefined} />}
         <Overlay status={status} error={error} hasImage={Boolean(image)} />
       </div>
       {status === 'error' && image && <p className={styles.error}>{error}</p>}

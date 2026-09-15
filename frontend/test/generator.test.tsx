@@ -76,7 +76,7 @@ describe('generation', () => {
     await userEvent.click(screen.getByTestId('platform-nextdoor'))
     await userEvent.click(screen.getByTestId('generate'))
 
-    expect(await screen.findByTestId('advert-text')).toHaveValue('Book your spring oven clean in Twickenham.')
+    expect(await screen.findByTestId('post-text')).toHaveValue('Book your spring oven clean in Twickenham.')
     const instagram = await screen.findByTestId('image-instagram')
     expect(within(instagram).getByText('Instagram')).toBeInTheDocument()
     expect(within(instagram).getByText('1080 × 1080')).toBeInTheDocument()
@@ -93,7 +93,7 @@ describe('generation', () => {
     await landed()
     for (const p of ['instagram', 'facebook', 'nextdoor']) await userEvent.click(screen.getByTestId(`platform-${p}`))
     await userEvent.click(screen.getByTestId('generate'))
-    await screen.findByTestId('advert-text')
+    await screen.findByTestId('post-text')
     expect(screen.queryByTestId('image-instagram')).not.toBeInTheDocument()
   })
 
@@ -120,7 +120,7 @@ describe('generation', () => {
             { type: 'image_error', advertId: 'a1', platform: 'facebook', error: 'This image could not be made. Try regenerating it.' },
             DONE,
           ]),
-        'POST /api/adverts/a1/images/facebook': () => json({ image: image('facebook', 2) }),
+        'POST /api/posts/a1/images/facebook': () => json({ image: image('facebook', 2) }),
       }),
     )
     await landed()
@@ -129,14 +129,14 @@ describe('generation', () => {
     expect(within(facebook).getByRole('alert')).toHaveTextContent('This image could not be made')
     await userEvent.click(within(facebook).getByTestId('regenerate-facebook'))
     await waitFor(() => expect(within(facebook).getByRole('img')).toHaveAttribute('src', image('facebook', 2).url))
-    expect(callsTo('POST', '/api/adverts/a1/images/instagram')).toHaveLength(0)
+    expect(callsTo('POST', '/api/posts/a1/images/instagram')).toHaveLength(0)
   })
 
   it('reports a regeneration refused by the rate limit', async () => {
     const retryAt = new Date(Date.now() + 30_000).toISOString()
     mockApi(
       routes({
-        'POST /api/adverts/a1/images/instagram': () => json({ code: 'rate_limit', retryAt }, 429),
+        'POST /api/posts/a1/images/instagram': () => json({ code: 'rate_limit', retryAt }, 429),
       }),
     )
     await landed()
@@ -170,12 +170,12 @@ describe('editing text', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     mockApi(
       routes({
-        'PATCH /api/adverts/a1': () => json({ advert: advert({ body: 'My own words.' }) }),
+        'PATCH /api/posts/a1': () => json({ advert: advert({ body: 'My own words.' }) }),
       }),
     )
     await landed()
     await userEvent.click(screen.getByTestId('generate'))
-    const text = await screen.findByTestId('advert-text')
+    const text = await screen.findByTestId('post-text')
     await userEvent.clear(text)
     await userEvent.type(text, 'My own words.')
     await userEvent.click(screen.getByTestId('copy-text'))
@@ -183,29 +183,29 @@ describe('editing text', () => {
     expect(await screen.findByText('Copied')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('save-text'))
     await waitFor(() => expect(screen.queryByTestId('save-text')).not.toBeInTheDocument())
-    expect(callsTo('PATCH', '/api/adverts/a1')[0]?.body).toEqual({ body: 'My own words.' })
+    expect(callsTo('PATCH', '/api/posts/a1')[0]?.body).toEqual({ body: 'My own words.' })
   })
 
   it('regenerates the text without touching the images', async () => {
-    mockApi(routes({ 'POST /api/adverts/a1/text': () => json({ advert: advert({ body: 'A fresh take.' }) }) }))
+    mockApi(routes({ 'POST /api/posts/a1/text': () => json({ advert: advert({ body: 'A fresh take.' }) }) }))
     await landed()
     await userEvent.click(screen.getByTestId('generate'))
     await screen.findByTestId('image-instagram')
     await userEvent.click(screen.getByTestId('regenerate-text'))
-    await waitFor(() => expect(screen.getByTestId('advert-text')).toHaveValue('A fresh take.'))
+    await waitFor(() => expect(screen.getByTestId('post-text')).toHaveValue('A fresh take.'))
     expect(within(screen.getByTestId('image-instagram')).getByRole('img')).toHaveAttribute('src', image('instagram').url)
   })
 
   it('explains a failed save and a failed regeneration', async () => {
     mockApi(
       routes({
-        'PATCH /api/adverts/a1': () => json({}, 500),
-        'POST /api/adverts/a1/text': () => json({}, 502),
+        'PATCH /api/posts/a1': () => json({}, 500),
+        'POST /api/posts/a1/text': () => json({}, 502),
       }),
     )
     await landed()
     await userEvent.click(screen.getByTestId('generate'))
-    const text = await screen.findByTestId('advert-text')
+    const text = await screen.findByTestId('post-text')
     await userEvent.type(text, ' More.')
     await userEvent.click(screen.getByTestId('save-text'))
     expect(await screen.findByText('Your changes could not be saved. Try again.')).toBeInTheDocument()

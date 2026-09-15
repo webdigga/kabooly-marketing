@@ -89,7 +89,7 @@ export function advert(overrides: Partial<Advert> = {}): Advert {
 
 export function image(platform: 'instagram' | 'facebook' | 'nextdoor', version = 1) {
   const sizes = { instagram: [1080, 1080], facebook: [1200, 630], nextdoor: [1200, 1200] }
-  const url = `/api/files/users/u1/adverts/a1/${platform}-${version}.jpg`
+  const url = `/api/files/users/u1/posts/a1/${platform}-${version}.jpg`
   return {
     platform,
     label: platform[0]!.toUpperCase() + platform.slice(1),

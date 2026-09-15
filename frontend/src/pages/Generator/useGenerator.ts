@@ -92,7 +92,7 @@ export function useGenerator(onUsage: (usage: Usage) => void) {
 
   async function saveText(body: string) {
     if (!state.advert) return
-    const { advert } = await api<{ advert: Advert }>(`/api/adverts/${state.advert.id}`, { method: 'PATCH', body: { body } })
+    const { advert } = await api<{ advert: Advert }>(`/api/posts/${state.advert.id}`, { method: 'PATCH', body: { body } })
     setState((s) => ({ ...s, advert }))
   }
 
@@ -100,7 +100,7 @@ export function useGenerator(onUsage: (usage: Usage) => void) {
     if (!state.advert) return
     setState((s) => ({ ...s, regeneratingText: true, error: null }))
     try {
-      const { advert } = await api<{ advert: Advert }>(`/api/adverts/${state.advert.id}/text`, { method: 'POST' })
+      const { advert } = await api<{ advert: Advert }>(`/api/posts/${state.advert.id}/text`, { method: 'POST' })
       setState((s) => ({ ...s, advert: s.advert && { ...s.advert, body: advert.body }, regeneratingText: false }))
     } catch (err) {
       setState((s) => ({ ...s, regeneratingText: false, error: failure(err, 'New text could not be written. Try again.') }))
@@ -111,7 +111,7 @@ export function useGenerator(onUsage: (usage: Usage) => void) {
     if (!state.advert) return
     setState((s) => ({ ...s, error: null, slots: setSlot(s.slots, platform, { status: 'regenerating', error: undefined }) }))
     try {
-      const { image } = await api<{ image: AdvertImage }>(`/api/adverts/${state.advert.id}/images/${platform}`, { method: 'POST' })
+      const { image } = await api<{ image: AdvertImage }>(`/api/posts/${state.advert.id}/images/${platform}`, { method: 'POST' })
       setState((s) => ({ ...s, slots: setSlot(s.slots, platform, { status: 'ready', image }) }))
     } catch (err) {
       const message = failure(err, 'A new image could not be made. Try again.')

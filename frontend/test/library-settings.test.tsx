@@ -19,13 +19,13 @@ describe('library', () => {
   it('lists adverts newest first with copy and downloads, and loads older ones', async () => {
     mockApi({
       ...base,
-      'GET /api/adverts': ({ url }) =>
+      'GET /api/posts': ({ url }) =>
         url.includes('before=')
           ? json({ adverts: [advert({ id: 'a0', topic: 'Old news', createdAt: '2026-09-01T09:00:00.000Z' })], nextCursor: null })
           : json({ adverts: [advert({ images: [image('facebook')] })], nextCursor: 'cursor-1' }),
     })
     renderApp('/library')
-    const first = await screen.findByTestId('library-advert')
+    const first = await screen.findByTestId('library-post')
     expect(within(first).getByRole('heading', { name: 'Spring ovens' })).toBeInTheDocument()
     expect(within(first).getByText('15 September 2026')).toBeInTheDocument()
     expect(within(first).getByRole('button', { name: 'Copy text' })).toBeInTheDocument()
@@ -34,13 +34,13 @@ describe('library', () => {
 
     await userEvent.click(screen.getByTestId('load-more'))
     await screen.findByText('Old news')
-    expect(screen.getAllByTestId('library-advert')).toHaveLength(2)
+    expect(screen.getAllByTestId('library-post')).toHaveLength(2)
     expect(screen.queryByTestId('load-more')).not.toBeInTheDocument()
-    expect(callsTo('GET', '/api/adverts')[1]?.url).toBe('/api/adverts?before=cursor-1')
+    expect(callsTo('GET', '/api/posts')[1]?.url).toBe('/api/posts?before=cursor-1')
   })
 
   it('shows an empty state that leads to the generator', async () => {
-    mockApi({ ...base, 'GET /api/adverts': () => json({ adverts: [], nextCursor: null }) })
+    mockApi({ ...base, 'GET /api/posts': () => json({ adverts: [], nextCursor: null }) })
     renderApp('/library')
     await screen.findByText('No adverts yet')
     await userEvent.click(screen.getByRole('link', { name: 'Create your first advert' }))
@@ -51,7 +51,7 @@ describe('library', () => {
     let fail = true
     mockApi({
       ...base,
-      'GET /api/adverts': () => (fail ? json({}, 500) : json({ adverts: [], nextCursor: 'c' })),
+      'GET /api/posts': () => (fail ? json({}, 500) : json({ adverts: [], nextCursor: 'c' })),
     })
     renderApp('/library')
     await screen.findByText('Could not load your adverts.')

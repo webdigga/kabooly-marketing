@@ -49,6 +49,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts (text plus
 - Deploy: automatic on push to `main` via GitHub Actions (`.github/workflows/deploy.yml`): lint and tests for both packages, then `npm run deploy` in `worker/` (builds the frontend, applies D1 migrations, deploys). A red run deploys nothing. Needs repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. David pushes manually.
 
 ## Gotchas
+- Never put "advert", "ads" or "banner" in a URL, R2 key, DOM id or test id: ad blockers block or hide them (found live 2026-09-15, images failed with ERR_BLOCKED_BY_CLIENT). Saved adverts are `/api/posts` and `users/{id}/posts/...` in R2. User-facing copy can still say "advert".
 - npm 11.5.1 crashes (`reading 'edgesOut'`) when resolving vitest: vite 8.3's optional `@vitejs/devtools` peer pulls vitest 5 against the pool's vitest 4 pin. Lockfiles are fine for `npm ci`; to add packages use `npx npm@latest install`.
 - Local workerd only supports compatibility dates up to 2026-08-22, hence `2026-08-15` in wrangler.toml.
 - Test mocks for the better-auth client live in `frontend/test/auth-mock.ts` and must not import the app (a `vi.mock` factory importing `helpers.tsx` deadlocks).

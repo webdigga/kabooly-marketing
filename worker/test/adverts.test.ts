@@ -131,7 +131,7 @@ describe("generation", () => {
     onFetch(ANTHROPIC_URL, () => new Response("{}", { status: 400 }));
     const list = await events(await generate(cookie, "Spring", ["instagram"]));
     expect(list.map((e) => e.type)).toEqual(["error", "done"]);
-    const library: { adverts: unknown[] } = await (await apiFetch(cookie, "/api/adverts")).json();
+    const library: { adverts: unknown[] } = await (await apiFetch(cookie, "/api/posts")).json();
     expect(library.adverts).toHaveLength(0);
   });
 
@@ -224,7 +224,7 @@ describe("library", () => {
     }
     const advert = await generateAdvert(cookie, ["facebook"]);
 
-    const first: { adverts: AdvertJson[]; nextCursor: string | null } = await (await apiFetch(cookie, "/api/adverts")).json();
+    const first: { adverts: AdvertJson[]; nextCursor: string | null } = await (await apiFetch(cookie, "/api/posts")).json();
     expect(first.adverts).toHaveLength(12);
     expect(first.adverts[0]?.id).toBe(advert.id);
     expect(first.adverts[0]?.images.map((i: ImageJson) => i.platform)).toEqual(["facebook"]);
@@ -234,7 +234,7 @@ describe("library", () => {
     expect(first.nextCursor).not.toBeNull();
 
     const second: { adverts: AdvertJson[]; nextCursor: string | null } = await (
-      await apiFetch(cookie, `/api/adverts?before=${first.nextCursor ?? ""}`)
+      await apiFetch(cookie, `/api/posts?before=${first.nextCursor ?? ""}`)
     ).json();
     expect(second.adverts.map((a) => a.id)).toEqual(["seed-01", "seed-00"]);
     expect(second.nextCursor).toBeNull();
@@ -244,9 +244,9 @@ describe("library", () => {
     const owner = await readyUser();
     const advert = await generateAdvert(owner, []);
     const { cookie: other } = await verifiedUser();
-    const list: { adverts: unknown[] } = await (await apiFetch(other, "/api/adverts")).json();
+    const list: { adverts: unknown[] } = await (await apiFetch(other, "/api/posts")).json();
     expect(list.adverts).toHaveLength(0);
-    expect((await apiFetch(other, `/api/adverts/${advert.id}`)).status).toBe(404);
+    expect((await apiFetch(other, `/api/posts/${advert.id}`)).status).toBe(404);
   });
 
   it("ignores a malformed cursor", () => {
@@ -258,7 +258,7 @@ describe("library", () => {
   it("returns one advert with its images in platform order", async () => {
     const cookie = await readyUser();
     const advert = await generateAdvert(cookie, ["nextdoor", "instagram", "facebook"]);
-    const res: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/adverts/${advert.id}`)).json();
+    const res: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert.id}`)).json();
     expect(res.advert.images.map((i) => i.platform)).toEqual(["instagram", "facebook", "nextdoor"]);
   });
 });
@@ -276,12 +276,12 @@ describe("editing and regenerating", () => {
   it("saves edited text", async () => {
     const cookie = await readyUser();
     const advert = await generateAdvert(cookie, []);
-    const res = await apiFetch(cookie, `/api/adverts/${advert.id}`, { method: "PATCH", body: { body: " My own words " } });
+    const res = await apiFetch(cookie, `/api/posts/${advert.id}`, { method: "PATCH", body: { body: " My own words " } });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ advert: { body: "My own words" } });
-    const bad = await apiFetch(cookie, `/api/adverts/${advert.id}`, { method: "PATCH", body: { body: "" } });
+    const bad = await apiFetch(cookie, `/api/posts/${advert.id}`, { method: "PATCH", body: { body: "" } });
     expect(bad.status).toBe(400);
-    const missing = await apiFetch(cookie, "/api/adverts/nope", { method: "PATCH", body: { body: "x" } });
+    const missing = await apiFetch(cookie, "/api/posts/nope", { method: "PATCH", body: { body: "x" } });
     expect(missing.status).toBe(404);
   });
 
@@ -289,29 +289,29 @@ describe("editing and regenerating", () => {
     const cookie = await readyUser();
     const advert = await generateAdvert(cookie, ["instagram"]);
     mockClaude("A brand new advert.");
-    const res = await apiFetch(cookie, `/api/adverts/${advert.id}/text`, { method: "POST" });
+    const res = await apiFetch(cookie, `/api/posts/${advert.id}/text`, { method: "POST" });
     expect(res.status).toBe(200);
     const body: { advert: AdvertJson } = await res.json();
     expect(body.advert.body).toBe("A brand new advert.");
     expect(body.advert.images).toHaveLength(1);
-    expect((await apiFetch(cookie, "/api/adverts/nope/text", { method: "POST" })).status).toBe(404);
+    expect((await apiFetch(cookie, "/api/posts/nope/text", { method: "POST" })).status).toBe(404);
   });
 
   it("regenerates one platform image, replacing the old file", async () => {
     const cookie = await readyUser();
     const advert = await generateAdvert(cookie, ["instagram", "facebook"]);
-    const before: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/adverts/${advert.id}`)).json();
+    const before: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert.id}`)).json();
     const oldInstagram = before.advert.images.find((i) => i.platform === "instagram");
     const oldFacebook = before.advert.images.find((i) => i.platform === "facebook");
 
-    const res = await apiFetch(cookie, `/api/adverts/${advert.id}/images/instagram`, { method: "POST" });
+    const res = await apiFetch(cookie, `/api/posts/${advert.id}/images/instagram`, { method: "POST" });
     expect(res.status).toBe(200);
     const { image }: { image: ImageJson } = await res.json();
     expect(image.platform).toBe("instagram");
     expect(image.url).not.toBe(oldInstagram?.url);
     expect(await testEnv.FILES.head(oldInstagram?.url.replace("/api/files/", "") ?? "")).toBeNull();
 
-    const after: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/adverts/${advert.id}`)).json();
+    const after: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert.id}`)).json();
     expect(after.advert.images.find((i) => i.platform === "facebook")?.url).toBe(oldFacebook?.url);
     const usage: { imagesUsed: number } = await (await apiFetch(cookie, "/api/usage")).json();
     expect(usage.imagesUsed).toBe(3);
@@ -321,7 +321,7 @@ describe("editing and regenerating", () => {
     const cookie = await readyUser();
     const advert = await generateAdvert(cookie, []);
     onFetch(GEMINI_URL, () => new Response("down", { status: 503 }));
-    const res = await apiFetch(cookie, `/api/adverts/${advert.id}/images/facebook`, { method: "POST" });
+    const res = await apiFetch(cookie, `/api/posts/${advert.id}/images/facebook`, { method: "POST" });
     expect(res.status).toBe(502);
     const usage: { imagesUsed: number } = await (await apiFetch(cookie, "/api/usage")).json();
     expect(usage.imagesUsed).toBe(0);
@@ -333,8 +333,8 @@ describe("editing and regenerating", () => {
     await testEnv.DB.prepare("DELETE FROM business_profiles WHERE user_id = (SELECT user_id FROM adverts WHERE id = ?1)")
       .bind(advert.id)
       .run();
-    expect((await apiFetch(cookie, `/api/adverts/${advert.id}/text`, { method: "POST" })).status).toBe(409);
-    expect((await apiFetch(cookie, `/api/adverts/${advert.id}/images/facebook`, { method: "POST" })).status).toBe(409);
+    expect((await apiFetch(cookie, `/api/posts/${advert.id}/text`, { method: "POST" })).status).toBe(409);
+    expect((await apiFetch(cookie, `/api/posts/${advert.id}/images/facebook`, { method: "POST" })).status).toBe(409);
   });
 
   it("sends a logo stored without a content type as PNG", async () => {
@@ -344,14 +344,14 @@ describe("editing and regenerating", () => {
     const object = await testEnv.FILES.get(key);
     await testEnv.FILES.put(key, await object?.arrayBuffer() ?? new ArrayBuffer(0));
     const advert = await generateAdvert(cookie, []);
-    await apiFetch(cookie, `/api/adverts/${advert.id}/images/instagram`, { method: "POST" });
+    await apiFetch(cookie, `/api/posts/${advert.id}/images/instagram`, { method: "POST" });
     expect(callsTo(GEMINI_URL).at(-1)?.body).toContain('"mime_type":"image/png"');
   });
 
   it("rejects unknown platforms and adverts", async () => {
     const cookie = await readyUser();
-    expect((await apiFetch(cookie, "/api/adverts/x/images/tiktok", { method: "POST" })).status).toBe(404);
-    expect((await apiFetch(cookie, "/api/adverts/x/images/facebook", { method: "POST" })).status).toBe(404);
+    expect((await apiFetch(cookie, "/api/posts/x/images/tiktok", { method: "POST" })).status).toBe(404);
+    expect((await apiFetch(cookie, "/api/posts/x/images/facebook", { method: "POST" })).status).toBe(404);
   });
 });
 
