@@ -71,6 +71,7 @@ async function complete(env: Env, system: string, prompt: string, maxTokens: num
 
 const TOPIC_SYSTEM = `You suggest advert topics for small local businesses that post by hand on Instagram, Facebook and Nextdoor.
 Reply with one topic only: a short phrase under 12 words, no quotes, no full stop, no preamble.
+Use UK English spelling (organise, colour, favourite, centre).
 Base it on one of the business's services or products and, where it fits naturally, the time of year.
 Never invent offers, prices, discounts or events the business has not mentioned.`;
 
@@ -86,7 +87,7 @@ export async function suggestTopic(env: Env, profile: Profile, avoid: string[]):
 const ADVERT_SYSTEM = `You write local adverts for small businesses, posted by hand on Instagram, Facebook and Nextdoor.
 Write one block of advert text that works on all three platforms:
 - 50 to 120 words, plain text, no markdown, no headings, no hashtags.
-- UK English.
+- UK English spelling and vocabulary (organise, colour, favourite, centre), never American spelling.
 - Speak to the target audience and mention the local area naturally.
 - End with a clear, simple call to action (the website if one is given, otherwise getting in touch).
 - Never invent prices, offers, discounts, phone numbers, awards or claims the business has not given.

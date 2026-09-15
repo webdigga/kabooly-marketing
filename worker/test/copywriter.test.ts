@@ -64,6 +64,7 @@ describe("suggestTopic", () => {
     const req = lastRequest();
     expect(req.model).toBe("claude-haiku-4-5");
     expect(req.system).toContain("advert topics");
+    expect(req.system).toContain("UK English spelling");
     expect(req.messages[0]?.content).toContain("Oven cleaning; Windows");
     expect(req.messages[0]?.content).not.toContain("earlier suggestions");
   });
@@ -80,7 +81,7 @@ describe("writeAdvert", () => {
     reply("  Advert text.  ");
     expect(await writeAdvert(testEnv, profile, "Spring ovens")).toBe("Advert text.");
     const req = lastRequest();
-    expect(req.system).toContain("UK English");
+    expect(req.system).toContain("UK English spelling");
     expect(req.messages[0]?.content).toContain("Professional but warm");
     expect(req.messages[0]?.content).toContain("Advert topic: Spring ovens");
   });
