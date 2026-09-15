@@ -1,0 +1,156 @@
+import { sql } from "drizzle-orm";
+import {
+  check,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+
+// better-auth tables (same shape as TrackShows)
+
+export const user = sqliteTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  image: text("image"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const session = sqliteTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("session_user_id_idx").on(t.userId)]
+);
+
+export const account = sqliteTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
+    refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("account_user_id_idx").on(t.userId)]
+);
+
+export const verification = sqliteTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }),
+    updatedAt: integer("updated_at", { mode: "timestamp" }),
+  },
+  (t) => [index("verification_identifier_idx").on(t.identifier)]
+);
+
+// app tables
+
+// One per account. Its existence is what marks onboarding as done.
+export const businessProfiles = sqliteTable(
+  "business_profiles",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    businessName: text("business_name").notNull(),
+    description: text("description").notNull(),
+    websiteUrl: text("website_url"),
+    targetAudience: text("target_audience").notNull(),
+    localArea: text("local_area").notNull(),
+    // 1 = formal through to 5 = casual.
+    tone: integer("tone").notNull(),
+    // Hex strings (#rrggbb), primary first.
+    brandColours: text("brand_colours", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'`),
+    // R2 key of the logo, whether detected from the website or uploaded.
+    logoKey: text("logo_key"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [check("business_profiles_tone_range", sql`${t.tone} BETWEEN 1 AND 5`)]
+);
+
+export const profileServices = sqliteTable(
+  "profile_services",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => businessProfiles.userId, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    position: integer("position").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("profile_services_user_id_idx").on(t.userId, t.position)]
+);
+
+export const adverts = sqliteTable(
+  "adverts",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    topic: text("topic").notNull(),
+    // Advert text as last saved: generated, regenerated or edited in place.
+    body: text("body").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  // The library lists an account's adverts newest first.
+  (t) => [index("adverts_user_id_created_at_idx").on(t.userId, t.createdAt)]
+);
+
+export const PLATFORMS = ["instagram", "facebook", "nextdoor"] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+// At most one image per platform per advert; regenerating replaces it.
+export const advertImages = sqliteTable(
+  "advert_images",
+  {
+    advertId: text("advert_id")
+      .notNull()
+      .references(() => adverts.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: PLATFORMS }).notNull(),
+    r2Key: text("r2_key").notNull(),
+    generatedAt: integer("generated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.advertId, t.platform] }),
+    check(
+      "advert_images_platform_valid",
+      sql`${t.platform} IN ('instagram', 'facebook', 'nextdoor')`
+    ),
+  ]
+);

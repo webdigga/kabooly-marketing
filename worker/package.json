@@ -1,0 +1,32 @@
+{
+  "name": "kabooly-marketing-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply kabooly-marketing --local",
+    "db:migrate:remote": "wrangler d1 migrations apply kabooly-marketing --remote",
+    "deploy": "npm --prefix ../frontend run build && wrangler d1 migrations apply kabooly-marketing --remote && wrangler deploy",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.8"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260915.1",
+    "@eslint/js": "^10.0.1",
+    "@vitest/coverage-istanbul": "~4.1.11",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.10.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "~4.1.11",
+    "wrangler": "^4.131.2"
+  }
+}
