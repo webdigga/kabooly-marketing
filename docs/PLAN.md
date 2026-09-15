@@ -40,6 +40,8 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 
 - A privacy policy and terms of service written for this tool. The Google OAuth branding (project "Kabooly Marketing", created 2026-09-15) points at the general https://kabooly.com/privacy-policy/ for now, and has no terms link; the only kabooly.com terms page is the CRM's.
 
+- Gemini API spend cap is £10 a month on the Kabooly Marketing Google Cloud project (set 2026-09-15, billing on). Raise it before real customers arrive: it stops all image generation when hit. Google does not document whether the cap counts usage before or after credits; David's Google AI Ultra plan gives a Google Developer Program credit of $40 a month (about £29), claimed 2026-09-15 on the project's billing account, which pays for the usage.
+
 - Cloudflare Images free plan covers 5,000 unique transformations a month (one per advert image). Beyond that, new crops fail with error 9422 until Images is upgraded to paid ($0.50 per 1,000). Watch usage once real accounts arrive.
 
 ## Not built (outside the brief, flagged only)

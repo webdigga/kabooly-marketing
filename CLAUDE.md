@@ -4,8 +4,13 @@
 
 ```
 Stage:  ALL 8 STAGES BUILT 2026-09-15, not yet deployed or seen in a browser.
-Next:   David sets secrets, Google OAuth client, enables Cloudflare Images,
-        runs it locally, then deploys. Open decisions in docs/PLAN.md.
+Setup:  Done 2026-09-15: git, Google OAuth client (project "Kabooly
+        Marketing"), all 5 secrets, Cloudflare Email Sending on
+        marketing.kabooly.com, Gemini billing + £10 cap, Ultra Cloud credit
+        ($40/month, about £29, on the billing account). Local run skipped.
+        NEXT: GitHub repo + Actions secrets, push to deploy, re-run Google
+        brand verification. Open decisions in
+        docs/PLAN.md.
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
@@ -41,7 +46,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts (text plus
 - `worker/`: `npm test`, `npm run test:coverage`, `npm run lint`, `npm run typecheck`, `npm run db:generate`, `npm run db:migrate:local`.
 - `frontend/`: `npm run dev` (proxies `/api` to `wrangler dev` on 8787), `npm run build`, `npm run lint`, `npm run test:run`.
 - Local: copy `worker/.dev.vars.example` to `.dev.vars`, `npm run db:migrate:local`, then `npx wrangler dev` in `worker/` and `npm run dev` in `frontend/`; open http://localhost:5173.
-- Deploy (David): `cd worker && npm run deploy` builds the frontend, applies D1 migrations, deploys.
+- Deploy: automatic on push to `main` via GitHub Actions (`.github/workflows/deploy.yml`): lint and tests for both packages, then `npm run deploy` in `worker/` (builds the frontend, applies D1 migrations, deploys). A red run deploys nothing. Needs repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. David pushes manually.
 
 ## Gotchas
 - npm 11.5.1 crashes (`reading 'edgesOut'`) when resolving vitest: vite 8.3's optional `@vitejs/devtools` peer pulls vitest 5 against the pool's vitest 4 pin. Lockfiles are fine for `npm ci`; to add packages use `npx npm@latest install`.
