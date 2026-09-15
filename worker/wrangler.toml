@@ -15,6 +15,7 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "kabooly-marketing"
+database_id = "3b05463a-de11-4601-8ebd-8efda67f5a31"
 migrations_dir = "migrations"
 
 # Generated advert images and uploaded logos.

@@ -7,7 +7,6 @@ Stage:  1 of 8 DONE 2026-09-15 (skeleton, Hono, D1 schema, R2 binding).
         Waiting on David to confirm before stage 2 (auth).
 Next:   Stage 2, auth: better-auth exactly as TrackShows (onnext/worker/src/auth.ts).
 Needs:  Domain for the app (BETTER_AUTH_URL + Google redirect URI).
-        D1 database id (wrangler.toml has no database_id yet).
 Spec:   docs/PLAN.md (full brief, stage list, decisions). Stop after every stage.
 ```
 
