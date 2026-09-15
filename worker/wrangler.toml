@@ -47,6 +47,9 @@ new_sqlite_classes = ["GenerationLimiter"]
 # The canonical auth origin. OAuth callbacks and session cookies hang off it.
 BETTER_AUTH_URL = "https://marketing.kabooly.com"
 GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
-# EMAIL_FROM: sender address, set once the sending domain is onboarded.
+# Sender for verification and reset codes. marketing.kabooly.com is its own
+# sending domain in Cloudflare Email Sending, apart from the CRM's Resend
+# domain (mail.kabooly.com) and the IONOS mailboxes on kabooly.com.
+EMAIL_FROM = "noreply@marketing.kabooly.com"
 # Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID,
 # GOOGLE_CLIENT_SECRET, ANTHROPIC_API_KEY, GEMINI_API_KEY

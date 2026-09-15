@@ -8,6 +8,6 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 # Sender address on the Cloudflare Email Sending domain. Locally, emails are
 # not sent; wrangler dev prints where it saved each one.
-EMAIL_FROM=
+EMAIL_FROM=noreply@marketing.kabooly.com
 ANTHROPIC_API_KEY=
 GEMINI_API_KEY=

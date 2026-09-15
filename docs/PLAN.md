@@ -22,7 +22,7 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Limits: one Durable Object per account (the CRM uses a DO for atomic rate limits too). It holds the in-flight lock (5 minute safety expiry), the per-minute window and the rolling 24 hour image count. Images are counted when a generation starts and failed ones refunded when it finishes, so abandoning a generation cannot dodge the cap. Text-only work (topic suggestions, text regeneration, image-free adverts) has its own cap: 200 a day, 20 a minute. Every kind of generation respects the one-in-flight lock.
 - A generation is one request that streams newline-delimited JSON: the advert text (saved to the library the moment it exists), then each image as it lands. It runs under waitUntil, so closing the tab still finishes and saves it.
 - Images: Gemini draws 1:1 (Instagram, Nextdoor) or 16:9 (Facebook) at 2K, then Cloudflare Images crops to exactly 1080x1080, 1200x630 and 1200x1200 JPEG. Interactions are sent with `store: false`.
-- Email: Cloudflare Email Sending (beta, Workers Paid) through the `EMAIL` binding, not Resend (David, 2026-09-15). Only the verification and password reset codes are sent. Onboarding kabooly.com adds records on `cf-bounce.kabooly.com` and wants a DMARC record; kabooly.com already has one (p=quarantine), keep it.
+- Email: Cloudflare Email Sending (beta, Workers Paid) through the `EMAIL` binding, not Resend (David, 2026-09-15). Only the verification and password reset codes are sent. Sender is `noreply@marketing.kabooly.com` (display name "Kabooly Marketing" set in code): marketing.kabooly.com is onboarded as its own sending domain so nothing touches kabooly.com's IONOS mail records (MX, SPF, DMARC p=quarantine) or the CRM's Resend domain mail.kabooly.com.
 - Email verification is enforced by the server on every app route. TrackShows only gates it in the client because of old native builds; this app has none.
 - Website scan: fetches the page (8s timeout, size caps), reads theme-color, CSS (inline and up to three stylesheets) and brand-named custom properties for colours, and ranks logo candidates (logo-marked images in the header first, then icons). SVG logos go back to the browser, which converts them to PNG. Any failure falls back to manual entry.
 - Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Open question below.
@@ -31,7 +31,6 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 ## Open questions for David
 
 - Palette: marketing site look (used) or the CRM's dark theme?
-- Sender address for Cloudflare Email Sending (`EMAIL_FROM` var in wrangler.toml, still unset). The display name "Kabooly Marketing" is set in code.
 - Text caps: 200 a day and 20 a minute.
 - Gemini model and size: `gemini-3.1-flash-image` at 2K (the `GEMINI_IMAGE_MODEL` var switches model without code).
 
