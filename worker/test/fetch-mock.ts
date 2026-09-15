@@ -17,7 +17,7 @@ const routes: Route[] = [];
 export const captured: Captured[] = [];
 
 // The worker and the tests share one isolate, so stubbing the global fetch
-// intercepts the worker's outbound calls (Resend, Anthropic, Gemini, and the
+// intercepts the worker's outbound calls (Anthropic, Gemini, and the
 // websites the scan reads). Unmocked URLs fail loudly with a 599.
 export function installFetchMock(): void {
   routes.length = 0;

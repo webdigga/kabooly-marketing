@@ -6,14 +6,14 @@ import { fetchFirstLogo, rankLogoCandidates } from "../src/scan/logo";
 import { extractPageFacts } from "../src/scan/page";
 import { normaliseWebsiteUrl, resolveUrl } from "../src/scan/url";
 import { installFetchMock, onFetch } from "./fetch-mock";
-import { apiFetch, mockResend, pngBytes, testEnv, verifiedUser } from "./helpers";
+import { apiFetch, mockEmail, pngBytes, testEnv, verifiedUser } from "./helpers";
 
 const SITE = "https://acme.example.co.uk";
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
 
 beforeEach(() => {
   installFetchMock();
-  mockResend();
+  mockEmail();
 });
 
 function html(body: string, head = ""): Response {

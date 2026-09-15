@@ -4,11 +4,11 @@ import { decodeCursor } from "../src/advert-store";
 import type { GenerationEvent } from "../src/generation";
 import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
-import { apiFetch, mockResend, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
+import { apiFetch, mockEmail, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
-  mockResend();
+  mockEmail();
   mockClaude();
   mockGemini();
 });

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
+import { installFetchMock } from "./fetch-mock";
 import {
   apiFetch,
   appFetch,
   lastCodeSentTo,
-  mockResend,
+  mockEmail,
   PASSWORD,
   postJson,
-  RESEND_URL,
+  sentEmails,
   signUp,
   testEnv,
   uniqueEmail,
@@ -16,7 +16,7 @@ import {
 
 beforeEach(() => {
   installFetchMock();
-  mockResend();
+  mockEmail();
 });
 
 async function signIn(email: string, password = PASSWORD): Promise<Response> {
@@ -43,8 +43,11 @@ describe("registration and verification", () => {
 
   it("verifies an email with the emailed code and then lets the account in", async () => {
     const { cookie, email } = await verifiedUser();
-    const sent = callsTo(RESEND_URL).map((c) => JSON.parse(c.body) as { subject: string; to: string[] });
-    expect(sent.at(-1)).toMatchObject({ to: [email], subject: "Your Kabooly Marketing verification code" });
+    expect(sentEmails.at(-1)).toMatchObject({
+      from: { email: "test@example.com", name: "Kabooly Marketing" },
+      to: email,
+      subject: "Your Kabooly Marketing verification code",
+    });
     const res = await apiFetch(cookie, "/api/profile");
     expect(res.status).toBe(200);
     const login: { user: { emailVerified: boolean } } = await (await signIn(email)).json();
@@ -64,18 +67,18 @@ describe("registration and verification", () => {
     await signUp(email);
     const res = await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "sign-in" });
     expect(res.status).toBe(200);
-    expect(callsTo(RESEND_URL)).toHaveLength(0);
+    expect(sentEmails).toHaveLength(0);
   });
 
   // better-auth awaits the send but swallows (and logs) a failure, so the
   // response does not reveal whether an address can receive mail.
   it("attempts the send even when the mail provider fails", async () => {
-    onFetch(RESEND_URL, () => new Response("down", { status: 500 }));
+    mockEmail({ fail: true });
     const email = uniqueEmail();
     await signUp(email);
     const res = await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
     expect(res.status).toBe(200);
-    expect(callsTo(RESEND_URL)).toHaveLength(1);
+    expect(sentEmails).toHaveLength(1);
   });
 });
 
@@ -84,8 +87,7 @@ describe("password reset", () => {
     const { email } = await verifiedUser();
     const req = await postJson("/api/auth/email-otp/request-password-reset", { email });
     expect(req.status).toBe(200);
-    const sent = callsTo(RESEND_URL).map((c) => JSON.parse(c.body) as { subject: string });
-    expect(sent.at(-1)?.subject).toBe("Your Kabooly Marketing password reset code");
+    expect(sentEmails.at(-1)?.subject).toBe("Your Kabooly Marketing password reset code");
 
     const reset = await postJson("/api/auth/email-otp/reset-password", {
       email,

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { installFetchMock } from "./fetch-mock";
-import { apiFetch, appFetch, mockResend, PROFILE, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
+import { apiFetch, appFetch, mockEmail, PROFILE, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
 
 interface ProfileJson {
   businessName: string;
@@ -13,7 +13,7 @@ interface ProfileJson {
 
 beforeEach(() => {
   installFetchMock();
-  mockResend();
+  mockEmail();
 });
 
 async function profileOf(cookie: string): Promise<ProfileJson | null> {

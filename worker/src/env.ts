@@ -9,7 +9,9 @@ export interface Env {
   BETTER_AUTH_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
-  RESEND_API_KEY: string;
+  EMAIL: SendEmail;
+  // Bare address on the onboarded sending domain; the display name is set
+  // in email.ts.
   EMAIL_FROM: string;
   ANTHROPIC_API_KEY: string;
   GEMINI_API_KEY: string;

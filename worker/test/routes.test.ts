@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installFetchMock } from "./fetch-mock";
-import { apiFetch, appFetch, mockResend, testEnv, uploadLogo, verifiedUser } from "./helpers";
+import { apiFetch, appFetch, mockEmail, testEnv, uploadLogo, verifiedUser } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
-  mockResend();
+  mockEmail();
 });
 
 describe("routes", () => {

@@ -25,6 +25,10 @@ migrations_dir = "migrations"
 binding = "FILES"
 bucket_name = "kabooly-marketing-images"
 
+# Cloudflare Email Sending: verification and password reset codes.
+[[send_email]]
+name = "EMAIL"
+
 # Cloudflare Images: crops Gemini output to each platform's exact size.
 [images]
 binding = "IMAGES"
@@ -42,7 +46,7 @@ new_sqlite_classes = ["GenerationLimiter"]
 [vars]
 # The canonical auth origin. OAuth callbacks and session cookies hang off it.
 BETTER_AUTH_URL = "https://marketing.kabooly.com"
-EMAIL_FROM = "Kabooly Marketing <marketing@mail.kabooly.com>"
 GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
+# EMAIL_FROM: sender address, set once the sending domain is onboarded.
 # Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID,
-# GOOGLE_CLIENT_SECRET, RESEND_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
+# GOOGLE_CLIENT_SECRET, ANTHROPIC_API_KEY, GEMINI_API_KEY

@@ -1,5 +1,5 @@
 import { env, SELF } from "cloudflare:test";
-import { callsTo, onFetch } from "./fetch-mock";
+import { vi } from "vitest";
 
 /*
  * SELF and env are deprecated in favour of the cloudflare:workers module, but
@@ -12,7 +12,6 @@ const worker = SELF;
 // eslint-disable-next-line @typescript-eslint/no-deprecated
 export const testEnv = env;
 
-export const RESEND_URL = "https://api.resend.com/emails";
 export const PASSWORD = "a-strong-password-123";
 
 // 16x9 solid blue PNG.
@@ -56,15 +55,28 @@ export function apiFetch(
   });
 }
 
-export function mockResend(): void {
-  onFetch(RESEND_URL, () => Response.json({ id: "email" }));
+export interface SentEmail {
+  from: { email: string; name: string };
+  to: string;
+  subject: string;
+  text: string;
+}
+
+export const sentEmails: SentEmail[] = [];
+
+// Stands in for Cloudflare Email Sending: records every message, or throws
+// the way the binding does when sending fails.
+export function mockEmail(options: { fail?: boolean } = {}): void {
+  sentEmails.length = 0;
+  vi.spyOn(testEnv.EMAIL, "send").mockImplementation((message) => {
+    sentEmails.push(message as unknown as SentEmail);
+    if (options.fail) return Promise.reject(Object.assign(new Error("rate limited"), { code: "E_RATE_LIMIT_EXCEEDED" }));
+    return Promise.resolve({ messageId: `m-${String(sentEmails.length)}` });
+  });
 }
 
 export function lastCodeSentTo(email: string): string {
-  const sent = callsTo(RESEND_URL)
-    .map((c) => JSON.parse(c.body) as { to: string[]; text: string })
-    .filter((m) => m.to.includes(email))
-    .at(-1);
+  const sent = sentEmails.filter((m) => m.to === email).at(-1);
   const code = /\b(\d{6})\b/.exec(sent?.text ?? "")?.[1];
   if (!code) throw new Error(`no code emailed to ${email}`);
   return code;
@@ -86,7 +98,7 @@ export async function signUp(email: string): Promise<string> {
 }
 
 // A signed-in account with a verified email: what every app route needs.
-// Requires mockResend() to be installed.
+// Requires mockEmail() to be installed.
 export async function verifiedUser(label = "user"): Promise<{ cookie: string; email: string }> {
   const email = uniqueEmail(label);
   const cookie = await signUp(email);

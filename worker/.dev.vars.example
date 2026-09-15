@@ -6,6 +6,8 @@ BETTER_AUTH_URL=http://localhost:5173
 # as a redirect URI for local sign-in.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-RESEND_API_KEY=
+# Sender address on the Cloudflare Email Sending domain. Locally, emails are
+# not sent; wrangler dev prints where it saved each one.
+EMAIL_FROM=
 ANTHROPIC_API_KEY=
 GEMINI_API_KEY=

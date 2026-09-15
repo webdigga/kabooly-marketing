@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MAX_LOGO_BYTES, sniffRaster } from "../src/files";
 import { installFetchMock } from "./fetch-mock";
-import { apiFetch, mockResend, pngBytes, testEnv, uploadLogo, verifiedUser } from "./helpers";
+import { apiFetch, mockEmail, pngBytes, testEnv, uploadLogo, verifiedUser } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
-  mockResend();
+  mockEmail();
 });
 
 describe("sniffRaster", () => {
