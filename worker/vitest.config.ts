@@ -10,6 +10,13 @@ export default defineConfig({
       wrangler: { configPath: "./wrangler.toml" },
       miniflare: {
         bindings: {
+          BETTER_AUTH_SECRET: "test-secret-for-vitest-only-0123456789",
+          BETTER_AUTH_URL: "http://localhost",
+          GOOGLE_CLIENT_ID: "test-google-client-id",
+          GOOGLE_CLIENT_SECRET: "test-google-client-secret",
+          RESEND_API_KEY: "test-resend-key",
+          ANTHROPIC_API_KEY: "test-anthropic-key",
+          GEMINI_API_KEY: "test-gemini-key",
           TEST_MIGRATIONS: migrations,
         },
       },

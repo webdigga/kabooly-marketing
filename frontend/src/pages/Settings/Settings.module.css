@@ -1,0 +1,23 @@
+.page {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.lead {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.saveBar {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: stretch;
+}
+
+@media (min-width: 640px) {
+  .saveBar {
+    justify-items: end;
+  }
+}

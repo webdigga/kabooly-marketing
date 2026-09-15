@@ -1,0 +1,84 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6) var(--space-4) var(--space-12);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.card {
+  width: 100%;
+  max-width: 36rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5) var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.progress {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.bar {
+  height: 0.375rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-gray-100);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.25s;
+}
+
+.title {
+  font-size: var(--text-2xl);
+}
+
+.intro {
+  color: var(--color-text-secondary);
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-2);
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.signOut {
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .page {
+    padding-top: var(--space-12);
+  }
+
+  .card {
+    padding: var(--space-8);
+  }
+}

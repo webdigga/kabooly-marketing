@@ -1,4 +1,5 @@
 import type { D1Migration } from "@cloudflare/vitest-pool-workers";
+import type { Env as WorkerEnv } from "../src/env";
 
 declare global {
   // vitest.config.ts runs in Node, where import.meta.url always exists, but
@@ -8,9 +9,7 @@ declare global {
   }
 
   namespace Cloudflare {
-    interface Env {
-      DB: D1Database;
-      IMAGES: R2Bucket;
+    interface Env extends WorkerEnv {
       TEST_MIGRATIONS: D1Migration[];
     }
   }

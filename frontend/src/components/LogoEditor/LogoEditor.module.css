@@ -1,0 +1,37 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.preview {
+  width: 6rem;
+  height: 6rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  /* A light check pattern so transparent and white logos stay visible. */
+  background-color: var(--color-white);
+  background-image: conic-gradient(var(--color-gray-100) 25%, transparent 0 50%, var(--color-gray-100) 0 75%, transparent 0);
+  background-size: 16px 16px;
+}
+
+.preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.empty {
+  color: var(--color-gray-400);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

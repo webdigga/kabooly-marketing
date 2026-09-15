@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Kabooly logo - wave design -->
+  <path d="M32 160 Q128 64 256 160 T480 160" fill="none" stroke="#1e40af" stroke-width="48" stroke-linecap="round"/>
+  <path d="M32 272 Q128 176 256 272 T480 272" fill="none" stroke="#2563eb" stroke-width="48" stroke-linecap="round"/>
+  <path d="M32 384 Q128 288 256 384 T480 384" fill="none" stroke="#3b82f6" stroke-width="48" stroke-linecap="round"/>
+</svg>

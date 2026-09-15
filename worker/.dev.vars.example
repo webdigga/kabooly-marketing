@@ -1,0 +1,11 @@
+# Copy to .dev.vars for `wrangler dev`. The Vite dev server (port 5173)
+# proxies /api here, so auth runs on the Vite origin.
+BETTER_AUTH_SECRET=generate-a-long-random-string
+BETTER_AUTH_URL=http://localhost:5173
+# Google OAuth web client; add http://localhost:5173/api/auth/callback/google
+# as a redirect URI for local sign-in.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+RESEND_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=

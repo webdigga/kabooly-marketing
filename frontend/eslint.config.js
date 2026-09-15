@@ -8,7 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist', 'coverage']),
   {
-    files: ['src/**/*.{ts,tsx}', 'vite.config.ts'],
+    files: ['src/**/*.{ts,tsx}', 'test/**/*.{ts,tsx}', 'vite.config.ts', 'vitest.config.ts'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -30,6 +30,20 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
       'complexity': ['error', { max: 15 }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+  {
+    // Test helpers export render utilities alongside components.
+    files: ['test/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    // Context files export both the provider and its hook.
+    files: ['src/context/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
   {

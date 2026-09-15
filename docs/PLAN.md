@@ -1,23 +1,45 @@
 # Kabooly Marketing: build plan
 
-## Stages (stop and confirm with David after each)
+## Stages
 
-1. DONE 2026-09-15. Project skeleton, Hono routes, D1 schema, R2 binding.
-2. Auth: registration, verification, Google sign-in, sessions, password reset.
-3. Onboarding flow and business profile, including website fetch for colours and logo, plus the settings screen to edit it.
-4. Text generation with Haiku, including topic suggestion and editing.
-5. Image generation with Gemini, platform selection, per-image regeneration.
-6. Library, R2 storage and retrieval.
-7. Rate limits and daily cap.
-8. Styling pass against Kabooly branding.
+All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, questions at the end).
 
-## Decisions so far
+1. DONE. Project skeleton, Hono routes, D1 schema, R2 binding.
+2. DONE. Auth: registration, verification, Google sign-in, sessions, password reset.
+3. DONE. Onboarding flow and business profile, website fetch for colours and logo, settings screen.
+4. DONE. Text generation with Haiku, topic suggestion and editing.
+5. DONE. Image generation with Gemini, platform selection, per-image regeneration.
+6. DONE. Library, R2 storage and retrieval.
+7. DONE. Rate limits and daily cap.
+8. DONE (unseen). Built with Kabooly branding throughout; nobody has looked at it in a browser yet.
+
+## Decisions
 
 - One Worker serves app and API on one origin (Workers static assets, `run_worker_first = ["/api/*"]`). TrackShows and the CRM both split a Pages frontend from an API subdomain; that split exists there for native apps and cross-domain reasons that do not apply here.
 - Frontend is React + Vite + TypeScript with plain CSS files, matching the CRM frontend.
 - Worker uses Hono (brief + TrackShows). The CRM worker uses a hand-rolled route table instead; not followed here because the auth pattern being copied is Hono-based.
 - Schema: `business_profiles` (one row per account; its existence marks onboarding done), `profile_services` (one row per service, ordered), `adverts`, `advert_images` (one per platform per advert, regenerate replaces). Audience and local area are two separate columns. Tone is 1 (formal) to 5 (casual). Brand colours are a JSON list of hex strings. Logo is an R2 key.
-- Rate limit and daily cap storage is decided in stage 7 (likely a Durable Object per account, as the CRM does for atomic counters, since "one generation in flight" needs a lock D1 cannot give).
+- Limits: one Durable Object per account (the CRM uses a DO for atomic rate limits too). It holds the in-flight lock (5 minute safety expiry), the per-minute window and the rolling 24 hour image count. Images are counted when a generation starts and failed ones refunded when it finishes, so abandoning a generation cannot dodge the cap. Text-only work (topic suggestions, text regeneration, image-free adverts) has its own cap: 200 a day, 20 a minute. Every kind of generation respects the one-in-flight lock.
+- A generation is one request that streams newline-delimited JSON: the advert text (saved to the library the moment it exists), then each image as it lands. It runs under waitUntil, so closing the tab still finishes and saves it.
+- Images: Gemini draws 1:1 (Instagram, Nextdoor) or 16:9 (Facebook) at 2K, then Cloudflare Images crops to exactly 1080x1080, 1200x630 and 1200x1200 JPEG. Interactions are sent with `store: false`.
+- Email verification is enforced by the server on every app route. TrackShows only gates it in the client because of old native builds; this app has none.
+- Website scan: fetches the page (8s timeout, size caps), reads theme-color, CSS (inline and up to three stylesheets) and brand-named custom properties for colours, and ranks logo candidates (logo-marked images in the header first, then icons). SVG logos go back to the browser, which converts them to PNG. Any failure falls back to manual entry.
+- Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Open question below.
+- Platforms: all three are ticked by default; the last choice is remembered per browser.
+
+## Open questions for David
+
+- Palette: marketing site look (used) or the CRM's dark theme?
+- Sender address: `Kabooly Marketing <marketing@mail.kabooly.com>` (same Resend domain as TrackShows).
+- Text caps: 200 a day and 20 a minute.
+- Gemini model and size: `gemini-3.1-flash-image` at 2K (the `GEMINI_IMAGE_MODEL` var switches model without code).
+
+## Not built (outside the brief, flagged only)
+
+- Account deletion.
+- Deleting adverts from the library.
+- Clean-up of R2 files nothing points to (logos uploaded but never saved). An R2 lifecycle rule would cover it.
+- The website scan is not rate limited.
 
 ## Brief
 

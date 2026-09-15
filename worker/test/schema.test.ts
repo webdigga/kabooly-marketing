@@ -18,11 +18,11 @@ const ownedTables = [
 
 const NOW = 1_760_000_000;
 
-// Storage persists across tests in a file, so each test starts from a clean
-// account (the delete cascades to everything below it).
+// Storage persists across tests, so each test starts from a clean account
+// (the delete cascades to everything below it).
 async function seed(): Promise<void> {
   await testEnv.DB.batch([
-    testEnv.DB.prepare("DELETE FROM user"),
+    testEnv.DB.prepare("DELETE FROM user WHERE id = 'u1'"),
     testEnv.DB.prepare(
       "INSERT INTO user (id, name, email, created_at, updated_at) VALUES ('u1', 'Test', 'u1@example.com', ?1, ?1)"
     ).bind(NOW),
@@ -42,7 +42,9 @@ async function seed(): Promise<void> {
 }
 
 async function count(table: string): Promise<number> {
-  const row = await testEnv.DB.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<{
+  const row = await testEnv.DB.prepare(
+    `SELECT COUNT(*) AS n FROM ${table} WHERE ${table === "advert_images" ? "advert_id = 'a1'" : "user_id = 'u1'"}`
+  ).first<{
     n: number;
   }>();
   return row?.n ?? -1;
@@ -134,8 +136,8 @@ describe("schema", () => {
 
 describe("R2 binding", () => {
   it("stores and reads back an object", async () => {
-    await testEnv.IMAGES.put("probe.txt", "hello");
-    const obj = await testEnv.IMAGES.get("probe.txt");
+    await testEnv.FILES.put("probe.txt", "hello");
+    const obj = await testEnv.FILES.get("probe.txt");
     expect(await obj?.text()).toBe("hello");
   });
 });

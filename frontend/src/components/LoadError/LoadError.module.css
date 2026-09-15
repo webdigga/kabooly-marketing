@@ -1,0 +1,7 @@
+.wrap {
+  max-width: var(--narrow-width);
+  margin: var(--space-12) auto;
+  padding-inline: var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+}

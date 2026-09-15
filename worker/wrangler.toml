@@ -7,6 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 # first-party and no CORS is needed. /api/* reaches the Worker; every other
 # path is a static file from the Vite build, with unknown paths falling back
 # to index.html for client-side routes.
+routes = [{ pattern = "marketing.kabooly.com", custom_domain = true }]
+
 [assets]
 directory = "../frontend/dist"
 not_found_handling = "single-page-application"
@@ -20,5 +22,27 @@ migrations_dir = "migrations"
 
 # Generated advert images and uploaded logos.
 [[r2_buckets]]
-binding = "IMAGES"
+binding = "FILES"
 bucket_name = "kabooly-marketing-images"
+
+# Cloudflare Images: crops Gemini output to each platform's exact size.
+[images]
+binding = "IMAGES"
+
+# One limiter per account: daily image cap, per-minute rate and the
+# one-generation-in-flight lock, all in a single serialised instance.
+[[durable_objects.bindings]]
+name = "LIMITER"
+class_name = "GenerationLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GenerationLimiter"]
+
+[vars]
+# The canonical auth origin. OAuth callbacks and session cookies hang off it.
+BETTER_AUTH_URL = "https://marketing.kabooly.com"
+EMAIL_FROM = "Kabooly Marketing <marketing@mail.kabooly.com>"
+GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
+# Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID,
+# GOOGLE_CLIENT_SECRET, RESEND_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY
