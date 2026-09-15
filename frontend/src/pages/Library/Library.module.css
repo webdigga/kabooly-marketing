@@ -8,9 +8,10 @@
   color: var(--color-text-secondary);
 }
 
-.images {
+.grid {
   display: grid;
-  gap: var(--space-5);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .empty {
@@ -36,14 +37,14 @@
 }
 
 @media (min-width: 640px) {
-  .images {
-    grid-template-columns: repeat(2, 1fr);
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
   }
 }
 
 @media (min-width: 960px) {
-  .images {
-    grid-template-columns: repeat(3, 1fr);
-    align-items: start;
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

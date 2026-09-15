@@ -1,12 +1,11 @@
 import { Images } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ReadOnlyAdvertText } from '../../components/AdvertText/AdvertText'
 import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import { buttonClass } from '../../components/Button/buttonClass'
 import Card from '../../components/Card/Card'
-import ImageTile from '../../components/ImageTile/ImageTile'
+import LibraryCard from '../../components/LibraryCard/LibraryCard'
 import LoadError from '../../components/LoadError/LoadError'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import { api } from '../../lib/api'
@@ -16,25 +15,6 @@ import styles from './Library.module.css'
 interface Page {
   adverts: Advert[]
   nextCursor: string | null
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function AdvertEntry({ advert }: { advert: Advert }) {
-  return (
-    <Card title={advert.topic} description={formatDate(advert.createdAt)} testId="library-post">
-      <ReadOnlyAdvertText body={advert.body} />
-      {advert.images.length > 0 && (
-        <div className={styles.images}>
-          {advert.images.map((image) => (
-            <ImageTile key={image.platform} platform={image.platform} image={image} status="ready" />
-          ))}
-        </div>
-      )}
-    </Card>
-  )
 }
 
 export default function Library() {
@@ -83,7 +63,7 @@ export default function Library() {
     <div className={styles.page}>
       <div>
         <h1>Library</h1>
-        <p className={styles.lead}>Every advert you have made, newest first.</p>
+        <p className={styles.lead}>Every advert you have made, newest first. Open one to copy, download or delete it.</p>
       </div>
       {adverts.length === 0 ? (
         <Card>
@@ -97,7 +77,11 @@ export default function Library() {
           </div>
         </Card>
       ) : (
-        adverts.map((advert) => <AdvertEntry key={advert.id} advert={advert} />)
+        <div className={styles.grid}>
+          {adverts.map((advert) => (
+            <LibraryCard key={advert.id} advert={advert} />
+          ))}
+        </div>
       )}
       {moreError && <Alert tone="error">Could not load more adverts. Try again.</Alert>}
       {cursor && (

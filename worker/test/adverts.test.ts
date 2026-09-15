@@ -272,6 +272,33 @@ function sessionToken(cookie: string): string {
   return decodeURIComponent(cookie.split("=")[1] ?? "").split(".")[0] ?? "";
 }
 
+describe("deleting", () => {
+  it("removes an advert, its images and their files", async () => {
+    const cookie = await readyUser();
+    const advert = await generateAdvert(cookie, ["instagram", "facebook"]);
+    const full: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert.id}`)).json();
+    const keys = full.advert.images.map((i) => i.url.replace("/api/files/", ""));
+    expect(keys).toHaveLength(2);
+
+    const res = await apiFetch(cookie, `/api/posts/${advert.id}`, { method: "DELETE" });
+    expect(res.status).toBe(200);
+    expect((await apiFetch(cookie, `/api/posts/${advert.id}`)).status).toBe(404);
+    for (const key of keys) expect(await testEnv.FILES.head(key)).toBeNull();
+    const rows = await testEnv.DB.prepare("SELECT COUNT(*) AS n FROM advert_images WHERE advert_id = ?1")
+      .bind(advert.id)
+      .first<{ n: number }>();
+    expect(rows?.n).toBe(0);
+  });
+
+  it("deletes a text-only advert and refuses other people's", async () => {
+    const owner = await readyUser();
+    const advert = await generateAdvert(owner, []);
+    const { cookie: other } = await verifiedUser();
+    expect((await apiFetch(other, `/api/posts/${advert.id}`, { method: "DELETE" })).status).toBe(404);
+    expect((await apiFetch(owner, `/api/posts/${advert.id}`, { method: "DELETE" })).status).toBe(200);
+  });
+});
+
 describe("editing and regenerating", () => {
   it("saves edited text", async () => {
     const cookie = await readyUser();

@@ -28,7 +28,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts (text plus
 
 ## Map
 - `worker/src/index.ts` routes; `auth.ts`; `session.ts` (verified-user gate); `profile.ts` (profile + website scan route); `scan/` (colour + logo detection); `files.ts` (logo upload, owner-only file serving); `adverts.ts` (topics, generations, library, regeneration, usage); `generation.ts` (NDJSON stream, runs under waitUntil); `copywriter.ts` (Haiku); `image-maker.ts` (Gemini + crop); `limiter.ts` (Durable Object) and `limits.ts` (429 responses).
-- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library, Settings); `profile/` (draft, fields, website scan hook); `components/` shared UI (Button, Card, Field, Alert, ImageTile, AdvertText...).
+- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook); `components/` shared UI (Button, Card, Field, Alert, ImageTile, AdvertText...).
 
 ## Hard rules
 - Follow the TrackShows auth pattern. Do not invent a new auth approach.

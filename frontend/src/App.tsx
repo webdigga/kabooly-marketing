@@ -4,6 +4,7 @@ import { GuestOnly, RequireProfile, RequireVerified } from './components/Guards/
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword'
 import Generator from './pages/Generator/Generator'
 import Library from './pages/Library/Library'
+import LibraryItem from './pages/LibraryItem/LibraryItem'
 import Onboarding from './pages/Onboarding/Onboarding'
 import Settings from './pages/Settings/Settings'
 import SignIn from './pages/SignIn/SignIn'
@@ -24,6 +25,7 @@ export function AppRoutes() {
           <Route element={<AppShell />}>
             <Route index element={<Generator />} />
             <Route path="/library" element={<Library />} />
+            <Route path="/library/:id" element={<LibraryItem />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

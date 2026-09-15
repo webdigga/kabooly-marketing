@@ -16,27 +16,89 @@ beforeEach(() => {
 })
 
 describe('library', () => {
-  it('lists adverts newest first with copy and downloads, and loads older ones', async () => {
+  it('shows adverts as a compact grid, newest first, and loads older ones', async () => {
     mockApi({
       ...base,
       'GET /api/posts': ({ url }) =>
         url.includes('before=')
           ? json({ adverts: [advert({ id: 'a0', topic: 'Old news', createdAt: '2026-09-01T09:00:00.000Z' })], nextCursor: null })
-          : json({ adverts: [advert({ images: [image('facebook')] })], nextCursor: 'cursor-1' }),
+          : json({ adverts: [advert({ images: [image('facebook'), image('instagram')] })], nextCursor: 'cursor-1' }),
     })
     renderApp('/library')
-    const first = await screen.findByTestId('library-post')
-    expect(within(first).getByRole('heading', { name: 'Spring ovens' })).toBeInTheDocument()
-    expect(within(first).getByText('15 September 2026')).toBeInTheDocument()
-    expect(within(first).getByRole('button', { name: 'Copy text' })).toBeInTheDocument()
-    expect(within(first).getByRole('link', { name: 'Download' })).toHaveAttribute('href', image('facebook').downloadUrl)
-    expect(within(first).queryByTestId('regenerate-facebook')).not.toBeInTheDocument()
+    const [first] = await screen.findAllByTestId('library-card')
+    expect(first).toHaveAttribute('href', '/library/a1')
+    expect(within(first!).getByText('Spring ovens')).toBeInTheDocument()
+    expect(within(first!).getByText(/15 Sept 2026 · Facebook, Instagram/)).toBeInTheDocument()
+    // The square Instagram image is the thumbnail, not the landscape one.
+    expect(first!.querySelector('img')).toHaveAttribute('src', image('instagram').url)
 
     await userEvent.click(screen.getByTestId('load-more'))
     await screen.findByText('Old news')
-    expect(screen.getAllByTestId('library-post')).toHaveLength(2)
+    const cards = screen.getAllByTestId('library-card')
+    expect(cards).toHaveLength(2)
+    // A text-only advert shows its text instead of a thumbnail.
+    expect(within(cards[1]!).getByText('Book your spring oven clean in Twickenham.')).toBeInTheDocument()
     expect(screen.queryByTestId('load-more')).not.toBeInTheDocument()
     expect(callsTo('GET', '/api/posts')[1]?.url).toBe('/api/posts?before=cursor-1')
+  })
+
+  it('opens an advert with copy and downloads', async () => {
+    mockApi({
+      ...base,
+      'GET /api/posts': () => json({ adverts: [advert({ images: [image('facebook')] })], nextCursor: null }),
+      'GET /api/posts/a1': () => json({ advert: advert({ images: [image('facebook')] }) }),
+    })
+    renderApp('/library')
+    await userEvent.click(await screen.findByTestId('library-card'))
+    const post = await screen.findByTestId('library-post')
+    expect(within(post).getByRole('heading', { name: 'Spring ovens' })).toBeInTheDocument()
+    expect(within(post).getByRole('button', { name: 'Copy text' })).toBeInTheDocument()
+    expect(within(post).getByRole('link', { name: 'Download' })).toHaveAttribute('href', image('facebook').downloadUrl)
+    await userEvent.click(screen.getByTestId('back-to-library'))
+    await screen.findByTestId('library-card')
+  })
+
+  it('deletes an advert after asking once more', async () => {
+    let deleted = false
+    mockApi({
+      ...base,
+      'GET /api/posts/a1': () => json({ advert: advert() }),
+      'DELETE /api/posts/a1': () => {
+        deleted = true
+        return json({ ok: true })
+      },
+      'GET /api/posts': () => json({ adverts: deleted ? [] : [advert()], nextCursor: null }),
+    })
+    renderApp('/library/a1')
+    await userEvent.click(await screen.findByTestId('delete-post'))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByTestId('delete-post'))
+    await userEvent.click(screen.getByTestId('confirm-delete'))
+    await screen.findByText('No adverts yet')
+    expect(callsTo('DELETE', '/api/posts/a1')).toHaveLength(1)
+  })
+
+  it('reports a failed delete and a missing or unloadable advert', async () => {
+    let fail = true
+    mockApi({
+      ...base,
+      'GET /api/posts/a1': () => (fail ? json({}, 500) : json({ advert: advert() })),
+      'DELETE /api/posts/a1': () => json({}, 500),
+      'GET /api/posts/gone': () => json({ error: 'Not found' }, 404),
+    })
+    renderApp('/library/a1')
+    await screen.findByText('Could not load this advert.')
+    fail = false
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await userEvent.click(await screen.findByTestId('delete-post'))
+    await userEvent.click(screen.getByTestId('confirm-delete'))
+    expect(await screen.findByText('The advert could not be deleted. Try again.')).toBeInTheDocument()
+  })
+
+  it('says when an advert has already gone', async () => {
+    mockApi({ ...base, 'GET /api/posts/gone': () => json({ error: 'Not found' }, 404) })
+    renderApp('/library/gone')
+    expect(await screen.findByText('This advert is no longer in your library.')).toBeInTheDocument()
   })
 
   it('shows an empty state that leads to the generator', async () => {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   advertJson,
   decodeCursor,
+  deleteAdvert,
   encodeCursor,
   findAdvert,
   imagesFor,
@@ -120,6 +121,13 @@ advertsApi.get("/posts/:id", async (c) => {
   const advert = await advertOr404(c, c.req.param("id"));
   if (advert instanceof Response) return advert;
   return c.json({ advert: advertJson(advert, await imagesFor(c.env, [advert.id])) });
+});
+
+advertsApi.delete("/posts/:id", async (c) => {
+  const advert = await advertOr404(c, c.req.param("id"));
+  if (advert instanceof Response) return advert;
+  await deleteAdvert(c.env, advert);
+  return c.json({ ok: true });
 });
 
 const editBody = z.object({ body: z.string().trim().min(1).max(5000) });

@@ -101,6 +101,13 @@ export async function updateAdvertBody(env: Env, advert: AdvertRow, body: string
   return updated;
 }
 
+// Removes an advert, its image rows (by cascade) and its image files.
+export async function deleteAdvert(env: Env, advert: AdvertRow): Promise<void> {
+  const images = await imagesFor(env, [advert.id]);
+  await db(env).delete(schema.adverts).where(eq(schema.adverts.id, advert.id));
+  if (images.length) await env.FILES.delete(images.map((i) => i.r2Key));
+}
+
 export interface Cursor {
   createdAt: Date;
   id: string;

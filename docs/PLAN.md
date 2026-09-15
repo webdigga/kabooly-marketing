@@ -26,6 +26,7 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Email verification is enforced by the server on every app route. TrackShows only gates it in the client because of old native builds; this app has none.
 - Website scan: fetches the page (8s timeout, size caps), reads theme-color, CSS (inline and up to three stylesheets) and brand-named custom properties for colours, and ranks logo candidates (logo-marked images in the header first, then icons). SVG logos go back to the browser, which converts them to PNG. Any failure falls back to manual entry.
 - Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Open question below.
+- Library (changed after first live test, 2026-09-15): a compact grid of cards (square thumbnail, or the text for image-free adverts; topic; date; platforms). Each opens `/library/:id` with the full text, copy, downloads and Delete (asks once more; removes the row, image rows and R2 files via `DELETE /api/posts/:id`).
 - Platforms: all three are ticked by default; the last choice is remembered per browser.
 
 ## Open questions for David
@@ -49,7 +50,6 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 ## Not built (outside the brief, flagged only)
 
 - Account deletion.
-- Deleting adverts from the library.
 - Clean-up of R2 files nothing points to (logos uploaded but never saved). An R2 lifecycle rule would cover it.
 - The website scan is not rate limited.
 
