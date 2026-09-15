@@ -43,6 +43,17 @@ describe("in-flight lock", () => {
     expect((await stub.begin("image", 1, T0 + LIMITS.lockTtlMs)).ok).toBe(true);
   });
 
+  it("lets a topic suggestion through while a generation runs, without taking the lock", async () => {
+    const stub = limiter();
+    const generation = await stub.begin("image", 1, T0);
+    const suggestion = await stub.begin("text", 0, T0 + 1, false);
+    expect(suggestion.ok).toBe(true);
+    if (generation.ok) await stub.finish(generation.leaseId, 1, T0 + 2);
+    const again = await stub.begin("text", 0, T0 + 3, false);
+    expect((await stub.begin("image", 1, T0 + 4)).ok).toBe(true);
+    if (suggestion.ok && again.ok) await stub.finish(suggestion.leaseId, 0, T0 + 5);
+  });
+
   it("ignores a finish for a lease it does not know", async () => {
     const stub = limiter();
     const lease = await stub.begin("image", 2, T0);

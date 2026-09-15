@@ -12,14 +12,20 @@ export interface Lease {
 
 export type Denied = Exclude<Admission, { ok: true }>;
 
+export interface GenerationRequest {
+  kind: GenerationKind;
+  images: number;
+  // False only for topic suggestions (see GenerationLimiter.begin).
+  holdLock: boolean;
+}
+
 export async function beginGeneration(
   env: Env,
   userId: string,
-  kind: GenerationKind,
-  images: number
+  request: GenerationRequest
 ): Promise<Lease | Denied> {
   const stub = limiter(env, userId);
-  const admission = await stub.begin(kind, images);
+  const admission = await stub.begin(request.kind, request.images, undefined, request.holdLock);
   if (!admission.ok) return admission;
   return {
     finish: async (imagesMade) => {

@@ -3,7 +3,8 @@
 ## 🔄 Active work
 
 ```
-Stage:  ALL 8 STAGES BUILT 2026-09-15, not yet deployed or seen in a browser.
+Stage:  LIVE at marketing.kabooly.com 2026-09-15, tested end to end by David
+        (sign-up, onboarding scan, text, all three images, library, delete).
 Setup:  Done 2026-09-15: git, Google OAuth client (project "Kabooly
         Marketing"), all 5 secrets, Cloudflare Email Sending on
         marketing.kabooly.com, Gemini billing + £10 cap, Ultra Cloud credit
@@ -11,6 +12,9 @@ Setup:  Done 2026-09-15: git, Google OAuth client (project "Kabooly
         NEXT: GitHub repo + Actions secrets, push to deploy, re-run Google
         brand verification. Open decisions in
         docs/PLAN.md.
+Check:  ON 2026-09-16 remind David to confirm the Gemini charges hit the
+        Ultra credit (Cloud Console > Billing > Credits, below £29.44) and
+        NOT the $5 prepay (aistudio.google.com/billing, still $5.00).
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
@@ -33,7 +37,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts (text plus
 ## Hard rules
 - Follow the TrackShows auth pattern. Do not invent a new auth approach.
 - Out of scope: auto-posting, posting tips/scheduling/calendars, any CRM link, Stripe/billing/plans, multiple text variations.
-- Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h, 5 image generations per minute, one generation in flight, text 200/day and 20/min. Regenerations count.
+- Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h, 5 image generations per minute, one generation in flight (topic suggestions exempt from the lock), text 200/day and 20/min. Regenerations count.
 - Schema changes go through `npm run db:generate` in `worker/` (drizzle-kit); never hand-edit an applied migration.
 - Worker: strict ESLint (TrackShows config) and 100% coverage (`npm run test:coverage`). Frontend: `npm run lint` at 0 warnings, tests with data-testid or role selectors.
 - Use the shared components (`Card`, `Button`/`buttonClass`, `Field`, `Alert`) rather than local recipes.

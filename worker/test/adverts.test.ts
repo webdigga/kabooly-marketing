@@ -151,6 +151,8 @@ describe("generation", () => {
     const second = await generate(cookie, "Summer", ["instagram"]);
     expect(second.status).toBe(429);
     expect(await second.json()).toMatchObject({ code: "busy" });
+    // A topic suggestion is not a generation, so it is never refused as busy.
+    expect((await apiFetch(cookie, "/api/topics/suggest", { method: "POST", body: {} })).status).toBe(200);
     release();
     await events(first);
   });

@@ -121,17 +121,24 @@ export class GenerationLimiter extends DurableObject {
 
   // Admits a generation or says why not. Images are counted up front, so a
   // generation that is abandoned mid-way still counts; finish() refunds the
-  // ones that failed.
-  async begin(kind: GenerationKind, images: number, now = Date.now()): Promise<Admission> {
+  // ones that failed. Topic suggestions pass holdLock false: they count
+  // towards the text caps but neither wait for nor take the in-flight lock,
+  // because suggesting a topic is not making an advert.
+  async begin(
+    kind: GenerationKind,
+    images: number,
+    now = Date.now(),
+    holdLock = true
+  ): Promise<Admission> {
     const state = await this.load(now);
-    if (state.lock) return { ok: false, reason: "busy" };
+    if (holdLock && state.lock) return { ok: false, reason: "busy" };
     const denied =
       checkRate(state.events, kind, now) ?? checkDaily(state.events, kind, images, now);
     if (denied) return denied;
 
     const leaseId = crypto.randomUUID();
     state.events.push({ id: leaseId, at: now, kind, images });
-    state.lock = { id: leaseId, expiresAt: now + LIMITS.lockTtlMs };
+    if (holdLock) state.lock = { id: leaseId, expiresAt: now + LIMITS.lockTtlMs };
     await this.save(state);
     return { ok: true, leaseId };
   }

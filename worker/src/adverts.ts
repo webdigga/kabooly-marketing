@@ -17,8 +17,8 @@ import { suggestTopic, writeAdvert } from "./copywriter";
 import { PLATFORMS } from "./db/schema";
 import type { Platform } from "./db/schema";
 import { streamGeneration } from "./generation";
-import type { GenerationKind } from "./limiter";
 import { beginGeneration, deniedResponse, isDenied, usageFor, usageJson } from "./limits";
+import type { GenerationRequest } from "./limits";
 import { loadProfile } from "./profile";
 import type { Profile } from "./profile";
 import type { AppEnv } from "./session";
@@ -42,11 +42,10 @@ async function requireProfile(c: AppContext): Promise<Profile | Response> {
 // always reported back so the lock is released and failures refunded.
 async function limited(
   c: AppContext,
-  kind: GenerationKind,
-  images: number,
+  request: GenerationRequest,
   work: () => Promise<{ response: Response; imagesMade: number }>
 ): Promise<Response> {
-  const lease = await beginGeneration(c.env, c.get("userId"), kind, images);
+  const lease = await beginGeneration(c.env, c.get("userId"), request);
   if (isDenied(lease)) return deniedResponse(c, lease);
   let imagesMade = 0;
   try {
@@ -54,7 +53,7 @@ async function limited(
     imagesMade = result.imagesMade;
     return result.response;
   } catch (err) {
-    console.error(`${kind} generation failed`, err);
+    console.error(`${request.kind} generation failed`, err);
     return c.json({ error: "Generation failed. Try again." }, 502);
   } finally {
     await lease.finish(imagesMade);
@@ -70,7 +69,7 @@ advertsApi.post("/topics/suggest", async (c) => {
   if (!parsed.ok) return parsed.response;
   const profile = await requireProfile(c);
   if (profile instanceof Response) return profile;
-  return limited(c, "text", 0, async () => {
+  return limited(c, { kind: "text", images: 0, holdLock: false }, async () => {
     const topic = await suggestTopic(c.env, profile, parsed.data.avoid);
     return { response: c.json({ topic }), imagesMade: 0 };
   });
@@ -89,7 +88,7 @@ advertsApi.post("/generations", async (c) => {
   const platforms = [...new Set(parsed.data.platforms)];
   const kind = platforms.length ? "image" : "text";
   const userId = c.get("userId");
-  const lease = await beginGeneration(c.env, userId, kind, platforms.length);
+  const lease = await beginGeneration(c.env, userId, { kind, images: platforms.length, holdLock: true });
   if (isDenied(lease)) return deniedResponse(c, lease);
   return streamGeneration(
     c.env,
@@ -146,7 +145,7 @@ advertsApi.post("/posts/:id/text", async (c) => {
   if (advert instanceof Response) return advert;
   const profile = await requireProfile(c);
   if (profile instanceof Response) return profile;
-  return limited(c, "text", 0, async () => {
+  return limited(c, { kind: "text", images: 0, holdLock: true }, async () => {
     const body = await writeAdvert(c.env, profile, advert.topic);
     const updated = await updateAdvertBody(c.env, advert, body);
     const images = await imagesFor(c.env, [advert.id]);
@@ -165,7 +164,7 @@ advertsApi.post("/posts/:id/images/:platform", async (c) => {
   if (advert instanceof Response) return advert;
   const profile = await requireProfile(c);
   if (profile instanceof Response) return profile;
-  return limited(c, "image", 1, async () => {
+  return limited(c, { kind: "image", images: 1, holdLock: true }, async () => {
     const logo = await loadLogo(c.env, profile);
     const job = { userId: c.get("userId"), advert, profile, logo };
     const image = await makePlatformImage(c.env, job, platform);

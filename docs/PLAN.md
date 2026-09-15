@@ -11,7 +11,7 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 5. DONE. Image generation with Gemini, platform selection, per-image regeneration.
 6. DONE. Library, R2 storage and retrieval.
 7. DONE. Rate limits and daily cap.
-8. DONE (unseen). Built with Kabooly branding throughout; nobody has looked at it in a browser yet.
+8. DONE. Kabooly branding throughout; live and tested end to end by David on 2026-09-15.
 
 ## Decisions
 
@@ -19,7 +19,7 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Frontend is React + Vite + TypeScript with plain CSS files, matching the CRM frontend.
 - Worker uses Hono (brief + TrackShows). The CRM worker uses a hand-rolled route table instead; not followed here because the auth pattern being copied is Hono-based.
 - Schema: `business_profiles` (one row per account; its existence marks onboarding done), `profile_services` (one row per service, ordered), `adverts`, `advert_images` (one per platform per advert, regenerate replaces). Audience and local area are two separate columns. Tone is 1 (formal) to 5 (casual). Brand colours are a JSON list of hex strings. Logo is an R2 key.
-- Limits: one Durable Object per account (the CRM uses a DO for atomic rate limits too). It holds the in-flight lock (5 minute safety expiry), the per-minute window and the rolling 24 hour image count. Images are counted when a generation starts and failed ones refunded when it finishes, so abandoning a generation cannot dodge the cap. Text-only work (topic suggestions, text regeneration, image-free adverts) has its own cap: 200 a day, 20 a minute. Every kind of generation respects the one-in-flight lock.
+- Limits: one Durable Object per account (the CRM uses a DO for atomic rate limits too). It holds the in-flight lock (5 minute safety expiry), the per-minute window and the rolling 24 hour image count. Images are counted when a generation starts and failed ones refunded when it finishes, so abandoning a generation cannot dodge the cap. Text-only work (topic suggestions, text regeneration, image-free adverts) has its own cap: 200 a day, 20 a minute. Every generation respects the one-in-flight lock except topic suggestions, which only count towards the text caps (changed 2026-09-15: the landing-page suggestion was being refused as "busy" while another tab was generating).
 - A generation is one request that streams newline-delimited JSON: the advert text (saved to the library the moment it exists), then each image as it lands. It runs under waitUntil, so closing the tab still finishes and saves it.
 - Images: Gemini draws 1:1 (Instagram, Nextdoor) or 16:9 (Facebook) at 2K, then Cloudflare Images crops to exactly 1080x1080, 1200x630 and 1200x1200 JPEG. Interactions are sent with `store: false`.
 - Email: Cloudflare Email Sending (beta, Workers Paid) through the `EMAIL` binding, not Resend (David, 2026-09-15). Only the verification and password reset codes are sent. Sender is `noreply@marketing.kabooly.com` (display name "Kabooly Marketing" set in code): marketing.kabooly.com is onboarded as its own sending domain so nothing touches kabooly.com's IONOS mail records (MX, SPF, DMARC p=quarantine) or the CRM's Resend domain mail.kabooly.com.
