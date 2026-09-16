@@ -73,6 +73,7 @@ describe("schema", () => {
       getTableConfig(table).indexes.map((i) => i.config.name);
     expect(indexed(schema.session)).toContain("session_user_id_idx");
     expect(indexed(schema.account)).toContain("account_user_id_idx");
+    expect(indexed(schema.account)).toContain("account_provider_idx");
     expect(indexed(schema.verification)).toContain("verification_identifier_idx");
     expect(indexed(schema.profileServices)).toContain("profile_services_user_id_idx");
     expect(indexed(schema.adverts)).toContain("adverts_user_id_created_at_idx");

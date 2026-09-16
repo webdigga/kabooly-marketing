@@ -56,7 +56,12 @@ export const account = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },
-  (t) => [index("account_user_id_idx").on(t.userId)]
+  (t) => [
+    index("account_user_id_idx").on(t.userId),
+    // Social sign-in looks an account up by provider and provider id; without
+    // this every sign-in scans the whole table (D1 bills rows read).
+    index("account_provider_idx").on(t.providerId, t.accountId),
+  ]
 );
 
 export const verification = sqliteTable(
