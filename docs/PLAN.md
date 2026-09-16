@@ -25,6 +25,8 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Email: Cloudflare Email Sending (beta, Workers Paid) through the `EMAIL` binding, not Resend (David, 2026-09-15). Only the verification and password reset codes are sent. Sender is `noreply@marketing.kabooly.com` (display name "Kabooly Marketing" set in code): marketing.kabooly.com is onboarded as its own sending domain so nothing touches kabooly.com's IONOS mail records (MX, SPF, DMARC p=quarantine) or the CRM's Resend domain mail.kabooly.com.
 - Email verification is enforced by the server on every app route. TrackShows only gates it in the client because of old native builds; this app has none.
 - Website scan: fetches the page (8s timeout, size caps), reads theme-color, CSS (inline and up to three stylesheets) and brand-named custom properties for colours, and ranks logo candidates (logo-marked images in the header first, then icons). SVG logos go back to the browser, which converts them to PNG. Any failure falls back to manual entry.
+- Google OAuth brand verification: done 2026-09-15.
+- Legal pages live on the marketing site (`kabooly/src/pages/marketing-privacy-policy.astro` and `marketing-terms-of-service.astro`), linked from its footer and from the app sign-in screens. KABOOLY LTD is the controller; contact privacy@kabooly.com.
 - Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Open question below.
 - Library (changed after first live test, 2026-09-15): a compact grid of cards (square thumbnail, or the text for image-free adverts; topic; date; platforms). Each opens `/library/:id` with the full text, copy, downloads and Delete (asks once more; removes the row, image rows and R2 files via `DELETE /api/posts/:id`).
 - Platforms: all three are ticked by default; the last choice is remembered per browser.
@@ -37,9 +39,9 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 
 ## Needs doing before real users
 
-- Google OAuth brand verification: re-run "Verify branding" on the Branding page once marketing.kabooly.com is deployed (it failed 2026-09-15 only because the home page was not live yet). Google sign-in works meanwhile; the consent screen just does not show the app name.
+- Close the spare Google Cloud billing account ("My Billing Account"; the project, Ultra credit and prepay are all on "My Billing Account 1"). Check nothing else uses it first.
 
-- A privacy policy and terms of service written for this tool. The Google OAuth branding (project "Kabooly Marketing", created 2026-09-15) points at the general https://kabooly.com/privacy-policy/ for now, and has no terms link; the only kabooly.com terms page is the CRM's.
+- Point the Google OAuth branding at the new legal pages: privacy https://kabooly.com/marketing-privacy-policy/ and terms https://kabooly.com/marketing-terms-of-service/ (written 2026-09-16, live once the kabooly.com site is deployed; it still points at the general website privacy policy).
 
 - The Gemini billing account is on Prepay: images need a prepaid balance (minimum $5, AI Studio > Billing > Buy credits), and the Ultra Cloud credit is only used once a prepaid balance exists (it is spent first). At $0 prepaid, every image fails with a 429 "prepayment credits are depleted". Prepay cannot be switched to postpay.
 

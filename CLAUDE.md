@@ -8,13 +8,11 @@ Stage:  LIVE at marketing.kabooly.com 2026-09-15, tested end to end by David
 Setup:  Done 2026-09-15: git, Google OAuth client (project "Kabooly
         Marketing"), all 5 secrets, Cloudflare Email Sending on
         marketing.kabooly.com, Gemini billing + £10 cap, Ultra Cloud credit
-        ($40/month, about £29, on the billing account). Local run skipped.
-        NEXT: GitHub repo + Actions secrets, push to deploy, re-run Google
-        brand verification. Open decisions in
-        docs/PLAN.md.
-Check:  ON 2026-09-16 remind David to confirm the Gemini charges hit the
-        Ultra credit (Cloud Console > Billing > Credits, below £29.44) and
-        NOT the $5 prepay (aistudio.google.com/billing, still $5.00).
+        ($40/month, about £29, on the billing account). Brand verification done.
+        Open decisions in docs/PLAN.md.
+Billing: CONFIRMED 2026-09-16. Cloud cost summary for 1 to 16 Sept: 20p
+        usage, 20p credit, total £0. The Ultra credit is paying for the
+        images, not the card.
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```

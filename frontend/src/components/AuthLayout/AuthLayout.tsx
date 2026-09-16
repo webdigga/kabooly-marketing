@@ -26,6 +26,11 @@ export default function AuthLayout({ title, subtitle, children, footer }: AuthLa
         {children}
       </div>
       {footer && <div className={styles.footer}>{footer}</div>}
+      <p className={styles.legal}>
+        By using Kabooly Marketing you agree to our{' '}
+        <a href="https://kabooly.com/marketing-terms-of-service/">Terms of Service</a> and{' '}
+        <a href="https://kabooly.com/marketing-privacy-policy/">Privacy Policy</a>.
+      </p>
     </main>
   )
 }
