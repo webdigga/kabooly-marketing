@@ -19,7 +19,7 @@ Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 
 ## What this is
-Standalone tool at marketing.kabooly.com that generates local adverts (text plus one image per ticked platform) for small businesses to post by hand on Instagram, Facebook and Nextdoor. Own login. NOT part of the Kabooly CRM: no shared login, no link, no dependency.
+Standalone tool at marketing.kabooly.com that generates local adverts (text plus one image per ticked platform) for small businesses to post by hand on Instagram, Facebook and Nextdoor. Own login. Sold as one of three Kabooly products (Managed Website Service, Marketing, CRM), on its own or in the bundle, so linking to the CRM and the other products is allowed. Still technically separate from the CRM: no shared login, no dependency.
 
 ## Stack
 - One Cloudflare Worker (`worker/`) serves the API (Hono, `/api/*`) AND the web app (Workers static assets from `frontend/dist`, SPA fallback). Same origin, so first-party cookies and no CORS.
@@ -35,7 +35,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts (text plus
 
 ## Hard rules
 - Follow the TrackShows auth pattern. Do not invent a new auth approach.
-- Out of scope: auto-posting, posting tips/scheduling/calendars, any CRM link, Stripe/billing/plans, multiple text variations.
+- Out of scope: auto-posting, posting tips/scheduling/calendars, any shared login or dependency on the CRM, Stripe/billing/plans, multiple text variations.
 - Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h, 5 image generations per minute, one generation in flight (topic suggestions exempt from the lock), text 200/day and 20/min. Regenerations count.
 - Schema changes go through `npm run db:generate` in `worker/` (drizzle-kit); never hand-edit an applied migration.
 - Worker: strict ESLint (TrackShows config) and 100% coverage (`npm run test:coverage`). Frontend: `npm run lint` at 0 warnings, tests with data-testid or role selectors.
