@@ -200,6 +200,26 @@ describe('settings', () => {
     expect(screen.getByLabelText('No logo')).toBeInTheDocument()
   })
 
+  it('deletes the account after asking once more', async () => {
+    mockApi({ ...settingsRoutes(), 'DELETE /api/account': () => json({ ok: true }) })
+    renderApp('/settings')
+    await userEvent.click(await screen.findByTestId('delete-account'))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByTestId('delete-account'))
+    await userEvent.click(screen.getByTestId('confirm-delete-account'))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/sign-in'))
+    expect(callsTo('DELETE', '/api/account')).toHaveLength(1)
+    expect(authMock.signOut).toHaveBeenCalled()
+  })
+
+  it('reports an account that could not be deleted', async () => {
+    mockApi({ ...settingsRoutes(), 'DELETE /api/account': () => json({}, 500) })
+    renderApp('/settings')
+    await userEvent.click(await screen.findByTestId('delete-account'))
+    await userEvent.click(screen.getByTestId('confirm-delete-account'))
+    expect(await screen.findByText('Your account could not be deleted. Try again.')).toBeInTheDocument()
+  })
+
   it('signs out', async () => {
     mockApi(settingsRoutes())
     renderApp('/settings')

@@ -21,3 +21,17 @@
     justify-items: end;
   }
 }
+
+.confirm {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 28rem;
+  font-size: var(--text-sm);
+  color: var(--color-danger-text);
+}
+
+.confirmButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

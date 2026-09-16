@@ -19,39 +19,32 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Frontend is React + Vite + TypeScript with plain CSS files, matching the CRM frontend.
 - Worker uses Hono (brief + TrackShows). The CRM worker uses a hand-rolled route table instead; not followed here because the auth pattern being copied is Hono-based.
 - Schema: `business_profiles` (one row per account; its existence marks onboarding done), `profile_services` (one row per service, ordered), `adverts`, `advert_images` (one per platform per advert, regenerate replaces). Audience and local area are two separate columns. Tone is 1 (formal) to 5 (casual). Brand colours are a JSON list of hex strings. Logo is an R2 key.
-- Limits: one Durable Object per account (the CRM uses a DO for atomic rate limits too). It holds the in-flight lock (5 minute safety expiry), the per-minute window and the rolling 24 hour image count. Images are counted when a generation starts and failed ones refunded when it finishes, so abandoning a generation cannot dodge the cap. Text-only work (topic suggestions, text regeneration, image-free adverts) has its own cap: 200 a day, 20 a minute. Every generation respects the one-in-flight lock except topic suggestions, which only count towards the text caps (changed 2026-09-15: the landing-page suggestion was being refused as "busy" while another tab was generating).
+- Limits: one Durable Object per account (the CRM uses a DO for atomic rate limits too). It holds the in-flight lock (5 minute safety expiry), the per-minute window and the rolling 24 hour image count. Images are counted when a generation starts and failed ones refunded when it finishes, so abandoning a generation cannot dodge the cap. Text-only work (topic suggestions, text regeneration, image-free adverts) has its own cap: 200 a day, 20 a minute (confirmed by David 2026-09-16). Every generation respects the one-in-flight lock except topic suggestions, which only count towards the text caps (changed 2026-09-15: the landing-page suggestion was being refused as "busy" while another tab was generating).
 - A generation is one request that streams newline-delimited JSON: the advert text (saved to the library the moment it exists), then each image as it lands. It runs under waitUntil, so closing the tab still finishes and saves it.
-- Images: Gemini draws 1:1 (Instagram, Nextdoor) or 16:9 (Facebook) at 2K, then Cloudflare Images crops to exactly 1080x1080, 1200x630 and 1200x1200 JPEG. Interactions are sent with `store: false`.
+- Images: Gemini draws 1:1 (Instagram, Nextdoor) or 16:9 (Facebook) at 2K, then Cloudflare Images crops to exactly 1080x1080, 1200x630 and 1200x1200 JPEG. Model `gemini-3.1-flash-image` at 2K, confirmed by David 2026-09-16: 1K would mean upscaling the 1200px sizes by about 17%. The model is the `GEMINI_IMAGE_MODEL` var; the size is in `image-maker.ts`. About 5p an image. Interactions are sent with `store: false`.
 - Email: Cloudflare Email Sending (beta, Workers Paid) through the `EMAIL` binding, not Resend (David, 2026-09-15). Only the verification and password reset codes are sent. Sender is `noreply@marketing.kabooly.com` (display name "Kabooly Marketing" set in code): marketing.kabooly.com is onboarded as its own sending domain so nothing touches kabooly.com's IONOS mail records (MX, SPF, DMARC p=quarantine) or the CRM's Resend domain mail.kabooly.com.
 - Email verification is enforced by the server on every app route. TrackShows only gates it in the client because of old native builds; this app has none.
 - Website scan: fetches the page (8s timeout, size caps), reads theme-color, CSS (inline and up to three stylesheets) and brand-named custom properties for colours, and ranks logo candidates (logo-marked images in the header first, then icons). SVG logos go back to the browser, which converts them to PNG. Any failure falls back to manual entry.
 - Google OAuth brand verification: done 2026-09-15.
+- Billing accounts: only "My Billing Account 1" exists (checked 2026-09-16); the second one AI Studio listed on 2026-09-15 was a stale entry, so there is nothing to close.
 - Legal pages live on the marketing site (`kabooly/src/pages/marketing-privacy-policy.astro` and `marketing-terms-of-service.astro`), linked from its footer and from the app sign-in screens. KABOOLY LTD is the controller; contact privacy@kabooly.com.
-- Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Open question below.
+- Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Settled by David 2026-09-16: it matches where customers arrive from, and a light background suits judging advert images.
+- Account deletion: Settings has a Delete account button (asks once more) calling `DELETE /api/account`, which empties the account's R2 prefix and deletes the user row; the cascade takes the profile, services, adverts and image rows. Added 2026-09-16 and reflected in the legal pages.
 - Library (changed after first live test, 2026-09-15): a compact grid of cards (square thumbnail, or the text for image-free adverts; topic; date; platforms). Each opens `/library/:id` with the full text, copy, downloads and Delete (asks once more; removes the row, image rows and R2 files via `DELETE /api/posts/:id`).
 - Platforms: all three are ticked by default; the last choice is remembered per browser.
 
-## Open questions for David
-
-- Palette: marketing site look (used) or the CRM's dark theme?
-- Text caps: 200 a day and 20 a minute.
-- Gemini model and size: `gemini-3.1-flash-image` at 2K (the `GEMINI_IMAGE_MODEL` var switches model without code).
-
 ## Needs doing before real users
-
-- Close the spare Google Cloud billing account ("My Billing Account"; the project, Ultra credit and prepay are all on "My Billing Account 1"). Check nothing else uses it first.
 
 - Point the Google OAuth branding at the new legal pages: privacy https://kabooly.com/marketing-privacy-policy/ and terms https://kabooly.com/marketing-terms-of-service/ (written 2026-09-16, live once the kabooly.com site is deployed; it still points at the general website privacy policy).
 
 - The Gemini billing account is on Prepay: images need a prepaid balance (minimum $5, AI Studio > Billing > Buy credits), and the Ultra Cloud credit is only used once a prepaid balance exists (it is spent first). At $0 prepaid, every image fails with a 429 "prepayment credits are depleted". Prepay cannot be switched to postpay.
 
-- Gemini API spend cap is £10 a month on the Kabooly Marketing Google Cloud project (set 2026-09-15, billing on). Raise it before real customers arrive: it stops all image generation when hit. Google does not document whether the cap counts usage before or after credits; David's Google AI Ultra plan gives a Google Developer Program credit of $40 a month (about £29), claimed 2026-09-15 on the project's billing account, which pays for the usage.
+- Gemini API spend cap is £29 a month on the Kabooly Marketing Google Cloud project (raised from £10 on 2026-09-16 to match the Google AI Ultra credit of $40, about £29, claimed 2026-09-15). The cap counts usage even though the credit pays the bill, so it only bites once the free credit is used up. At roughly 5p an image that is about 580 images a month.
 
 - Cloudflare Images free plan covers 5,000 unique transformations a month (one per advert image). Beyond that, new crops fail with error 9422 until Images is upgraded to paid ($0.50 per 1,000). Watch usage once real accounts arrive.
 
 ## Not built (outside the brief, flagged only)
 
-- Account deletion.
 - Clean-up of R2 files nothing points to (logos uploaded but never saved). An R2 lifecycle rule would cover it.
 - The website scan is not rate limited.
 

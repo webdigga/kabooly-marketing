@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { accountApi } from "./account";
 import { advertsApi } from "./adverts";
 import { createAuth } from "./auth";
 import type { Env } from "./env";
@@ -22,6 +23,7 @@ api.use("*", requireVerifiedUser);
 api.route("/", profileApi);
 api.route("/", filesApi);
 api.route("/", advertsApi);
+api.route("/", accountApi);
 api.onError((err, c) => {
   console.error(err);
   return c.json({ error: "Internal error" }, 500);

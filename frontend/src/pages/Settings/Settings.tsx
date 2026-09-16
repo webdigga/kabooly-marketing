@@ -1,4 +1,4 @@
-import { LogOut, RefreshCw } from 'lucide-react'
+import { LogOut, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -6,6 +6,7 @@ import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
 import { useProfile } from '../../context/ProfileContext'
+import { api } from '../../lib/api'
 import { authClient } from '../../lib/auth-client'
 import { draftFromProfile, validate } from '../../profile/draft'
 import type { DraftField } from '../../profile/draft'
@@ -15,6 +16,57 @@ import { useWebsiteScan } from '../../profile/useWebsiteScan'
 import styles from './Settings.module.css'
 
 const ALL_FIELDS: DraftField[] = ['businessName', 'description', 'websiteUrl', 'targetAudience', 'localArea', 'services']
+
+// Deleting takes everything with it, so it asks once more first.
+function DeleteAccount() {
+  const navigate = useNavigate()
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  async function remove() {
+    setBusy(true)
+    setFailed(false)
+    try {
+      await api('/api/account', { method: 'DELETE' })
+      await authClient.signOut()
+      navigate('/sign-in', { replace: true })
+    } catch {
+      setFailed(true)
+      setBusy(false)
+    }
+  }
+
+  if (!confirming) {
+    return (
+      <Button
+        variant="danger"
+        icon={<Trash2 size={18} aria-hidden="true" />}
+        onClick={() => setConfirming(true)}
+        data-testid="delete-account"
+      >
+        Delete account
+      </Button>
+    )
+  }
+  return (
+    <div className={styles.confirm} role="group" aria-label="Confirm delete account">
+      <span>
+        Delete your account for good? Your business profile, every advert and every image go with
+        it. This cannot be undone.
+      </span>
+      <div className={styles.confirmButtons}>
+        <Button variant="danger" loading={busy} onClick={() => void remove()} data-testid="confirm-delete-account">
+          Delete everything
+        </Button>
+        <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
+          Cancel
+        </Button>
+      </div>
+      {failed && <Alert tone="error">Your account could not be deleted. Try again.</Alert>}
+    </div>
+  )
+}
 
 export default function Settings() {
   const navigate = useNavigate()
@@ -104,6 +156,7 @@ export default function Settings() {
             Sign out
           </Button>
         </div>
+        <DeleteAccount />
       </Card>
     </form>
   )
