@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
-import { api } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 import { uploadLogoSvg } from '../lib/logo-upload'
 import type { ScanResult } from '../lib/types'
 
-export type ScanStatus = 'idle' | 'scanning' | 'found' | 'nothing' | 'failed'
+export type ScanStatus = 'idle' | 'scanning' | 'found' | 'nothing' | 'failed' | 'limited'
 
 export interface ScanFindings {
   colours: string[]
@@ -28,8 +28,9 @@ export function useWebsiteScan() {
       const found = findings.colours.length > 0 || logo !== null
       setStatus(found ? 'found' : result.reachable ? 'nothing' : 'failed')
       return findings
-    } catch {
-      if (run === latest.current) setStatus('failed')
+    } catch (err) {
+      const limited = err instanceof ApiError && err.status === 429
+      if (run === latest.current) setStatus(limited ? 'limited' : 'failed')
       return null
     }
   }, [])

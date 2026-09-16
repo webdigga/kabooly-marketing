@@ -5,6 +5,7 @@ import { z } from "zod";
 import * as schema from "./db/schema";
 import type { Env } from "./env";
 import { fileUrl, storeLogo, userPrefix } from "./files";
+import { beginGeneration, deniedResponse, isDenied } from "./limits";
 import { scanWebsite } from "./scan";
 import { normaliseWebsiteUrl } from "./scan/url";
 import type { AppEnv } from "./session";
@@ -168,7 +169,11 @@ profileApi.post("/profile/scan", async (c) => {
   const url = normaliseWebsiteUrl(parsed.data.url);
   if (!url) return c.json({ error: "Invalid request", field: "url" }, 400);
 
-  const outcome = await scanWebsite(url);
+  // Reading a website makes the Worker fetch someone else's site, so it
+  // counts against the same generous text allowance as topic suggestions.
+  const lease = await beginGeneration(c.env, c.get("userId"), { kind: "text", images: 0, holdLock: false });
+  if (isDenied(lease)) return deniedResponse(c, lease);
+  const outcome = await scanWebsite(url).finally(() => lease.finish(0));
   const logo =
     outcome.logo?.kind === "raster"
       ? await storeLogo(c.env, c.get("userId"), outcome.logo.bytes)

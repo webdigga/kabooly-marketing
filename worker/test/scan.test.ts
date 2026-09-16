@@ -297,6 +297,17 @@ describe("POST /api/profile/scan", () => {
     expect(await res.json()).toMatchObject({ reachable: false, colours: [], logo: null, logoSvg: null });
   });
 
+  it("refuses when the account has scanned too many times in a minute", async () => {
+    const { cookie } = await verifiedUser();
+    onFetch(`${SITE}/`, () => html(""));
+    for (let i = 0; i < 20; i++) {
+      expect((await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } })).status).toBe(200);
+    }
+    const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ code: "rate_limit" });
+  });
+
   it("rejects addresses that are not public websites", async () => {
     const { cookie } = await verifiedUser();
     const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: "localhost:8787" } });

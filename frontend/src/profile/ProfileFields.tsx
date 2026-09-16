@@ -100,6 +100,7 @@ const SCAN_NOTICES: Partial<Record<ScanStatus, { tone: 'info' | 'success' | 'war
   found: { tone: 'success', text: 'We filled these in from your website. Change anything that is not right.' },
   nothing: { tone: 'warning', text: 'We could not find colours or a logo on your website. Add them below.' },
   failed: { tone: 'warning', text: 'We could not read your website. Add your colours and logo below.' },
+  limited: { tone: 'warning', text: 'That is a lot of website checks in one go. Wait a minute and try again.' },
 }
 
 export function ScanNotice({ status }: { status: ScanStatus }) {

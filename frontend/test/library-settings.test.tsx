@@ -176,6 +176,13 @@ describe('settings', () => {
     expect(callsTo('PUT', '/api/profile')[0]?.body).toMatchObject({ brandColours: ['#ff0000'] })
   })
 
+  it('says when website checks have been used up', async () => {
+    mockApi({ ...settingsRoutes(), 'POST /api/profile/scan': () => json({ code: 'rate_limit' }, 429) })
+    renderApp('/settings')
+    await userEvent.click(await screen.findByTestId('fetch-website'))
+    expect(await screen.findByTestId('scan-notice')).toHaveTextContent('Wait a minute and try again')
+  })
+
   it('asks for a website before fetching', async () => {
     mockApi(settingsRoutes())
     renderApp('/settings')
