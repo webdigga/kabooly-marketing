@@ -6,6 +6,7 @@ import {
   lastCodeSentTo,
   mockEmail,
   PASSWORD,
+  codesSentTo,
   postJson,
   sentEmails,
   signUp,
@@ -67,7 +68,7 @@ describe("registration and verification", () => {
     await signUp(email);
     const res = await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "sign-in" });
     expect(res.status).toBe(200);
-    expect(sentEmails).toHaveLength(0);
+    expect(codesSentTo(email)).toHaveLength(0);
   });
 
   // better-auth awaits the send but swallows (and logs) a failure, so the
@@ -78,7 +79,30 @@ describe("registration and verification", () => {
     await signUp(email);
     const res = await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
     expect(res.status).toBe(200);
-    expect(sentEmails).toHaveLength(1);
+    expect(codesSentTo(email)).toHaveLength(1);
+  });
+});
+
+describe("signup alerts", () => {
+  it("emails the founder when someone registers", async () => {
+    const email = uniqueEmail("newcomer");
+    await signUp(email);
+    expect(sentEmails.at(-1)).toMatchObject({
+      to: "founder@example.com",
+      subject: "New Kabooly Marketing signup",
+    });
+    expect(sentEmails.at(-1)?.text).toContain(email);
+  });
+
+  it("does not email the founder about the founder", async () => {
+    await signUp("founder@example.com");
+    expect(sentEmails).toHaveLength(0);
+  });
+
+  it("still registers the account when the alert cannot be sent", async () => {
+    mockEmail({ fail: true });
+    const email = uniqueEmail("alertfail");
+    await expect(signUp(email)).resolves.toContain("better-auth");
   });
 });
 

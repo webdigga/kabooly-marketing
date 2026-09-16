@@ -15,6 +15,7 @@ export default defineConfig({
           GOOGLE_CLIENT_ID: "test-google-client-id",
           GOOGLE_CLIENT_SECRET: "test-google-client-secret",
           EMAIL_FROM: "test@example.com",
+          FOUNDER_EMAIL: "founder@example.com",
           ANTHROPIC_API_KEY: "test-anthropic-key",
           GEMINI_API_KEY: "test-gemini-key",
           TEST_MIGRATIONS: migrations,

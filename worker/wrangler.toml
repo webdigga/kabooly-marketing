@@ -55,5 +55,7 @@ GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
 # sending domain in Cloudflare Email Sending, apart from the CRM's Resend
 # domain (mail.kabooly.com) and the IONOS mailboxes on kabooly.com.
 EMAIL_FROM = "noreply@marketing.kabooly.com"
+# Gets an email whenever someone registers.
+FOUNDER_EMAIL = "david@kabooly.com"
 # Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID,
 # GOOGLE_CLIENT_SECRET, ANTHROPIC_API_KEY, GEMINI_API_KEY

@@ -75,6 +75,10 @@ export function mockEmail(options: { fail?: boolean } = {}): void {
   });
 }
 
+export function codesSentTo(email: string): SentEmail[] {
+  return sentEmails.filter((m) => m.to === email);
+}
+
 export function lastCodeSentTo(email: string): string {
   const sent = sentEmails.filter((m) => m.to === email).at(-1);
   const code = /\b(\d{6})\b/.exec(sent?.text ?? "")?.[1];

@@ -23,7 +23,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts (text plus
 ## Stack
 - One Cloudflare Worker (`worker/`) serves the API (Hono, `/api/*`) AND the web app (Workers static assets from `frontend/dist`, SPA fallback). Same origin, so first-party cookies and no CORS.
 - `frontend/`: React + Vite + TypeScript, CSS modules (plain CSS, no Tailwind), mobile first.
-- Email: Cloudflare Email Sending via the `EMAIL` binding (`worker/src/email.ts`), sender in the `EMAIL_FROM` var.
+- Email: Cloudflare Email Sending via the `EMAIL` binding (`worker/src/email.ts`), sender in the `EMAIL_FROM` var. Verification codes, password reset codes, and a signup alert to `FOUNDER_EMAIL`.
 - D1 (`DB`) via drizzle; R2 (`FILES`) for logos and advert images; Cloudflare Images (`IMAGES`) crops Gemini output to exact platform sizes; Durable Object (`LIMITER`, one per account) for limits.
 - Auth: better-auth, copied from TrackShows (email + password, 6-digit emailOTP codes for verification and reset, Google, account linking). Unlike TrackShows, the server enforces verification on every app route (`worker/src/session.ts`).
 - Claude Haiku 4.5 (`claude-haiku-4-5`) for text and topic suggestions; Gemini image API (Interactions endpoint, model in `GEMINI_IMAGE_MODEL`) for images.

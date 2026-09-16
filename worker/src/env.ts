@@ -13,6 +13,8 @@ export interface Env {
   // Bare address on the onboarded sending domain; the display name is set
   // in email.ts.
   EMAIL_FROM: string;
+  // Where new signup alerts go.
+  FOUNDER_EMAIL: string;
   ANTHROPIC_API_KEY: string;
   GEMINI_API_KEY: string;
   GEMINI_IMAGE_MODEL: string;

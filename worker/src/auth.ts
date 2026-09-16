@@ -4,6 +4,7 @@ import { emailOTP } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
 import { sendEmail } from "./email";
+import { notifyFounderOfSignup } from "./signup-alert";
 import type { Env } from "./env";
 
 // Same shape as TrackShows (onnext/worker/src/auth.ts): email + password
@@ -47,6 +48,15 @@ export function createAuth(env: Env) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            await notifyFounderOfSignup(env, user.email);
+          },
+        },
       },
     },
     account: {
