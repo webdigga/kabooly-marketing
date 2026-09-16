@@ -7,8 +7,9 @@ Stage:  LIVE at marketing.kabooly.com 2026-09-15, tested end to end by David
         (sign-up, onboarding scan, text, all three images, library, delete).
 Setup:  Done 2026-09-15: git, Google OAuth client (project "Kabooly
         Marketing"), all 5 secrets, Cloudflare Email Sending on
-        marketing.kabooly.com, Gemini billing + £10 cap, Ultra Cloud credit
-        ($40/month, about £29, on the billing account). Brand verification done.
+        marketing.kabooly.com, Gemini billing + £29 cap, Ultra Cloud credit
+        ($40/month, about £29, on the billing account). Brand verification done (re-verified
+        2026-09-16 with the new legal links).
         Open decisions in docs/PLAN.md.
 Billing: CONFIRMED 2026-09-16. Cloud cost summary for 1 to 16 Sept: 20p
         usage, 20p credit, total £0. The Ultra credit is paying for the

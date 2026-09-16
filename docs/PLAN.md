@@ -26,7 +26,7 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Signup alerts (2026-09-16): every new account emails `FOUNDER_EMAIL` (david@kabooly.com). It never blocks registration if the send fails, and it skips the founder's own address. Registration is open to anyone for now; David plans paid access later, handled on the marketing site.
 - Email verification is enforced by the server on every app route. TrackShows only gates it in the client because of old native builds; this app has none.
 - Website scan: fetches the page (8s timeout, size caps), reads theme-color, CSS (inline and up to three stylesheets) and brand-named custom properties for colours, and ranks logo candidates (logo-marked images in the header first, then icons). SVG logos go back to the browser, which converts them to PNG. Any failure falls back to manual entry.
-- Google OAuth brand verification: done 2026-09-15.
+- Google OAuth brand verification: done 2026-09-15, re-verified 2026-09-16 with the marketing privacy policy and terms links.
 - Billing accounts: only "My Billing Account 1" exists (checked 2026-09-16); the second one AI Studio listed on 2026-09-15 was a stale entry, so there is nothing to close.
 - Legal pages live on the marketing site (`kabooly/src/pages/marketing-privacy-policy.astro` and `marketing-terms-of-service.astro`), linked from its footer and from the app sign-in screens. KABOOLY LTD is the controller; contact privacy@kabooly.com.
 - Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Settled by David 2026-09-16: it matches where customers arrive from, and a light background suits judging advert images.
@@ -37,8 +37,6 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Platforms: all three are ticked by default; the last choice is remembered per browser.
 
 ## Needs doing before real users
-
-- Point the Google OAuth branding at the new legal pages: privacy https://kabooly.com/marketing-privacy-policy/ and terms https://kabooly.com/marketing-terms-of-service/ (written 2026-09-16, live once the kabooly.com site is deployed; it still points at the general website privacy policy).
 
 - The Gemini billing account is on Prepay: images need a prepaid balance (minimum $5, AI Studio > Billing > Buy credits), and the Ultra Cloud credit is only used once a prepaid balance exists (it is spent first). At $0 prepaid, every image fails with a 429 "prepayment credits are depleted". Prepay cannot be switched to postpay.
 
