@@ -9,7 +9,6 @@ import {
   codesSentTo,
   postJson,
   sentEmails,
-  signUp,
   testEnv,
   uniqueEmail,
   verifiedUser,
@@ -24,14 +23,43 @@ async function signIn(email: string, password = PASSWORD): Promise<Response> {
   return postJson("/api/auth/sign-in/email", { email, password });
 }
 
-describe("registration and verification", () => {
-  it("signs up with email and password only", async () => {
-    const cookie = await signUp(uniqueEmail());
-    expect(cookie).toContain("better-auth");
+async function unverifiedUser(): Promise<{ email: string; cookie: string }> {
+  const { email, cookie } = await verifiedUser("unverified");
+  await testEnv.DB.prepare("UPDATE user SET email_verified = 0 WHERE email = ?1").bind(email).run();
+  return { email, cookie };
+}
+
+describe("registration is closed", () => {
+  it("refuses email and password sign-up", async () => {
+    const email = uniqueEmail("walkin");
+    const res = await postJson("/api/auth/sign-up/email", { name: "", email, password: PASSWORD });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    const row = await testEnv.DB.prepare("SELECT id FROM user WHERE email = ?1").bind(email).first();
+    expect(row).toBeNull();
+  });
+
+  it("refuses to create an account from a sign-in code", async () => {
+    const email = uniqueEmail("otp");
+    await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "sign-in" });
+    const res = await postJson("/api/auth/sign-in/email-otp", { email, otp: "123456" });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(codesSentTo(email)).toHaveLength(0);
+    const row = await testEnv.DB.prepare("SELECT id FROM user WHERE email = ?1").bind(email).first();
+    expect(row).toBeNull();
+  });
+});
+
+describe("verification", () => {
+  it("lets a provisioned account straight in: the payment proved the email", async () => {
+    const { cookie, email } = await verifiedUser();
+    const res = await apiFetch(cookie, "/api/profile");
+    expect(res.status).toBe(200);
+    const login: { user: { emailVerified: boolean } } = await (await signIn(email)).json();
+    expect(login.user.emailVerified).toBe(true);
   });
 
   it("keeps unverified accounts out of the app", async () => {
-    const cookie = await signUp(uniqueEmail());
+    const { cookie } = await unverifiedUser();
     const res = await apiFetch(cookie, "/api/profile");
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "Email not verified" });
@@ -42,67 +70,34 @@ describe("registration and verification", () => {
     expect(res.status).toBe(401);
   });
 
-  it("verifies an email with the emailed code and then lets the account in", async () => {
-    const { cookie, email } = await verifiedUser();
+  it("verifies an email with the emailed code", async () => {
+    const { cookie, email } = await unverifiedUser();
+    await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
     expect(sentEmails.at(-1)).toMatchObject({
       from: { email: "test@example.com", name: "Kabooly Marketing" },
       to: email,
       subject: "Your Kabooly Marketing verification code",
     });
-    const res = await apiFetch(cookie, "/api/profile");
+    const res = await postJson("/api/auth/email-otp/verify-email", { email, otp: lastCodeSentTo(email) });
     expect(res.status).toBe(200);
-    const login: { user: { emailVerified: boolean } } = await (await signIn(email)).json();
-    expect(login.user.emailVerified).toBe(true);
+    expect((await apiFetch(cookie, "/api/profile")).status).toBe(200);
   });
 
   it("rejects a wrong verification code", async () => {
-    const email = uniqueEmail();
-    await signUp(email);
+    const { email } = await unverifiedUser();
     await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
     const res = await postJson("/api/auth/email-otp/verify-email", { email, otp: "000000" });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  it("sends nothing for the unused sign-in code type", async () => {
-    const email = uniqueEmail();
-    await signUp(email);
-    const res = await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "sign-in" });
-    expect(res.status).toBe(200);
-    expect(codesSentTo(email)).toHaveLength(0);
-  });
-
   // better-auth awaits the send but swallows (and logs) a failure, so the
   // response does not reveal whether an address can receive mail.
   it("attempts the send even when the mail provider fails", async () => {
+    const { email } = await unverifiedUser();
     mockEmail({ fail: true });
-    const email = uniqueEmail();
-    await signUp(email);
     const res = await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
     expect(res.status).toBe(200);
     expect(codesSentTo(email)).toHaveLength(1);
-  });
-});
-
-describe("signup alerts", () => {
-  it("emails the founder when someone registers", async () => {
-    const email = uniqueEmail("newcomer");
-    await signUp(email);
-    expect(sentEmails.at(-1)).toMatchObject({
-      to: "founder@example.com",
-      subject: "New Kabooly Marketing signup",
-    });
-    expect(sentEmails.at(-1)?.text).toContain(email);
-  });
-
-  it("does not email the founder about the founder", async () => {
-    await signUp("founder@example.com");
-    expect(sentEmails).toHaveLength(0);
-  });
-
-  it("still registers the account when the alert cannot be sent", async () => {
-    mockEmail({ fail: true });
-    const email = uniqueEmail("alertfail");
-    await expect(signUp(email)).resolves.toContain("better-auth");
   });
 });
 

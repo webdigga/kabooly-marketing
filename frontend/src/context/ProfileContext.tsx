@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import Inactive from '../components/Inactive/Inactive'
 import LoadError from '../components/LoadError/LoadError'
 import PageLoader from '../components/PageLoader/PageLoader'
-import { api } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 import type { Profile } from '../lib/types'
 
 interface ProfileContextValue {
@@ -18,7 +19,11 @@ export function useProfile(): ProfileContextValue {
   return value
 }
 
-type LoadState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; profile: Profile | null }
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'inactive' }
+  | { status: 'ready'; profile: Profile | null }
 
 // Loads the business profile once per session. Its absence is what sends a
 // new account to onboarding.
@@ -30,8 +35,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     try {
       const { profile } = await api<{ profile: Profile | null }>('/api/profile')
       setState({ status: 'ready', profile })
-    } catch {
-      setState({ status: 'error' })
+    } catch (err) {
+      // 402: signed in, but the subscription has lapsed or been cancelled.
+      setState({ status: err instanceof ApiError && err.status === 402 ? 'inactive' : 'error' })
     }
   }, [])
 
@@ -44,6 +50,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const setProfile = useCallback((profile: Profile) => setState({ status: 'ready', profile }), [])
 
   if (state.status === 'loading') return <PageLoader />
+  if (state.status === 'inactive') return <Inactive />
   if (state.status === 'error') {
     return <LoadError message="Could not load your account. Check your connection and try again." onRetry={() => void load()} />
   }

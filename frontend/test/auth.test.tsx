@@ -13,13 +13,13 @@ const appRoutes = {
   'POST /api/auth/email-otp/verify-email': () => json({ status: true }),
   'POST /api/auth/email-otp/request-password-reset': () => json({ success: true }),
   'POST /api/auth/email-otp/reset-password': () => json({ success: true }),
+  'POST /api/auth/reset-password': () => json({ status: true }),
 }
 
 beforeEach(() => {
   signedOut()
   mockApi(appRoutes)
   authMock.signIn.email.mockReset()
-  authMock.signUp.email.mockReset()
   authMock.signIn.social.mockReset()
 })
 
@@ -114,24 +114,70 @@ describe('sign in', () => {
   })
 })
 
-describe('sign up', () => {
-  it('asks for email and password only, then verification', async () => {
-    authMock.signUp.email.mockImplementation(async () => {
-      signedIn(false)
-      return { data: { user: session.current?.user }, error: null }
-    })
+describe('no sign up', () => {
+  it('has no sign-up page and points new customers at kabooly.com', async () => {
     renderApp('/sign-up')
-    expect(screen.queryByLabelText(/name/i)).not.toBeInTheDocument()
-    await fillCredentials('new@example.com', 'a-long-password')
-    await screen.findByRole('heading', { name: 'Check your email' })
-    expect(authMock.signUp.email).toHaveBeenCalledWith({ name: '', email: 'new@example.com', password: 'a-long-password' })
+    expect(location()).toBe('/sign-in')
+    expect(screen.queryByText(/create an account/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Get Kabooly Marketing' })).toHaveAttribute(
+      'href',
+      'https://kabooly.com/marketing/',
+    )
   })
 
-  it('points an existing email at sign in', async () => {
-    authMock.signUp.email.mockResolvedValue({ data: null, error: { code: 'USER_ALREADY_EXISTS' } })
-    renderApp('/sign-up')
-    await fillCredentials('owner@example.com', 'a-long-password')
-    expect(await screen.findByRole('alert')).toHaveTextContent('already exists')
+  it('explains a Google sign-in for an email with no account', () => {
+    renderApp('/sign-in?error=signup_disabled')
+    expect(screen.getByRole('alert')).toHaveTextContent('There is no Kabooly Marketing account for that Google email')
+  })
+})
+
+describe('set password', () => {
+  it('saves the password from the emailed link and sends the customer to sign in', async () => {
+    renderApp('/set-password?token=abc123')
+    await userEvent.type(screen.getByTestId('password-input'), 'a-long-password')
+    await userEvent.type(screen.getByTestId('confirm-input'), 'a-long-password')
+    await userEvent.click(screen.getByTestId('set-password'))
+    await screen.findByText('Password saved. Sign in to get started.')
+    expect(location()).toBe('/sign-in')
+    expect(callsTo('POST', '/api/auth/reset-password')[0]?.body).toEqual({
+      token: 'abc123',
+      newPassword: 'a-long-password',
+    })
+  })
+
+  it('refuses two different passwords without calling the server', async () => {
+    renderApp('/set-password?token=abc123')
+    await userEvent.type(screen.getByTestId('password-input'), 'a-long-password')
+    await userEvent.type(screen.getByTestId('confirm-input'), 'another-password')
+    await userEvent.click(screen.getByTestId('set-password'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('The two passwords do not match.')
+    expect(callsTo('POST', '/api/auth/reset-password')).toHaveLength(0)
+  })
+
+  it('explains an expired or used link', async () => {
+    mockApi({ ...appRoutes, 'POST /api/auth/reset-password': () => json({ code: 'INVALID_TOKEN' }, 400) })
+    renderApp('/set-password?token=old')
+    await userEvent.type(screen.getByTestId('password-input'), 'a-long-password')
+    await userEvent.type(screen.getByTestId('confirm-input'), 'a-long-password')
+    await userEvent.click(screen.getByTestId('set-password'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('This link has expired or has already been used.')
+  })
+
+  it('flags a link with no token', () => {
+    renderApp('/set-password')
+    expect(screen.getByRole('alert')).toHaveTextContent('This link is incomplete.')
+    expect(screen.getByTestId('set-password')).toBeDisabled()
+  })
+})
+
+describe('paused subscription', () => {
+  it('shows the paused screen instead of the app and lets the customer sign out', async () => {
+    signedIn()
+    mockApi({ ...appRoutes, 'GET /api/profile': () => json({ error: 'Subscription inactive', code: 'SUBSCRIPTION_INACTIVE' }, 402) })
+    renderApp('/')
+    await screen.findByRole('heading', { name: 'Your account is paused' })
+    await userEvent.click(screen.getByTestId('inactive-sign-out'))
+    expect(authMock.signOut).toHaveBeenCalled()
   })
 })
 

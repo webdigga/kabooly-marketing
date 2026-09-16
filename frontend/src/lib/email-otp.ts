@@ -23,4 +23,9 @@ export async function resetPassword(email: string, otp: string, password: string
   })
 }
 
+// Redeems the link emailed when checkout creates the account.
+export async function setPassword(token: string, password: string): Promise<void> {
+  await api('/api/auth/reset-password', { body: { token, newPassword: password } })
+}
+
 export const MIN_PASSWORD_LENGTH = 8

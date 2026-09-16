@@ -93,23 +93,70 @@ export function uniqueEmail(label = "user"): string {
   return `${label}${userCounter}-${crypto.randomUUID().slice(0, 8)}@example.com`;
 }
 
-export async function signUp(email: string): Promise<string> {
-  const res = await postJson("/api/auth/sign-up/email", { name: "", email, password: PASSWORD });
-  if (res.status !== 200) throw new Error(`sign-up failed with ${res.status}: ${await res.text()}`);
+export const INTERNAL_SECRET = "test-internal-secret";
+
+export function internalPost(path: string, body: unknown, secret: string | null = INTERNAL_SECRET): Promise<Response> {
+  return appFetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(secret === null ? {} : { Authorization: `Bearer ${secret}` }),
+    },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+
+export interface ProvisionOptions {
+  source?: "marketing" | "bundle";
+  status?: string;
+  subscriptionId?: string;
+}
+
+// Creates an account the only way the app allows: checkout provisioning.
+// Requires mockEmail() to be installed. Returns the subscription id.
+export async function provision(email: string, options: ProvisionOptions = {}): Promise<string> {
+  const subscriptionId = options.subscriptionId ?? `sub_${crypto.randomUUID().slice(0, 12)}`;
+  const res = await internalPost("/api/internal/provision", {
+    email,
+    name: "Test Customer",
+    source: options.source ?? "marketing",
+    stripeCustomerId: "cus_test",
+    stripeSubscriptionId: subscriptionId,
+    status: options.status ?? "active",
+  });
+  if (res.status !== 201) throw new Error(`provision failed with ${res.status}: ${await res.text()}`);
+  return subscriptionId;
+}
+
+export function setPasswordTokenSentTo(email: string): string {
+  const sent = sentEmails.filter((m) => m.to === email).at(-1);
+  const token = /set-password\?token=([0-9a-f]+)/.exec(sent?.text ?? "")?.[1];
+  if (!token) throw new Error(`no set-password link emailed to ${email}`);
+  return token;
+}
+
+export async function signInCookie(email: string, password = PASSWORD): Promise<string> {
+  const res = await postJson("/api/auth/sign-in/email", { email, password });
+  if (res.status !== 200) throw new Error(`sign-in failed with ${res.status}: ${await res.text()}`);
   const cookie = res.headers.get("set-cookie")?.split(";")[0];
-  if (!cookie) throw new Error("sign-up returned no session cookie");
+  if (!cookie) throw new Error("sign-in returned no session cookie");
   return cookie;
 }
 
-// A signed-in account with a verified email: what every app route needs.
-// Requires mockEmail() to be installed.
-export async function verifiedUser(label = "user"): Promise<{ cookie: string; email: string }> {
+// A provisioned, paid account whose owner has chosen a password and signed
+// in: what every app route needs. Requires mockEmail() to be installed.
+export async function verifiedUser(
+  label = "user",
+  options: ProvisionOptions = {}
+): Promise<{ cookie: string; email: string; subscriptionId: string }> {
   const email = uniqueEmail(label);
-  const cookie = await signUp(email);
-  await postJson("/api/auth/email-otp/send-verification-otp", { email, type: "email-verification" });
-  const res = await postJson("/api/auth/email-otp/verify-email", { email, otp: lastCodeSentTo(email) });
-  if (res.status !== 200) throw new Error(`verify failed with ${res.status}`);
-  return { cookie, email };
+  const subscriptionId = await provision(email, options);
+  const res = await postJson("/api/auth/reset-password", {
+    token: setPasswordTokenSentTo(email),
+    newPassword: PASSWORD,
+  });
+  if (res.status !== 200) throw new Error(`set password failed with ${res.status}`);
+  return { cookie: await signInCookie(email), email, subscriptionId };
 }
 
 export const PROFILE = {

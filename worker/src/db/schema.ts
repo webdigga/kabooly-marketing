@@ -159,3 +159,39 @@ export const advertImages = sqliteTable(
     ),
   ]
 );
+
+// billing
+
+export const SUBSCRIPTION_SOURCES = ["marketing", "bundle"] as const;
+export type SubscriptionSource = (typeof SUBSCRIPTION_SOURCES)[number];
+
+// What pays for an account. Accounts are only created by checkout, so every
+// customer has exactly one row. `marketing` is the account's own 40 a month
+// Stripe subscription; `bundle` is switched on by the customer's CRM bundle
+// subscription and has no charge of its own. `active` is the only thing the
+// session gate reads.
+export const subscriptions = sqliteTable(
+  "subscriptions",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    source: text("source", { enum: SUBSCRIPTION_SOURCES }).notNull(),
+    stripeCustomerId: text("stripe_customer_id").notNull(),
+    stripeSubscriptionId: text("stripe_subscription_id").notNull().unique(),
+    status: text("status").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    check("subscriptions_source_valid", sql`${t.source} IN ('marketing', 'bundle')`),
+  ]
+);
+
+// Stripe event ids already handled, so a retried delivery is a no-op.
+export const billingEvents = sqliteTable("billing_events", {
+  stripeEventId: text("stripe_event_id").primaryKey(),
+  type: text("type").notNull(),
+  receivedAt: integer("received_at", { mode: "timestamp" }).notNull(),
+});

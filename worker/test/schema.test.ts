@@ -14,6 +14,7 @@ const ownedTables = [
   schema.profileServices,
   schema.adverts,
   schema.advertImages,
+  schema.subscriptions,
 ];
 
 const NOW = 1_760_000_000;
@@ -37,6 +38,9 @@ async function seed(): Promise<void> {
     ).bind(NOW),
     testEnv.DB.prepare(
       "INSERT INTO advert_images (advert_id, platform, r2_key, generated_at) VALUES ('a1', 'instagram', 'adverts/a1/instagram.png', ?1)"
+    ).bind(NOW),
+    testEnv.DB.prepare(
+      "INSERT INTO subscriptions (user_id, source, stripe_customer_id, stripe_subscription_id, status, active, created_at, updated_at) VALUES ('u1', 'marketing', 'cus_u1', 'sub_u1', 'active', 1, ?1, ?1)"
     ).bind(NOW),
   ]);
 }
@@ -86,6 +90,7 @@ describe("schema", () => {
       "profile_services",
       "adverts",
       "advert_images",
+      "subscriptions",
     ]) {
       expect(await count(table)).toBe(0);
     }
@@ -101,6 +106,12 @@ describe("schema", () => {
   it("rejects a tone outside 1 to 5", async () => {
     await expect(
       testEnv.DB.prepare("UPDATE business_profiles SET tone = 6 WHERE user_id = 'u1'").run()
+    ).rejects.toThrow(/CHECK constraint failed/);
+  });
+
+  it("rejects an unknown subscription source", async () => {
+    await expect(
+      testEnv.DB.prepare("UPDATE subscriptions SET source = 'free' WHERE user_id = 'u1'").run()
     ).rejects.toThrow(/CHECK constraint failed/);
   });
 

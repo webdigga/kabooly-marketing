@@ -24,7 +24,6 @@ export const authMock = {
   useSession: () => ({ data: session.current, isPending: false, error: null, refetch: authMock.refetch }),
   refetch: vi.fn(async () => undefined),
   signIn: { email: vi.fn(), social: vi.fn() },
-  signUp: { email: vi.fn() },
   signOut: vi.fn(async () => {
     session.current = null
     return { data: { success: true }, error: null }

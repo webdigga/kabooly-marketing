@@ -9,6 +9,10 @@ GOOGLE_CLIENT_SECRET=
 # Sender address on the Cloudflare Email Sending domain. Locally, emails are
 # not sent; wrangler dev prints where it saved each one.
 EMAIL_FROM=noreply@marketing.kabooly.com
-FOUNDER_EMAIL=david@kabooly.com
+FOUNDER_LOGIN_EMAIL=webdigga42@gmail.com
 ANTHROPIC_API_KEY=
 GEMINI_API_KEY=
+# Shared with the kabooly.com checkout and the CRM worker for /api/internal/*.
+INTERNAL_API_SECRET=generate-a-long-random-string
+# Signing secret of this worker's Stripe webhook endpoint.
+STRIPE_WEBHOOK_SECRET=

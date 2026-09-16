@@ -6,6 +6,7 @@ import Generator from './pages/Generator/Generator'
 import Library from './pages/Library/Library'
 import LibraryItem from './pages/LibraryItem/LibraryItem'
 import Onboarding from './pages/Onboarding/Onboarding'
+import SetPassword from './pages/SetPassword/SetPassword'
 import Settings from './pages/Settings/Settings'
 import SignIn from './pages/SignIn/SignIn'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail'
@@ -14,9 +15,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<GuestOnly />}>
-        <Route path="/sign-in" element={<SignIn mode="sign-in" />} />
-        <Route path="/sign-up" element={<SignIn mode="sign-up" />} />
+        <Route path="/sign-in" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/set-password" element={<SetPassword />} />
       </Route>
       <Route path="/verify" element={<VerifyEmail />} />
       <Route element={<RequireVerified />}>

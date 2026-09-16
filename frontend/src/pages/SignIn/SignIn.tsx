@@ -10,26 +10,13 @@ import { TextInput } from '../../components/Field/Field'
 import GoogleButton from '../../components/GoogleButton/GoogleButton'
 import { authClient } from '../../lib/auth-client'
 import { authErrorMessage, oauthErrorMessage } from '../../lib/auth-errors'
-import { MIN_PASSWORD_LENGTH, sendVerificationCode } from '../../lib/email-otp'
+import { sendVerificationCode } from '../../lib/email-otp'
 
-type Mode = 'sign-in' | 'sign-up'
+// Accounts are created only by buying Kabooly Marketing on kabooly.com, so
+// there is no sign-up here.
+export const BUY_URL = 'https://kabooly.com/marketing/'
 
-const COPY = {
-  'sign-in': {
-    title: 'Sign in',
-    subtitle: 'Create local adverts for Instagram, Facebook and Nextdoor.',
-    button: 'Sign in',
-    autoComplete: 'current-password',
-  },
-  'sign-up': {
-    title: 'Create your account',
-    subtitle: 'Just an email and a password to start. You will tell us about your business next.',
-    button: 'Create account',
-    autoComplete: 'new-password',
-  },
-}
-
-function useCredentials(mode: Mode) {
+function useCredentials() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [email, setEmail] = useState('')
@@ -41,10 +28,7 @@ function useCredentials(mode: Mode) {
     event.preventDefault()
     setError(null)
     setBusy(true)
-    const result =
-      mode === 'sign-up'
-        ? await authClient.signUp.email({ name: '', email: email.trim(), password })
-        : await authClient.signIn.email({ email: email.trim(), password })
+    const result = await authClient.signIn.email({ email: email.trim(), password })
     if (result.error) {
       setBusy(false)
       setError(authErrorMessage(result.error))
@@ -66,29 +50,22 @@ function useCredentials(mode: Mode) {
   return { email, setEmail, password, setPassword, busy, error, setError, submit }
 }
 
-export default function SignIn({ mode }: { mode: Mode }) {
+export default function SignIn() {
   const location = useLocation()
-  const form = useCredentials(mode)
-  const copy = COPY[mode]
+  const form = useCredentials()
   const notice = (location.state as { notice?: string } | null)?.notice
 
   return (
     <AuthLayout
-      title={copy.title}
-      subtitle={copy.subtitle}
+      title="Sign in"
+      subtitle="Create local adverts for Instagram, Facebook and Nextdoor."
       footer={
-        mode === 'sign-in' ? (
-          <>
-            <span>
-              New here? <Link to="/sign-up">Create an account</Link>
-            </span>
-            <Link to="/forgot-password">Forgot your password?</Link>
-          </>
-        ) : (
+        <>
+          <Link to="/forgot-password">Forgot your password?</Link>
           <span>
-            Already have an account? <Link to="/sign-in">Sign in</Link>
+            No account yet? <a href={BUY_URL}>Get Kabooly Marketing</a>
           </span>
-        )
+        </>
       }
     >
       {notice && <Alert tone="success">{notice}</Alert>}
@@ -108,16 +85,14 @@ export default function SignIn({ mode }: { mode: Mode }) {
         <TextInput
           label="Password"
           type="password"
-          autoComplete={copy.autoComplete}
+          autoComplete="current-password"
           required
-          minLength={mode === 'sign-up' ? MIN_PASSWORD_LENGTH : undefined}
-          hint={mode === 'sign-up' ? `At least ${MIN_PASSWORD_LENGTH} characters.` : undefined}
           value={form.password}
           onChange={(e) => form.setPassword(e.target.value)}
           data-testid="password-input"
         />
         <Button type="submit" block loading={form.busy} data-testid="submit-button">
-          {copy.button}
+          Sign in
         </Button>
       </form>
     </AuthLayout>

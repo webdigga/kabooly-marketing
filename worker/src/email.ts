@@ -2,8 +2,9 @@ import type { Env } from "./env";
 
 const FROM_NAME = "Kabooly Marketing";
 
-// Cloudflare Email Sending (the EMAIL binding). Only two emails ever go
-// out: the verification code and the password reset code.
+// Cloudflare Email Sending (the EMAIL binding). Three emails go out: the
+// set-password link for a new customer, the verification code and the
+// password reset code.
 export async function sendEmail(
   env: Env,
   to: string,

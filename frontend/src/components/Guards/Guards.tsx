@@ -3,7 +3,8 @@ import { ProfileProvider, useProfile } from '../../context/ProfileContext'
 import { authClient } from '../../lib/auth-client'
 import PageLoader from '../PageLoader/PageLoader'
 
-// Sign-in, sign-up and password reset: only for people who are signed out.
+// Sign-in, choosing a password and password reset: only for people who are
+// signed out.
 export function GuestOnly() {
   const { data: session, isPending } = authClient.useSession()
   if (isPending) return <PageLoader />

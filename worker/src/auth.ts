@@ -4,12 +4,13 @@ import { emailOTP } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
 import { sendEmail } from "./email";
-import { notifyFounderOfSignup } from "./signup-alert";
 import type { Env } from "./env";
 
 // Same shape as TrackShows (onnext/worker/src/auth.ts): email + password
 // with 6-digit emailed codes for verification and password reset, Google as
 // the alternative, and Google linking into a verified email account.
+// Nobody can register here: accounts are created only by the kabooly.com
+// checkout (provision.ts), so every sign-up path is switched off.
 export function createAuth(env: Env) {
   const db = drizzle(env.DB, { schema });
   return betterAuth({
@@ -18,6 +19,7 @@ export function createAuth(env: Env) {
     baseURL: env.BETTER_AUTH_URL,
     plugins: [
       emailOTP({
+        disableSignUp: true,
         async sendVerificationOTP({ email, otp, type }) {
           // "sign-in" codes are unused; sending nothing disables that flow.
           if (type === "forget-password") {
@@ -43,20 +45,14 @@ export function createAuth(env: Env) {
     trustedOrigins: [env.BETTER_AUTH_URL, "http://localhost:5173"],
     emailAndPassword: {
       enabled: true,
+      disableSignUp: true,
     },
     socialProviders: {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
-      },
-    },
-    databaseHooks: {
-      user: {
-        create: {
-          after: async (user) => {
-            await notifyFounderOfSignup(env, user.email);
-          },
-        },
+        // Google signs in to an existing account only, never creates one.
+        disableSignUp: true,
       },
     },
     account: {

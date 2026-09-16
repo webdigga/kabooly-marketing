@@ -15,8 +15,16 @@ export function authErrorMessage(error: { code?: string; message?: string } | nu
 export const NOT_LINKED_MESSAGE =
   'This email already has a Kabooly Marketing account. Sign in with your email and password once to verify it, then Google will work.'
 
+export const NO_ACCOUNT_MESSAGE =
+  'There is no Kabooly Marketing account for that Google email. Sign in with the email address you bought Kabooly Marketing with.'
+
+const OAUTH_MESSAGES: Record<string, string> = {
+  account_not_linked: NOT_LINKED_MESSAGE,
+  signup_disabled: NO_ACCOUNT_MESSAGE,
+}
+
 // A failed Google round trip lands back on /sign-in?error=<code>.
 export function oauthErrorMessage(code: string | null): string | null {
   if (!code) return null
-  return code === 'account_not_linked' ? NOT_LINKED_MESSAGE : 'Could not sign in with Google. Try again.'
+  return OAUTH_MESSAGES[code] ?? 'Could not sign in with Google. Try again.'
 }
