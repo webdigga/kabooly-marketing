@@ -130,6 +130,14 @@ profileApi.get("/profile", async (c) => {
   return c.json({ profile: profile ? toJson(profile) : null });
 });
 
+// Saving settles which logo an account uses, so every other logo file it
+// has (a replaced one, or one a scan stored and the user never kept) goes.
+async function removeOtherLogos(env: Env, userId: string, keep: string | null): Promise<void> {
+  const listed = await env.FILES.list({ prefix: `${userPrefix(userId)}logos/` });
+  const stale = listed.objects.map((o) => o.key).filter((key) => key !== keep);
+  if (stale.length) await env.FILES.delete(stale);
+}
+
 // Checks the parts zod cannot: the website is a real public address and
 // the logo belongs to this account. Returns the offending field, if any.
 async function invalidField(env: Env, userId: string, body: ProfileBody): Promise<string | null> {
@@ -147,11 +155,8 @@ profileApi.put("/profile", async (c) => {
   if (field) return c.json({ error: "Invalid request", field }, 400);
 
   const websiteUrl = body.websiteUrl ? normaliseWebsiteUrl(body.websiteUrl) : null;
-  const previous = await loadProfile(c.env, userId);
   const saved = await saveProfile(c.env, userId, body, websiteUrl?.toString() ?? null);
-  if (previous?.logoKey && previous.logoKey !== body.logoKey) {
-    await c.env.FILES.delete(previous.logoKey);
-  }
+  await removeOtherLogos(c.env, userId, saved.logoKey);
   return c.json({ profile: toJson(saved) });
 });
 

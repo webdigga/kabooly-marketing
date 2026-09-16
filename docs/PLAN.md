@@ -29,6 +29,7 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 - Billing accounts: only "My Billing Account 1" exists (checked 2026-09-16); the second one AI Studio listed on 2026-09-15 was a stale entry, so there is nothing to close.
 - Legal pages live on the marketing site (`kabooly/src/pages/marketing-privacy-policy.astro` and `marketing-terms-of-service.astro`), linked from its footer and from the app sign-in screens. KABOOLY LTD is the controller; contact privacy@kabooly.com.
 - Palette and font: the kabooly.com marketing site (light, blue #1d4ed8, Inter), not the CRM (dark, indigo, Mona Sans). Settled by David 2026-09-16: it matches where customers arrive from, and a light background suits judging advert images.
+- Logo files: saving the profile deletes every other logo file under the account's prefix, so replaced logos and ones a scan stored but the user never kept do not pile up (2026-09-16). No R2 lifecycle rule needed.
 - Account deletion: Settings has a Delete account button (asks once more) calling `DELETE /api/account`, which empties the account's R2 prefix and deletes the user row; the cascade takes the profile, services, adverts and image rows. Added 2026-09-16 and reflected in the legal pages.
 - Library (changed after first live test, 2026-09-15): a compact grid of cards (square thumbnail, or the text for image-free adverts; topic; date; platforms). Each opens `/library/:id` with the full text, copy, downloads and Delete (asks once more; removes the row, image rows and R2 files via `DELETE /api/posts/:id`).
 - Platforms: all three are ticked by default; the last choice is remembered per browser.
@@ -45,7 +46,6 @@ All built 2026-09-15 (David asked for stages 2 to 8 to run without stopping, que
 
 ## Not built (outside the brief, flagged only)
 
-- Clean-up of R2 files nothing points to (logos uploaded but never saved). An R2 lifecycle rule would cover it.
 - The website scan is not rate limited.
 
 ## Brief

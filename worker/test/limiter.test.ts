@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imagesFreeAt, LIMITS } from "../src/limiter";
+import { checkDaily, imagesFreeAt, LIMITS } from "../src/limiter";
 import type { UsageEvent } from "../src/limiter";
 import { testEnv } from "./helpers";
 
@@ -133,11 +133,15 @@ describe("daily image cap", () => {
 });
 
 describe("daily text cap", () => {
-  it("caps text work at a generous daily number", async () => {
-    const stub = limiter();
-    for (let i = 0; i < LIMITS.textPerDay; i++) await run(stub, "text", 0, T0 + i * MINUTE);
-    const denied = await run(stub, "text", 0, T0 + LIMITS.textPerDay * MINUTE);
-    expect(denied).toEqual({
+  it("caps text work at a generous daily number", () => {
+    const events: UsageEvent[] = Array.from({ length: LIMITS.textPerDay }, (_, i) => ({
+      id: `t${String(i)}`,
+      at: T0 + i * MINUTE,
+      kind: "text",
+      images: 0,
+    }));
+    expect(checkDaily(events.slice(0, -1), "text", 0, T0)).toBeNull();
+    expect(checkDaily(events, "text", 0, T0)).toEqual({
       ok: false,
       reason: "daily",
       kind: "text",

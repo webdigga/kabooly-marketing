@@ -85,6 +85,15 @@ describe("business profile", () => {
     expect(res.status).toBe(400);
   });
 
+  it("clears logo files the account never kept when the profile is saved", async () => {
+    const { cookie } = await verifiedUser();
+    const abandoned: { key: string } = await (await uploadLogo(cookie)).json();
+    const chosen: { key: string } = await (await uploadLogo(cookie)).json();
+    await withProfile(cookie, { logoKey: chosen.key });
+    expect(await testEnv.FILES.head(abandoned.key)).toBeNull();
+    expect(await testEnv.FILES.head(chosen.key)).not.toBeNull();
+  });
+
   it("keeps the logo, and deletes the old file when it is replaced or removed", async () => {
     const { cookie } = await verifiedUser();
     const first: { key: string } = await (await uploadLogo(cookie)).json();

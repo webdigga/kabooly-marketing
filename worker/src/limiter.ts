@@ -74,7 +74,7 @@ function checkRate(events: UsageEvent[], kind: GenerationKind, now: number): Adm
   return { ok: false, reason: "rate", retryAt: oldest + MINUTE_MS };
 }
 
-function checkDaily(
+export function checkDaily(
   events: UsageEvent[],
   kind: GenerationKind,
   images: number,
