@@ -10,8 +10,11 @@ Stage:  LIVE with paid-only billing, 2026-09-16. Registration closed; only
 Built:  account emails now HTML with the shared Kabooly signature
         (src/email-layout.ts), not yet deployed. Deploy after kabooly.com,
         which serves the logo image.
-Open:   a paying customer can still delete their account in Settings while
-        Stripe keeps charging (decide what should happen).
+Built:  self-service account deletion removed 2026-09-17 (Settings says
+        "To cancel or delete your account, email hello@kabooly.com"; the
+        Marketing privacy policy and terms on kabooly.com say the same). To
+        delete an account by hand: delete the D1 user row (cascades) AND the
+        R2 prefix users/{userId}/. Not yet deployed.
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```

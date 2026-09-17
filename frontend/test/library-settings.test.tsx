@@ -207,24 +207,12 @@ describe('settings', () => {
     expect(screen.getByLabelText('No logo')).toBeInTheDocument()
   })
 
-  it('deletes the account after asking once more', async () => {
-    mockApi({ ...settingsRoutes(), 'DELETE /api/account': () => json({ ok: true }) })
+  it('points to email for cancelling or deleting the account', async () => {
+    mockApi(settingsRoutes())
     renderApp('/settings')
-    await userEvent.click(await screen.findByTestId('delete-account'))
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await userEvent.click(screen.getByTestId('delete-account'))
-    await userEvent.click(screen.getByTestId('confirm-delete-account'))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/sign-in'))
-    expect(callsTo('DELETE', '/api/account')).toHaveLength(1)
-    expect(authMock.signOut).toHaveBeenCalled()
-  })
-
-  it('reports an account that could not be deleted', async () => {
-    mockApi({ ...settingsRoutes(), 'DELETE /api/account': () => json({}, 500) })
-    renderApp('/settings')
-    await userEvent.click(await screen.findByTestId('delete-account'))
-    await userEvent.click(screen.getByTestId('confirm-delete-account'))
-    expect(await screen.findByText('Your account could not be deleted. Try again.')).toBeInTheDocument()
+    const link = await screen.findByRole('link', { name: 'hello@kabooly.com' })
+    expect(link).toHaveAttribute('href', 'mailto:hello@kabooly.com')
+    expect(screen.queryByRole('button', { name: /delete account/i })).not.toBeInTheDocument()
   })
 
   it('signs out', async () => {
