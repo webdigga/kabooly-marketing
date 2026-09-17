@@ -242,6 +242,13 @@ describe('settings', () => {
 })
 
 describe('loading the account', () => {
+  it('shows no error when the session has just ended, and refreshes it', async () => {
+    mockApi({ ...base, 'GET /api/profile': () => json({ error: 'Unauthorised' }, 401) })
+    renderApp('/settings')
+    await waitFor(() => expect(authMock.refetch).toHaveBeenCalled())
+    expect(screen.queryByText(/Could not load your account/)).not.toBeInTheDocument()
+  })
+
   it('offers a retry when the profile cannot load', async () => {
     let fail = true
     mockApi({ ...base, 'GET /api/profile': () => (fail ? json({}, 500) : json({ profile: PROFILE })) })
