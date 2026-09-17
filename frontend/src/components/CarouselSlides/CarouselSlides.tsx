@@ -1,7 +1,7 @@
 import { Download, Pencil, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useProfile } from '../../context/ProfileContext'
-import { renderSlide, saveBlob } from '../../lib/slide-render'
+import { headingColour, renderSlide, saveBlob, slideKind } from '../../lib/slide-render'
 import type { Slide, StoredFile } from '../../lib/types'
 import Alert from '../Alert/Alert'
 import Button from '../Button/Button'
@@ -22,6 +22,7 @@ interface CarouselSlidesProps {
   disabled?: boolean
 }
 
+// The on-screen version of a slide, laid out like renderSlide draws it.
 function SlidePreview({ slide, index, total, background, logo, colour }: {
   slide: Slide
   index: number
@@ -30,21 +31,21 @@ function SlidePreview({ slide, index, total, background, logo, colour }: {
   logo: string | null
   colour: string
 }) {
+  const kind = slideKind(index, total)
+  const heading = kind === 'hook' ? undefined : { color: headingColour(colour) }
   return (
     <div
-      className={styles.slide}
-      style={{ backgroundColor: colour, backgroundImage: background ? `url("${background}")` : undefined }}
+      className={`${styles.slide} ${styles[kind]}`}
+      style={kind === 'hook' ? { backgroundColor: colour, backgroundImage: background ? `url("${background}")` : undefined } : undefined}
       data-testid={`slide-${index + 1}`}
     >
-      <span className={styles.bar} style={{ backgroundColor: colour }} aria-hidden="true" />
-      <span className={styles.number}>
-        {index + 1}/{total}
-      </span>
       <div className={styles.words}>
-        <p className={index === 0 ? styles.hook : styles.heading}>{slide.heading}</p>
+        {kind === 'close' && logo && <img className={styles.logo} src={logo} alt="" />}
+        <p className={styles.heading} style={heading}>
+          {slide.heading}
+        </p>
         {slide.body && <p className={styles.body}>{slide.body}</p>}
       </div>
-      {logo && <img className={styles.logo} src={logo} alt="" />}
     </div>
   )
 }
@@ -133,7 +134,7 @@ function SlideActions(props: SlideActionsProps) {
           disabled={disabled}
           data-testid="regenerate-background"
         >
-          New background
+          New photo
         </Button>
       )}
     </div>
@@ -171,10 +172,10 @@ export default function CarouselSlides(props: CarouselSlidesProps) {
     <div className={styles.carousel}>
       {backgroundStatus === 'pending' && (
         <p className={styles.status} role="status">
-          Making the background for your slides...
+          Making the photo for your first slide...
         </p>
       )}
-      {backgroundStatus === 'error' && <Alert tone="warning">The background could not be made. Regenerate it, or download the slides on your brand colour.</Alert>}
+      {backgroundStatus === 'error' && <Alert tone="warning">The photo for the first slide could not be made. Make a new one, or download the slides with your brand colour behind the first.</Alert>}
       <div className={styles.slides}>
         {slides.map((slide, i) => (
           <figure key={i} className={styles.tile}>

@@ -65,16 +65,26 @@ export function limitMessage(err: unknown, now: Date = new Date()): string | nul
 
 export interface UsageRow {
   label: string
-  left: string
+  left: number
+  limit: number
+  // Share of the allowance used, 0 to 1.
+  usedShare: number
+  // Three or fewer left.
+  low: boolean
   // Set once the allowance is used up.
   freeAt: string | null
 }
 
-function row(label: string, allowance: Allowance, unit: string, now: Date): UsageRow {
+export const LOW_LEFT = 3
+
+function row(label: string, allowance: Allowance, now: Date): UsageRow {
   const left = Math.max(0, allowance.limit - allowance.used)
   return {
     label,
-    left: `${left} of ${plural(allowance.limit, unit)} left`,
+    left,
+    limit: allowance.limit,
+    usedShare: Math.min(1, allowance.used / allowance.limit),
+    low: left <= LOW_LEFT,
     freeAt: left === 0 && allowance.nextFreeAt ? `More from ${localTime(allowance.nextFreeAt, now)}` : null,
   }
 }
@@ -82,8 +92,8 @@ function row(label: string, allowance: Allowance, unit: string, now: Date): Usag
 // What the account has left, most pressing first.
 export function usageRows(usage: Usage, now: Date = new Date()): UsageRow[] {
   return [
-    row('Images today', usage.imagesToday, 'image', now),
-    row('Images this month', usage.imagesThisMonth, 'image', now),
-    row('Videos this month', usage.videosThisMonth, 'video', now),
+    row('images today', usage.imagesToday, now),
+    row('images this month', usage.imagesThisMonth, now),
+    row('videos this month', usage.videosThisMonth, now),
   ]
 }

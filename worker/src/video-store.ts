@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { advertPrefix, fileJson, loadLogo } from "./advert-store";
 import type { AdvertRow, FileJson } from "./advert-store";
+import { planVideo } from "./copywriter";
 import * as schema from "./db/schema";
 import type { VideoStatus } from "./db/schema";
 import type { Env } from "./env";
@@ -52,16 +53,18 @@ export interface VideoRequest {
   lease: Lease;
 }
 
-// Makes the vertical starting image (logo drawn in, like the platform
-// images), starts the video from it in Google's background mode, and
-// records the job as pending, replacing any earlier video for the advert.
-// Throws if either step fails; the caller refunds the lease.
+// Plans the shots and captions, makes the vertical starting image of the
+// first shot (logo drawn in, like the platform images), starts the video
+// from it in Google's background mode, and records the job as pending,
+// replacing any earlier video for the advert. Throws if any step fails; the
+// caller refunds the lease.
 export async function requestVideo(env: Env, req: VideoRequest): Promise<VideoRow> {
   const { advert, profile } = req;
-  const logo = await loadLogo(env, profile);
-  const raw = await generateImage(env, videoStartPrompt(profile, advert.topic, logo !== null), VIDEO_SHAPE.aspectRatio, logo);
+  const [logo, plan] = await Promise.all([loadLogo(env, profile), planVideo(env, profile, advert.topic, req.motion)]);
+  const startPrompt = videoStartPrompt(profile, advert.topic, plan.hook.scene, logo !== null);
+  const raw = await generateImage(env, startPrompt, VIDEO_SHAPE.aspectRatio, logo);
   const start = await fitToShape(env, raw, VIDEO_SHAPE);
-  const interactionId = await startVideo(env, start, logo, videoPrompt(profile, advert.topic, req.motion, logo !== null));
+  const interactionId = await startVideo(env, start, logo, videoPrompt(profile, plan, logo !== null));
 
   const startKey = `${advertPrefix(advert.userId, advert.id)}video-start-${crypto.randomUUID()}.jpg`;
   await put(env, startKey, start, "image/jpeg");

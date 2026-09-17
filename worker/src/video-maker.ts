@@ -7,6 +7,7 @@ import {
   logoInput,
 } from "./image-maker";
 import type { InteractionResponse, Logo } from "./image-maker";
+import type { VideoPlan, VideoShot } from "./copywriter";
 import type { Profile } from "./profile";
 
 const TIMEOUT_MS = 60_000;
@@ -15,25 +16,31 @@ export const VIDEO_JOB_TTL_MS = 20 * 60_000;
 
 export class VideoError extends Error {}
 
-export function videoPrompt(profile: Profile, topic: string, motion: string | null, hasLogo: boolean): string {
+function onScreen(caption: string): string {
+  return `On screen, the words "${caption}" in large, bold, clean white letters with a soft shadow, centred in the upper third, spelt exactly as written.`;
+}
+
+// The timecoded prompt Omni films: the planned shots, their captions and an
+// end card with the business name.
+export function videoPrompt(profile: Profile, plan: VideoPlan, hasLogo: boolean): string {
   const references = hasLogo
     ? "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]"
     : "[# Sources <FIRST_FRAME>@Image1]";
+  // The plan's schema guarantees exactly two middle shots.
+  const [second, third] = plan.middle as [VideoShot, VideoShot];
   const lines = [
     references,
-    `An 8 second vertical social media video advert for ${profile.businessName}, a small local business (${profile.description}).`,
-    `The advert is about: ${topic}`,
-    motion
-      ? `Movement: ${motion}`
-      : "Movement: bring the scene gently to life with natural motion and a slow, smooth camera move.",
-    "Include calm background music that suits the business. No dialogue or voice-over.",
-    "Do not add any words, captions, prices or other text.",
+    `A 10 second vertical social media video advert for ${profile.businessName}, a small local business (${profile.description}). Quick, confident editing with clean cuts.`,
+    `[0-3s] ${plan.hook.scene} ${onScreen(plan.hook.caption)}`,
+    `[3-5s] Cut to: ${second.scene} ${onScreen(second.caption)}`,
+    `[5-7s] Cut to: ${third.scene} ${onScreen(third.caption)}`,
+    `[7-10s] Cut to an end card: a clean, simple background. In the centre, "${profile.businessName}" in large bold letters, and below it "${plan.endCaption}" in smaller letters, both spelt exactly as written.`,
+    `Audio: ${plan.music}. No dialogue, voice-over or singing.`,
+    "Any people move naturally and are anatomically correct. No text other than the words given above.",
     "Use Image1 as the starting frame.",
   ];
   if (hasLogo) {
-    lines.push(
-      "Image2 is the business logo, already shown in the starting frame. Use it as a reference so the logo stays exactly as it is and is never redrawn or distorted."
-    );
+    lines.push("Image2 is the business logo, already in the starting frame. Use it as a reference so it is never redrawn or distorted.");
   }
   return lines.join("\n");
 }

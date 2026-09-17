@@ -12,10 +12,10 @@ interface Option {
 }
 
 const OPTIONS: Option[] = [
-  { id: 'images', label: 'Advert with images', detail: 'Text plus an image for each platform', icon: <Images size={20} aria-hidden="true" /> },
-  { id: 'photo', label: 'Post from your photo', detail: 'Your own photo, sized and branded', icon: <Camera size={20} aria-hidden="true" /> },
-  { id: 'carousel', label: 'Carousel', detail: 'Five swipeable slides', icon: <GalleryHorizontal size={20} aria-hidden="true" /> },
-  { id: 'video', label: 'Video', detail: 'For Reels, Shorts, TikTok and Stories', icon: <Clapperboard size={20} aria-hidden="true" /> },
+  { id: 'images', label: 'Image advert', detail: 'Text and platform images', icon: <Images size={22} aria-hidden="true" /> },
+  { id: 'photo', label: 'Photo post', detail: 'Your photo, sized and branded', icon: <Camera size={22} aria-hidden="true" /> },
+  { id: 'carousel', label: 'Carousel', detail: 'Five swipeable slides', icon: <GalleryHorizontal size={22} aria-hidden="true" /> },
+  { id: 'video', label: 'Video', detail: 'Reels, Shorts and TikTok', icon: <Clapperboard size={22} aria-hidden="true" /> },
 ]
 
 interface FormatPickerProps {

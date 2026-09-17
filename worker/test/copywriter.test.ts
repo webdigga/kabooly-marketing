@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CopyError, describeBusiness, readBusinessDetails, suggestTopic, toneGuide, writeAdvert, writeSlides } from "../src/copywriter";
+import { CopyError, describeBusiness, planVideo, readBusinessDetails, suggestTopic, toneGuide, writeAdvert, writeSlides } from "../src/copywriter";
 import type { Profile } from "../src/profile";
-import { ANTHROPIC_URL, claudeMessage, claudeToolCall, SLIDES } from "./ai-mocks";
+import { ANTHROPIC_URL, claudeMessage, claudeToolCall, SLIDES, VIDEO_PLAN } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
 import { testEnv } from "./helpers";
 
@@ -48,6 +48,7 @@ describe("toneGuide", () => {
       expect.stringContaining("Casual"),
       expect.stringContaining("Very casual"),
     ]);
+    expect([1, 2, 3, 4, 5].map(toneGuide).join(" ")).not.toMatch(/emoji/i);
   });
 });
 
@@ -83,6 +84,8 @@ describe("writeAdvert", () => {
     expect(await writeAdvert(testEnv, profile, "Spring ovens")).toBe("Advert text.");
     const req = lastRequest();
     expect(req.system).toContain("UK English spelling");
+    expect(req.system).toContain("No emoji or symbols of any kind");
+    expect(req.system).toContain("not AI");
     expect(req.messages[0]?.content).toContain("Professional but warm");
     expect(req.messages[0]?.content).toContain("Advert topic: Spring ovens");
   });
@@ -161,5 +164,24 @@ describe("readBusinessDetails", () => {
       localArea: null,
       tone: 4,
     });
+  });
+});
+
+describe("planVideo", () => {
+  it("plans a hook, two shots and an end caption, with the owner's wishes", async () => {
+    toolReply("record_video_plan", VIDEO_PLAN);
+    expect(await planVideo(testEnv, profile, "Oven care", "the finished oven")).toEqual(VIDEO_PLAN);
+    const req = lastRequest();
+    expect(req.tool_choice).toMatchObject({ name: "record_video_plan" });
+    expect(req.system).toContain("Avoid close-ups of faces");
+    expect(req.messages[0]?.content).toContain("The business owner wants the video to show: the finished oven");
+    toolReply("record_video_plan", VIDEO_PLAN);
+    await planVideo(testEnv, profile, "Oven care", null);
+    expect(lastRequest().messages[0]?.content).not.toContain("wants the video to show");
+  });
+
+  it("refuses a plan with the wrong number of shots", async () => {
+    toolReply("record_video_plan", { ...VIDEO_PLAN, middle: VIDEO_PLAN.middle.slice(0, 1) });
+    await expect(planVideo(testEnv, profile, "x", null)).rejects.toBeInstanceOf(CopyError);
   });
 });

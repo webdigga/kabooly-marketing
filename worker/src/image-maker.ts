@@ -59,19 +59,27 @@ function briefLines(profile: Profile, topic: string, hasLogo: boolean): string[]
     `Audience: ${profile.targetAudience}`,
   ];
   if (profile.brandColours.length) {
-    lines.push(`Use the brand colours ${profile.brandColours.join(", ")} prominently as accents.`);
+    lines.push(
+      `Where it looks natural, echo the brand colours ${profile.brandColours.join(", ")} in props, clothing or surroundings. Keep all colours realistic: no colour filters, tints or recolouring of the scene.`
+    );
   }
   if (hasLogo) {
     lines.push(
-      "The attached image is the business logo. Place it once, small and clearly legible in a corner, reproduced exactly as given without redrawing or altering it."
+      "The attached image is the business logo. Place it once, small, in a clear corner away from faces and the main subject. Copy it exactly: same shapes, letters and colours, never redrawn, restyled or recoloured."
     );
   }
   return lines;
 }
 
+// Guards against what spoils a realistic advert photo: graphic add-ons and
+// broken anatomy.
+const REALISM = [
+  "Style: a realistic, professional photograph of a real scene, as a skilled photographer would shoot it, with natural light.",
+  "Do not add icons, symbols, emoji, illustrations, stickers, motion lines, speech bubbles, badges, frames or any other graphic elements.",
+  "Any people must look natural and anatomically correct: two arms, two hands, five fingers on each hand, natural faces.",
+];
+
 const NO_TEXT = "Do not add any words, slogans, prices, phone numbers or other text to the image.";
-const STYLE =
-  "Style: clean, modern and professional, suitable for a small local business. Realistic photography or a polished graphic, whichever suits the topic.";
 
 export function imagePrompt(
   profile: Profile,
@@ -83,7 +91,7 @@ export function imagePrompt(
   const lines = [
     `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic, hasLogo),
-    STYLE,
+    ...REALISM,
     NO_TEXT,
   ];
   if (spec.aspectRatio === "16:9") {
@@ -92,23 +100,27 @@ export function imagePrompt(
   return lines.join("\n");
 }
 
-// The first frame of a vertical video: a scene with room to move.
-export function videoStartPrompt(profile: Profile, topic: string, hasLogo: boolean): string {
+// The first frame of a vertical video: the planned hook scene, so the video
+// opens on it.
+export function videoStartPrompt(profile: Profile, topic: string, scene: string, hasLogo: boolean): string {
   return [
     `Create a vertical 9:16 opening frame for a short social media video advert for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic, hasLogo),
-    "Style: a realistic, well-lit photographic scene with a clear subject and some depth, so it can be brought to life with gentle movement.",
+    `The scene: ${scene}`,
+    ...REALISM,
     NO_TEXT,
   ].join("\n");
 }
 
-// One background shared by every carousel slide. The app lays the words
-// and the real logo over it, so it must leave calm space and carry no logo.
+// The photograph on a carousel's first slide. The app lays the words over
+// its lower part and adds the real logo elsewhere, so it must be a plain
+// photograph: asking it to leave room for text makes it paint hazy panels.
 export function carouselBackgroundPrompt(profile: Profile, topic: string): string {
   return [
-    `Create a 4:5 background image for a carousel of social media slides for ${profile.businessName}, a small business.`,
+    `Create a 4:5 photograph for the first slide of a social media carousel for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic, false),
-    "Style: a softly lit, uncluttered photograph or subtle graphic that relates to the topic. Keep the middle calm and low in detail, because text will be placed over it.",
+    ...REALISM,
+    "Full bleed, edge to edge. Do not add panels, boxes, borders, fog or blur effects.",
     NO_TEXT,
     "Do not include any logo.",
   ].join("\n");

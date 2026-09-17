@@ -3,7 +3,7 @@ import { ApiError, errorMessage } from '../src/lib/api'
 import { readEvents } from '../src/lib/generation-stream'
 import { limitMessage, localTime, usageRows } from '../src/lib/limits'
 import { loadPlatformChoice, savePlatformChoice } from '../src/lib/platform-choice'
-import { wrapLines } from '../src/lib/slide-render'
+import { headingColour, slideKind, wrapLines } from '../src/lib/slide-render'
 import { svgSize } from '../src/lib/svg-to-png'
 import { draftFromProfile, draftToBody, EMPTY_DRAFT, fieldFromServer, validate } from '../src/profile/draft'
 import { applyFindings, changedSummary } from '../src/profile/website-fill'
@@ -61,9 +61,9 @@ describe('limit messages', () => {
         NOW,
       ),
     ).toEqual([
-      { label: 'Images today', left: '1 of 20 images left', freeAt: null },
-      { label: 'Images this month', left: '0 of 150 images left', freeAt: 'More from 10:00am on Sun 20 Sept' },
-      { label: 'Videos this month', left: '0 of 20 videos left', freeAt: null },
+      { label: 'images today', left: 1, limit: 20, usedShare: 0.95, low: true, freeAt: null },
+      { label: 'images this month', left: 0, limit: 150, usedShare: 1, low: true, freeAt: 'More from 10:00am on Sun 20 Sept' },
+      { label: 'videos this month', left: 0, limit: 20, usedShare: 1, low: true, freeAt: null },
     ])
   })
 })
@@ -177,5 +177,17 @@ describe('wrapLines', () => {
     expect(wrapLines(measure, 'one two three four', 9)).toEqual(['one two', 'three', 'four'])
     expect(wrapLines(measure, 'extraordinarily long', 5)).toEqual(['extraordinarily', 'long'])
     expect(wrapLines(measure, '  ', 5)).toEqual([])
+  })
+})
+
+describe('slide design', () => {
+  it('uses a photo slide, point slides and a closing slide', () => {
+    expect([0, 1, 2, 3, 4].map((i) => slideKind(i, 5))).toEqual(['hook', 'point', 'point', 'point', 'close'])
+  })
+
+  it('keeps headings readable on white, swapping pale brand colours for near-black', () => {
+    expect(headingColour('#1d4ed8')).toBe('#1d4ed8')
+    expect(headingColour('#facc15')).toBe('#111827')
+    expect(headingColour('#000000')).toBe('#000000')
   })
 })

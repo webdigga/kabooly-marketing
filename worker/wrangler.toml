@@ -50,7 +50,7 @@ enabled = true
 [vars]
 # The canonical auth origin. OAuth callbacks and session cookies hang off it.
 BETTER_AUTH_URL = "https://marketing.kabooly.com"
-GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
+GEMINI_IMAGE_MODEL = "gemini-3-pro-image"
 GEMINI_VIDEO_MODEL = "gemini-omni-1.1-flash"
 # Sender for verification and reset codes. marketing.kabooly.com is its own
 # sending domain in Cloudflare Email Sending, apart from the CRM's Resend

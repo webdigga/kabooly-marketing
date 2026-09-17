@@ -13,7 +13,7 @@ import ImageTile from '../../components/ImageTile/ImageTile'
 import PhotoPicker from '../../components/PhotoPicker/PhotoPicker'
 import PlatformPicker from '../../components/PlatformPicker/PlatformPicker'
 import UsagePanel from '../../components/UsagePanel/UsagePanel'
-import VideoPanel, { MOTION_HINT } from '../../components/VideoPanel/VideoPanel'
+import VideoPanel, { MOTION_HINT, MOTION_LABEL } from '../../components/VideoPanel/VideoPanel'
 import { api } from '../../lib/api'
 import { loadPlatformChoice, savePlatformChoice } from '../../lib/platform-choice'
 import type { Platform, UploadedPhoto, Usage } from '../../lib/types'
@@ -25,7 +25,7 @@ const LEADS: Record<CreateFormat, string> = {
   images: 'The text plus an image for each platform you tick.',
   photo: 'Your own photo, cropped for each platform you tick with your logo added, plus the text.',
   carousel: 'Five slides at 1080 × 1350 for Instagram and Facebook, plus the text. Uses one image from your allowance.',
-  video: 'A short vertical video plus the text. It takes a few minutes to make.',
+  video: 'A 10 second captioned video for Reels, Shorts and TikTok, plus the text for your post. It takes a few minutes to make.',
 }
 
 const BUTTONS: Record<CreateFormat, [idle: string, running: string]> = {
@@ -113,7 +113,7 @@ function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, m
       {(format === 'images' || format === 'photo') && <PlatformPicker selected={platforms} onChange={onPlatforms} disabled={busy} />}
       {format === 'video' && (
         <TextArea
-          label="Movement"
+          label={MOTION_LABEL}
           optional
           hint={MOTION_HINT}
           value={motion}

@@ -10,11 +10,11 @@ export class CopyError extends Error {}
 
 // Tone runs 1 (formal) to 5 (casual), as set in the business profile.
 export function toneGuide(tone: number): string {
-  if (tone <= 1) return "Formal: polished and professional. No slang, no emoji.";
-  if (tone === 2) return "Professional but warm. No emoji.";
-  if (tone === 3) return "Friendly and conversational. At most one emoji.";
-  if (tone === 4) return "Casual and upbeat. A couple of emoji are fine.";
-  return "Very casual and playful. Emoji welcome.";
+  if (tone <= 1) return "Formal: polished and professional. No slang.";
+  if (tone === 2) return "Professional but warm.";
+  if (tone === 3) return "Friendly and conversational.";
+  if (tone === 4) return "Casual and upbeat.";
+  return "Very casual and playful.";
 }
 
 function client(env: Env): Anthropic {
@@ -94,6 +94,8 @@ export async function suggestTopic(env: Env, profile: Profile, avoid: string[]):
 const ADVERT_SYSTEM = `You write local adverts for small businesses, posted by hand on Instagram, Facebook and Nextdoor.
 Write one block of advert text that works on all three platforms:
 - 50 to 120 words, plain text, no markdown, no headings, no hashtags.
+- No emoji or symbols of any kind (no ticks, arrows, stars or sparkles), whatever the tone.
+- Sound like a real local business owner wrote it, not AI: no clichés such as "look no further", "say goodbye to", "elevate", "unlock", "game-changer" or "whether you're", and no dashes used as punctuation.
 - UK English spelling and vocabulary (organise, colour, favourite, centre), never American spelling.
 - Speak to the target audience and mention the local area naturally.
 - End with a clear, simple call to action (the website if one is given, otherwise getting in touch).
@@ -133,11 +135,12 @@ async function structured<T extends z.ZodType>(
 export const SLIDE_COUNT = 5;
 
 const SLIDES_SYSTEM = `You write the words for Instagram and Facebook carousel posts for small local businesses.
-A carousel is ${SLIDE_COUNT} swipeable slides that share one background image:
+A carousel is ${SLIDE_COUNT} swipeable slides: a photograph behind the first, plain designed slides after it:
 - Slide 1: a hook that makes people swipe. Heading under 8 words; body under 15 words.
 - Slides 2 to ${SLIDE_COUNT - 1}: one useful point each (a tip, a benefit, a step). Heading under 8 words; body under 25 words.
 - Slide ${SLIDE_COUNT}: a clear, simple call to action (the website if one is given, otherwise getting in touch). Heading under 8 words; body under 20 words.
-Plain text only: no emoji, no hashtags, no markdown, no numbering in the words.
+Plain text only: no emoji or symbols of any kind, no hashtags, no markdown, no numbering in the words.
+Sound like a real local business owner wrote it, not AI: no clichés such as "look no further", "say goodbye to", "elevate" or "unlock", and no dashes used as punctuation.
 UK English spelling and vocabulary (organise, colour, favourite, centre).
 Never invent prices, offers, discounts, phone numbers, awards or claims the business has not given.`;
 
@@ -213,4 +216,51 @@ export async function readBusinessDetails(env: Env, websiteUrl: string, pageText
     localArea: orNull(found.localArea, 200),
     tone: found.tone || null,
   };
+}
+
+export interface VideoShot {
+  scene: string;
+  caption: string;
+}
+
+export interface VideoPlan {
+  hook: VideoShot;
+  middle: VideoShot[];
+  endCaption: string;
+  music: string;
+}
+
+const VIDEO_PLAN_SYSTEM = `You plan 10 second vertical video adverts (Instagram Reels, YouTube Shorts, TikTok) for small local businesses. An AI video model films your plan, so plan what it does well.
+The video has four parts:
+- 0 to 3 seconds, the hook: a scene that stops the scroll, with a caption that speaks to the viewer's problem or wish.
+- 3 to 5 seconds and 5 to 7 seconds: two quick shots showing the service, the work or the result, each with a short caption.
+- 7 to 10 seconds: an end card with the business name and one short closing caption (what to do next, or why to choose them).
+Scenes: describe one clear, concrete shot each, with the camera move. Favour places, objects, hands at work and before and after results. Avoid close-ups of faces, people speaking, and slow or subtle body movements such as breathing, which look robotic.
+Captions: at most 6 words each, plain words, no emoji, no hashtags, no quotation marks. UK English spelling. Never invent prices, offers, discounts, phone numbers, awards or claims the business has not given.
+Music: one short phrase describing background music that suits the business and tone.`;
+
+const shotSchema = z.object({
+  scene: z.string().trim().min(1).max(400),
+  caption: z.string().trim().min(1).max(60),
+});
+
+const videoPlanSchema = z.object({
+  hook: shotSchema,
+  middle: z.array(shotSchema).length(2),
+  endCaption: z.string().trim().min(1).max(60),
+  music: z.string().trim().min(1).max(120),
+});
+
+// A shot-by-shot plan with on-screen captions, so the video carries the
+// advert's message rather than being a moving picture.
+export async function planVideo(env: Env, profile: Profile, topic: string, direction: string | null): Promise<VideoPlan> {
+  const wish = direction ? `\n\nThe business owner wants the video to show: ${direction}` : "";
+  const prompt = `${describeBusiness(profile)}\n\nTone of voice: ${toneGuide(profile.tone)}\n\nVideo topic: ${topic}${wish}`;
+  return structured(env, {
+    system: VIDEO_PLAN_SYSTEM,
+    prompt,
+    maxTokens: 1024,
+    name: "record_video_plan",
+    schema: videoPlanSchema,
+  });
 }

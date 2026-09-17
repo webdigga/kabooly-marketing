@@ -8,7 +8,8 @@ import { TextArea } from '../Field/Field'
 import styles from './VideoPanel.module.css'
 import { useVideo } from './useVideo'
 
-export const MOTION_HINT = 'For example: slow camera pan across the finished garden. Leave blank and we will choose.'
+export const MOTION_LABEL = 'What should the video show?'
+export const MOTION_HINT = 'For example: the finished garden, or before and after. Leave blank and we will plan it.'
 
 interface VideoPanelProps {
   advertId: string
@@ -51,7 +52,7 @@ function StartControls({ hasVideo, starting, onStart }: { hasVideo: boolean; sta
   const [motion, setMotion] = useState('')
   return (
     <div className={styles.start}>
-      <TextArea label="Movement" optional hint={MOTION_HINT} value={motion} rows={2} maxLength={300} onChange={(e) => setMotion(e.target.value)} data-testid="video-motion" />
+      <TextArea label={MOTION_LABEL} optional hint={MOTION_HINT} value={motion} rows={2} maxLength={300} onChange={(e) => setMotion(e.target.value)} data-testid="video-motion" />
       <div>
         <Button
           variant={hasVideo ? 'secondary' : 'primary'}
@@ -85,7 +86,7 @@ export default function VideoPanel({ advertId, video: initial, onUsage, autoStar
   const waiting = autoStart !== undefined && !video
   return (
     <div className={styles.panel} data-testid="video-panel">
-      <p className={styles.meta}>Vertical 1080 × 1920, up to 10 seconds, with background music. Each video uses one of your videos for the month.</p>
+      <p className={styles.meta}>A 10 second vertical video with captions: a hook, two shots of your work and an end card with your name. Each one uses one of your videos for the month.</p>
       {video && pending && <Pending video={video} />}
       {video?.status === 'ready' && <Ready video={video} />}
       {video?.status === 'failed' && <Alert tone="warning">That video could not be made, so it has not counted. Try again.</Alert>}

@@ -5,7 +5,7 @@ import type { Profile } from "../src/profile";
 import { checkVideo, deleteVideoJob, startVideo, VIDEO_JOB_TTL_MS, videoPrompt, VideoError } from "../src/video-maker";
 import { findVideo, refreshVideo } from "../src/video-store";
 import type { VideoJson } from "../src/video-store";
-import { GEMINI_URL, geminiImage, geminiVideo, mockClaude, mockGemini, MP4_BYTES } from "./ai-mocks";
+import { ANTHROPIC_URL, GEMINI_URL, geminiImage, geminiVideo, mockClaude, mockGemini, MP4_BYTES, VIDEO_PLAN } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
 import { apiFetch, mockEmail, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
 
@@ -31,18 +31,22 @@ const profile: Profile = {
 const JOB_URL = `${GEMINI_URL}/v1_video`;
 
 describe("videoPrompt", () => {
-  it("uses the starting frame, the logo reference and the customer's movement", () => {
-    const prompt = videoPrompt(profile, "Spring ovens", "Camera pans across the kitchen", true);
+  it("films the planned shots with their captions and an end card", () => {
+    const prompt = videoPrompt(profile, VIDEO_PLAN, true);
     expect(prompt).toContain("[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]");
-    expect(prompt).toContain("Movement: Camera pans across the kitchen");
+    expect(prompt).toContain("A 10 second vertical");
+    expect(prompt).toContain('[0-3s] Slow push in on a greasy oven door in a bright kitchen. On screen, the words "Dreading your oven?"');
+    expect(prompt).toContain('[3-5s] Cut to: Gloved hands wipe the oven glass clean. On screen, the words "We deep clean it"');
+    expect(prompt).toContain('[5-7s] Cut to: Pan across the sparkling finished oven. On screen, the words "Like new again"');
+    expect(prompt).toContain('[7-10s] Cut to an end card');
+    expect(prompt).toContain('"Acme Cleaning" in large bold letters, and below it "Book your clean today"');
+    expect(prompt).toContain("Audio: upbeat acoustic guitar. No dialogue");
     expect(prompt).toContain("Image2 is the business logo");
-    expect(prompt).toContain("Do not add any words");
   });
 
-  it("describes gentle movement itself and leaves out the logo when there is none", () => {
-    const prompt = videoPrompt(profile, "Spring ovens", null, false);
+  it("leaves out the logo reference when there is no logo", () => {
+    const prompt = videoPrompt(profile, VIDEO_PLAN, false);
     expect(prompt.startsWith("[# Sources <FIRST_FRAME>@Image1]\n")).toBe(true);
-    expect(prompt).toContain("bring the scene gently to life");
     expect(prompt).not.toContain("Image2");
   });
 });
@@ -179,6 +183,16 @@ describe("video routes", () => {
     expect(await videosUsed(cookie)).toBe(1);
   });
 
+  it("plans the shots first, opens on the hook scene and films the captions", async () => {
+    const cookie = await readyUser();
+    const advert = await textAdvert(cookie);
+    await startVideoFor(cookie, advert.id, "Steam rises from a clean oven");
+    expect(callsTo(ANTHROPIC_URL).at(-1)?.body).toContain("The business owner wants the video to show: Steam rises from a clean oven");
+    const frame = callsTo(GEMINI_URL).find((c) => c.body.includes("opening frame"));
+    expect(frame?.body).toContain("The scene: Slow push in on a greasy oven door");
+    expect(callsTo(GEMINI_URL).find((c) => c.body.includes('"background":true'))?.body).toContain("Dreading your oven?");
+  });
+
   it("shows the video with the advert and in the library", async () => {
     const cookie = await readyUser();
     const advert = await textAdvert(cookie);
@@ -222,6 +236,14 @@ describe("video routes", () => {
     expect(await testEnv.FILES.head(keyOf(first.start.url))).toBeNull();
     expect(await testEnv.FILES.head(keyOf(first.video?.url ?? ""))).toBeNull();
     expect(await videosUsed(cookie)).toBe(2);
+  });
+
+  it("answers 502 and refunds when the shots cannot be planned", async () => {
+    const cookie = await readyUser();
+    const advert = await textAdvert(cookie);
+    onFetch(ANTHROPIC_URL, () => new Response("{}", { status: 500 }));
+    expect((await startVideoFor(cookie, advert.id)).status).toBe(502);
+    expect(await videosUsed(cookie)).toBe(0);
   });
 
   it("answers 502 and refunds when the video cannot be started", async () => {

@@ -210,7 +210,7 @@ export function useGenerator(onUsage: (usage: Usage) => void) {
       setState((s) => ({
         ...s,
         backgroundStatus: s.background ? 'ready' : 'error',
-        error: failure(err, 'A new background could not be made. Try again.'),
+        error: failure(err, 'A new photo could not be made. Try again.'),
       }))
     } finally {
       refreshUsage()

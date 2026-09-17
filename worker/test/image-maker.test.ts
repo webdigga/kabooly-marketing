@@ -34,7 +34,12 @@ describe("imagePrompt", () => {
     const prompt = imagePrompt(profile, "Spring ovens", "facebook", true);
     expect(prompt).toContain("Facebook advert image for Acme Cleaning");
     expect(prompt).toContain("#1d4ed8, #f59e0b");
+    expect(prompt).toContain("no colour filters, tints or recolouring");
     expect(prompt).toContain("attached image is the business logo");
+    expect(prompt).toContain("never redrawn, restyled or recoloured");
+    expect(prompt).toContain("Do not add icons, symbols, emoji");
+    expect(prompt).toContain("two arms, two hands");
+    expect(prompt).not.toContain("polished graphic");
     expect(prompt).toContain("cropped slightly");
     expect(prompt).toContain("Do not add any words");
   });
@@ -49,15 +54,18 @@ describe("imagePrompt", () => {
 
 describe("videoStartPrompt and carouselBackgroundPrompt", () => {
   it("asks for a vertical opening frame, with the logo when there is one", () => {
-    const prompt = videoStartPrompt(profile, "Spring ovens", true);
+    const prompt = videoStartPrompt(profile, "Spring ovens", "A greasy oven door", true);
     expect(prompt).toContain("vertical 9:16 opening frame");
+    expect(prompt).toContain("The scene: A greasy oven door");
     expect(prompt).toContain("attached image is the business logo");
-    expect(videoStartPrompt(profile, "Spring ovens", false)).not.toContain("logo");
+    expect(videoStartPrompt(profile, "Spring ovens", "A greasy oven door", false)).not.toContain("logo");
   });
 
-  it("asks for a calm, logo-free background for slides", () => {
+  it("asks for a plain, logo-free photograph for the first slide", () => {
     const prompt = carouselBackgroundPrompt(profile, "Spring ovens");
-    expect(prompt).toContain("4:5 background image");
+    expect(prompt).toContain("4:5 photograph");
+    expect(prompt).toContain("Do not add panels, boxes, borders, fog");
+    expect(prompt).not.toMatch(/text will be placed|calm/);
     expect(prompt).toContain("Do not include any logo.");
     expect(prompt).not.toContain("attached image");
   });
@@ -88,7 +96,7 @@ describe("generateImage", () => {
     const call = callsTo(GEMINI_URL)[0];
     const body = JSON.parse(call?.body ?? "{}") as Record<string, unknown>;
     expect(body).toMatchObject({
-      model: "gemini-3.1-flash-image",
+      model: "gemini-3-pro-image",
       store: false,
       input: [
         { type: "text", text: "prompt" },

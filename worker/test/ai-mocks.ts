@@ -33,6 +33,16 @@ export const SLIDES = [
   { heading: "Book a deep clean", body: "Visit acme-cleaning.co.uk to book in Twickenham." },
 ];
 
+export const VIDEO_PLAN = {
+  hook: { scene: "Slow push in on a greasy oven door in a bright kitchen.", caption: "Dreading your oven?" },
+  middle: [
+    { scene: "Gloved hands wipe the oven glass clean.", caption: "We deep clean it" },
+    { scene: "Pan across the sparkling finished oven.", caption: "Like new again" },
+  ],
+  endCaption: "Book your clean today",
+  music: "upbeat acoustic guitar",
+};
+
 export const DETAILS = {
   businessName: "Acme Cleaning",
   description: "We clean homes and ovens.",
@@ -55,6 +65,7 @@ export function mockClaude(advert = "Spring is here. Book your oven clean in Twi
     const tool = body.tools?.[0]?.name;
     if (tool === "record_slides") return Response.json(claudeToolCall(tool, { slides: SLIDES }));
     if (tool === "record_profile") return Response.json(claudeToolCall(tool, DETAILS));
+    if (tool === "record_video_plan") return Response.json(claudeToolCall(tool, VIDEO_PLAN));
     return Response.json(claudeMessage(body.system.includes("advert topics") ? topic : advert));
   });
 }

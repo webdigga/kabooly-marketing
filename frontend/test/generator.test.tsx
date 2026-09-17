@@ -45,7 +45,7 @@ async function landed() {
 describe('topic', () => {
   it('suggests a topic on landing and another on request, avoiding repeats', async () => {
     await landed()
-    expect(screen.getByTestId('usage')).toHaveTextContent('18 of 20 images left')
+    expect(screen.getByTestId('usage')).toHaveTextContent('18 leftimages today')
     await userEvent.click(screen.getByTestId('suggest-topic'))
     await waitFor(() => expect(screen.getByTestId('topic-input')).toHaveValue('Sparkling windows'))
     expect(callsTo('POST', '/api/topics/suggest')[1]?.body).toEqual({ avoid: ['Spring ovens'] })
@@ -84,7 +84,7 @@ describe('generation', () => {
     expect(screen.getByTestId('image-facebook')).toBeInTheDocument()
     expect(screen.queryByTestId('image-nextdoor')).not.toBeInTheDocument()
     expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'images', topic: 'Spring ovens', platforms: ['instagram', 'facebook'] })
-    expect(screen.getByTestId('usage')).toHaveTextContent('16 of 20 images left')
+    expect(screen.getByTestId('usage')).toHaveTextContent('16 leftimages today')
     expect(localStorage.getItem('kabooly-marketing-platforms')).toBe('["instagram","facebook"]')
   })
 

@@ -20,37 +20,16 @@
   align-content: start;
 }
 
+/* Sizes are 1080-pixel slide sizes as a share of the slide's width, so the
+   preview matches the downloaded image (lib/slide-render.ts). */
 .slide {
   position: relative;
   aspect-ratio: 1080 / 1350;
   max-width: 100%;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background-size: cover;
-  background-position: center;
+  border: 1px solid var(--color-border-light);
   container-type: inline-size;
-}
-
-.slide::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: rgb(15 23 42 / 55%);
-}
-
-.bar {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1.8cqw;
-}
-
-.number {
-  position: absolute;
-  top: 8.9cqw;
-  right: 8.9cqw;
-  color: rgb(255 255 255 / 85%);
-  font-size: 3.3cqw;
-  font-weight: var(--font-weight-semibold);
 }
 
 .words {
@@ -59,38 +38,66 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3.7cqw;
-  color: var(--color-white);
+  gap: 3.33cqw;
 }
 
-.hook,
 .heading {
+  font-size: 6.67cqw;
   font-weight: var(--font-weight-bold);
   line-height: 1.15;
 }
 
-.hook {
-  font-size: 8.9cqw;
-}
-
-.heading {
-  font-size: 7cqw;
-}
-
 .body {
-  font-size: 4.3cqw;
+  font-size: 4.26cqw;
+  line-height: 1.45;
+  color: #374151;
+}
+
+.hook {
+  background-size: cover;
+  background-position: center;
+}
+
+.hook::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgb(15 23 42 / 0%) 35%, rgb(15 23 42 / 88%) 100%);
+}
+
+.hook .words {
+  inset: auto 8.9cqw 8.9cqw;
+  color: var(--color-white);
+}
+
+.hook .heading {
+  font-size: 8.15cqw;
+  line-height: 1.12;
+}
+
+.hook .body {
+  font-size: 4.07cqw;
   line-height: 1.4;
+  color: var(--color-white);
+}
+
+.point {
+  background-color: #f8fafc;
+}
+
+.close {
+  background-color: var(--color-white);
+}
+
+.close .words {
+  align-items: center;
+  text-align: center;
 }
 
 .logo {
-  position: absolute;
-  left: 7cqw;
-  bottom: 7cqw;
-  max-width: 28cqw;
-  max-height: 13.9cqw;
-  padding: 1.9cqw;
-  border-radius: 1.5cqw;
-  background-color: var(--color-white);
+  max-width: 48cqw;
+  max-height: 22.2cqw;
+  margin-bottom: 3.33cqw;
   object-fit: contain;
 }
 

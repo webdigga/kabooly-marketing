@@ -95,9 +95,10 @@ describe('usage', () => {
     mockApi(base())
     renderApp('/')
     const usage = await screen.findByTestId('usage')
-    expect(usage).toHaveTextContent('Images today18 of 20 images left')
-    expect(usage).toHaveTextContent('Images this month138 of 150 images left')
-    expect(usage).toHaveTextContent('Videos this month19 of 20 videos left')
+    expect(usage).toHaveTextContent('18 leftimages today of 20')
+    expect(usage).toHaveTextContent('138 leftimages this month of 150')
+    expect(usage).toHaveTextContent('19 leftvideos this month of 20')
+    expect(screen.getByRole('meter', { name: 'images today used' })).toHaveAttribute('aria-valuenow', '2')
   })
 })
 
@@ -177,8 +178,11 @@ describe('carousels', () => {
     await userEvent.click(screen.getByTestId('generate'))
     const first = await screen.findByTestId('slide-1')
     expect(first).toHaveTextContent('Is your oven hiding grime?')
-    expect(first).toHaveTextContent('1/5')
-    expect(first.querySelector('img')).toHaveAttribute('src', '/api/files/users/u1/logos/logo.png')
+    expect(first).not.toHaveTextContent('1/5')
+    expect(first.querySelector('img')).toBeNull()
+    expect(first.getAttribute('style')).toContain(BACKGROUND.url)
+    expect(screen.getByTestId('slide-2').getAttribute('style')).toBeNull()
+    expect(screen.getByTestId('slide-5').querySelector('img')).toHaveAttribute('src', '/api/files/users/u1/logos/logo.png')
     expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'carousel', topic: 'Spring ovens' })
     await waitFor(() => expect(screen.getByTestId('download-slide-2')).toBeEnabled())
 
@@ -248,7 +252,7 @@ describe('carousels', () => {
     )
     await landed('carousel')
     await userEvent.click(screen.getByTestId('generate'))
-    expect(await screen.findByText(/The background could not be made/)).toBeInTheDocument()
+    expect(await screen.findByText(/The photo for the first slide could not be made/)).toBeInTheDocument()
     expect(screen.getByTestId('download-slide-1')).toBeEnabled()
 
     await userEvent.click(screen.getByTestId('edit-slides'))
@@ -260,14 +264,14 @@ describe('carousels', () => {
     expect(await screen.findByTestId('generator-error')).toHaveTextContent('New slides could not be written')
     await userEvent.click(screen.getByTestId('regenerate-background'))
     await waitFor(() => expect(screen.getByTestId('generator-error')).toHaveTextContent('You have made all 20 images allowed in 24 hours'))
-    expect(screen.getByText(/The background could not be made/)).toBeInTheDocument()
+    expect(screen.getByText(/The photo for the first slide could not be made/)).toBeInTheDocument()
   })
 
   it('treats a stream that stops before the background as a failed background', async () => {
     mockApi(carouselRoutes({ 'POST /api/generations': () => ndjson([{ type: 'advert', advert: advert({ format: 'carousel', slides: SLIDES }) }]) }))
     await landed('carousel')
     await userEvent.click(screen.getByTestId('generate'))
-    expect(await screen.findByText(/The background could not be made/)).toBeInTheDocument()
+    expect(await screen.findByText(/The photo for the first slide could not be made/)).toBeInTheDocument()
   })
 })
 
@@ -292,7 +296,7 @@ describe('videos', () => {
     expect(await screen.findByText(/Making your video/)).toBeInTheDocument()
     expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'images', topic: 'Spring ovens', platforms: [] })
     expect(callsTo('POST', '/api/posts/a1/video')[0]?.body).toEqual({ motion: 'Steam rises' })
-    expect(screen.getByTestId('usage')).toHaveTextContent('18 of 20 videos left')
+    expect(screen.getByTestId('usage')).toHaveTextContent('18 leftvideos this month')
 
     expect(await screen.findByTestId('video-player')).toHaveAttribute('src', '/api/files/users/u1/posts/a1/video-1.mp4')
     expect(screen.getByRole('link', { name: 'Download video' })).toHaveAttribute('href', video('ready').video?.downloadUrl)
