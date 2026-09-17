@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, errorMessage } from '../src/lib/api'
 import { readEvents } from '../src/lib/generation-stream'
-import { limitMessage, localTime, usageLine } from '../src/lib/limits'
+import { limitMessage, localTime, usageRows } from '../src/lib/limits'
 import { loadPlatformChoice, savePlatformChoice } from '../src/lib/platform-choice'
+import { wrapLines } from '../src/lib/slide-render'
 import { svgSize } from '../src/lib/svg-to-png'
 import { draftFromProfile, draftToBody, EMPTY_DRAFT, fieldFromServer, validate } from '../src/profile/draft'
+import { applyFindings, changedSummary } from '../src/profile/website-fill'
 import { PROFILE } from './helpers'
 
 const NOW = new Date(2026, 8, 15, 9, 0)
@@ -30,6 +32,15 @@ describe('limit messages', () => {
       'You have 1 image left today. Tick fewer platforms',
     )
     expect(limitMessage(limitError({ code: 'daily_text_limit', nextFreeAt: at }), NOW)).toContain("today's limit for text")
+    const later = new Date(2026, 8, 22, 9, 30).toISOString()
+    expect(limitMessage(limitError({ code: 'monthly_image_limit', remaining: 0, limit: 150, nextFreeAt: later }), NOW)).toBe(
+      'You have made all 150 images allowed in 30 days. Your next image is available at 9:30am on Tue 22 Sept.',
+    )
+    expect(limitMessage(limitError({ code: 'monthly_image_limit', remaining: 2, nextFreeAt: later }), NOW)).toContain('2 images left this month')
+    expect(limitMessage(limitError({ code: 'monthly_video_limit', limit: 20, nextFreeAt: later }), NOW)).toBe(
+      'You have made all 20 videos allowed in 30 days. Your next video is available at 9:30am on Tue 22 Sept.',
+    )
+    expect(limitMessage(limitError({ code: 'rate_limit' }), NOW)).toContain('Try again at')
     expect(limitMessage(limitError({ code: 'other' }), NOW)).toBe('Too many requests. Try again shortly.')
   })
 
@@ -38,10 +49,22 @@ describe('limit messages', () => {
     expect(limitMessage(new Error('x'))).toBeNull()
   })
 
-  it('describes usage', () => {
-    expect(usageLine(2, 20)).toBe('18 images left today (20 per 24 hours)')
-    expect(usageLine(19, 20)).toBe('1 image left today (20 per 24 hours)')
-    expect(usageLine(25, 20)).toBe('0 images left today (20 per 24 hours)')
+  it('describes what is left, with when more frees up once used up', () => {
+    const at = new Date(2026, 8, 20, 10, 0).toISOString()
+    expect(
+      usageRows(
+        {
+          imagesToday: { used: 19, limit: 20, nextFreeAt: null },
+          imagesThisMonth: { used: 150, limit: 150, nextFreeAt: at },
+          videosThisMonth: { used: 25, limit: 20, nextFreeAt: null },
+        },
+        NOW,
+      ),
+    ).toEqual([
+      { label: 'Images today', left: '1 of 20 images left', freeAt: null },
+      { label: 'Images this month', left: '0 of 150 images left', freeAt: 'More from 10:00am on Sun 20 Sept' },
+      { label: 'Videos this month', left: '0 of 20 videos left', freeAt: null },
+    ])
   })
 })
 
@@ -126,5 +149,33 @@ describe('profile draft', () => {
     expect(fieldFromServer('logoKey')).toBe('logo')
     expect(fieldFromServer('nonsense')).toBeNull()
     expect(fieldFromServer(undefined)).toBeNull()
+  })
+})
+
+describe('website fill', () => {
+  const details = { businessName: 'Acme Cleaning', description: 'New words', services: [], targetAudience: null, localArea: 'Richmond', tone: 5 }
+
+  it('fills what the website gave, keeps the rest, and lists what changed', () => {
+    const draft = draftFromProfile(PROFILE)
+    const { draft: next, changed } = applyFindings(draft, { colours: ['#1d4ed8'], logo: null, details })
+    expect(next).toMatchObject({ businessName: 'Acme Cleaning', description: 'New words', localArea: 'Richmond', tone: 5, services: PROFILE.services })
+    expect(changed).toEqual(['description', 'localArea', 'tone'])
+    expect(applyFindings(EMPTY_DRAFT, { colours: [], logo: null, details: null })).toEqual({ draft: EMPTY_DRAFT, changed: [] })
+  })
+
+  it('summarises the changes in plain words', () => {
+    expect(changedSummary(['logo'])).toBe('Updated from your website: logo. Check them, then save.')
+    expect(changedSummary(['businessName', 'services', 'brandColours'])).toBe(
+      'Updated from your website: business name, services and colours. Check them, then save.',
+    )
+  })
+})
+
+describe('wrapLines', () => {
+  it('breaks words onto lines that fit, never splitting a word', () => {
+    const measure = (text: string) => text.length
+    expect(wrapLines(measure, 'one two three four', 9)).toEqual(['one two', 'three', 'four'])
+    expect(wrapLines(measure, 'extraordinarily long', 5)).toEqual(['extraordinarily', 'long'])
+    expect(wrapLines(measure, '  ', 5)).toEqual([])
   })
 })

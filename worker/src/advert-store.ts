@@ -1,33 +1,51 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
-import type { Platform } from "./db/schema";
+import type { AdvertFormat, Platform, Slide } from "./db/schema";
 import type { Env } from "./env";
 import { fileUrl, userPrefix } from "./files";
-import { bytesToBase64, fitToPlatform, generateImage, imagePrompt } from "./image-maker";
+import {
+  brandPhoto,
+  bytesToBase64,
+  carouselBackgroundPrompt,
+  fitToPlatform,
+  fitToShape,
+  generateImage,
+  imagePrompt,
+} from "./image-maker";
 import type { Logo } from "./image-maker";
-import { PLATFORM_SPECS } from "./platforms";
+import { CAROUSEL_SHAPE, PLATFORM_SPECS } from "./platforms";
 import type { Profile } from "./profile";
+import { videoJson } from "./video-store";
+import type { VideoJson, VideoRow } from "./video-store";
 
-type AdvertRow = typeof schema.adverts.$inferSelect;
+export type AdvertRow = typeof schema.adverts.$inferSelect;
 type ImageRow = typeof schema.advertImages.$inferSelect;
 
-export interface ImageJson {
-  platform: Platform;
-  label: string;
-  width: number;
-  height: number;
+export interface FileJson {
   url: string;
   downloadUrl: string;
 }
 
+export interface ImageJson extends FileJson {
+  platform: Platform;
+  label: string;
+  width: number;
+  height: number;
+}
+
 export interface AdvertJson {
   id: string;
+  format: AdvertFormat;
   topic: string;
   body: string;
   createdAt: string;
   updatedAt: string;
   images: ImageJson[];
+  // Carousels only.
+  slides: Slide[] | null;
+  background: FileJson | null;
+  video: VideoJson | null;
 }
 
 const PLATFORM_ORDER: Platform[] = ["instagram", "facebook", "nextdoor"];
@@ -36,42 +54,65 @@ function db(env: Env) {
   return drizzle(env.DB, { schema });
 }
 
+// Every file an advert owns lives under this prefix, so deleting an advert
+// is one listing. "posts", not "adverts": ad blockers block URLs containing
+// the latter.
+export function advertPrefix(userId: string, advertId: string): string {
+  return `${userPrefix(userId)}posts/${advertId}/`;
+}
+
+export function fileJson(key: string, name: string, date: Date): FileJson {
+  const url = fileUrl(key);
+  const extension = key.slice(key.lastIndexOf(".") + 1);
+  return { url, downloadUrl: `${url}?download=kabooly-${name}-${date.toISOString().slice(0, 10)}.${extension}` };
+}
+
 export function imageJson(row: ImageRow): ImageJson {
   const spec = PLATFORM_SPECS[row.platform];
-  const date = row.generatedAt.toISOString().slice(0, 10);
-  const url = fileUrl(row.r2Key);
   return {
     platform: row.platform,
     label: spec.label,
     width: spec.width,
     height: spec.height,
-    url,
-    downloadUrl: `${url}?download=kabooly-${row.platform}-${date}.jpg`,
+    ...fileJson(row.r2Key, row.platform, row.generatedAt),
   };
 }
 
-export function advertJson(row: AdvertRow, images: ImageRow[]): AdvertJson {
+export function advertJson(row: AdvertRow, images: ImageRow[], video: VideoRow | null = null): AdvertJson {
   const sorted = [...images].sort(
     (a, b) => PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform)
   );
   return {
     id: row.id,
+    format: row.format,
     topic: row.topic,
     body: row.body,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     images: sorted.map(imageJson),
+    slides: row.slides,
+    background: row.backgroundKey ? fileJson(row.backgroundKey, "background", row.updatedAt) : null,
+    video: video ? videoJson(video) : null,
   };
 }
 
 export async function createAdvert(
   env: Env,
   userId: string,
-  topic: string,
-  body: string
+  fields: { topic: string; body: string; format: AdvertFormat; slides?: Slide[] }
 ): Promise<AdvertRow> {
   const now = new Date();
-  const row = { id: crypto.randomUUID(), userId, topic, body, createdAt: now, updatedAt: now };
+  const row: AdvertRow = {
+    id: crypto.randomUUID(),
+    userId,
+    topic: fields.topic,
+    body: fields.body,
+    format: fields.format,
+    slides: fields.slides ?? null,
+    backgroundKey: null,
+    createdAt: now,
+    updatedAt: now,
+  };
   await db(env).insert(schema.adverts).values(row);
   return row;
 }
@@ -92,20 +133,37 @@ export async function imagesFor(env: Env, advertIds: string[]): Promise<ImageRow
     .where(inArray(schema.advertImages.advertId, advertIds));
 }
 
-export async function updateAdvertBody(env: Env, advert: AdvertRow, body: string): Promise<AdvertRow> {
-  const updated = { ...advert, body, updatedAt: new Date() };
-  await db(env)
-    .update(schema.adverts)
-    .set({ body, updatedAt: updated.updatedAt })
-    .where(eq(schema.adverts.id, advert.id));
-  return updated;
+export async function videosFor(env: Env, advertIds: string[]): Promise<VideoRow[]> {
+  if (!advertIds.length) return [];
+  return db(env)
+    .select()
+    .from(schema.advertVideos)
+    .where(inArray(schema.advertVideos.advertId, advertIds));
 }
 
-// Removes an advert, its image rows (by cascade) and its image files.
+// The full JSON for one advert: its images and its video, if any.
+export async function loadAdvertJson(env: Env, advert: AdvertRow): Promise<AdvertJson> {
+  const [images, [video]] = await Promise.all([imagesFor(env, [advert.id]), videosFor(env, [advert.id])]);
+  return advertJson(advert, images, video ?? null);
+}
+
+export async function updateAdvert(
+  env: Env,
+  advert: AdvertRow,
+  changes: { body?: string; slides?: Slide[]; backgroundKey?: string }
+): Promise<AdvertRow> {
+  const set = { ...changes, updatedAt: new Date() };
+  await db(env).update(schema.adverts).set(set).where(eq(schema.adverts.id, advert.id));
+  return { ...advert, ...set };
+}
+
+// Removes an advert, its image and video rows (by cascade) and every file
+// under its prefix.
 export async function deleteAdvert(env: Env, advert: AdvertRow): Promise<void> {
-  const images = await imagesFor(env, [advert.id]);
   await db(env).delete(schema.adverts).where(eq(schema.adverts.id, advert.id));
-  if (images.length) await env.FILES.delete(images.map((i) => i.r2Key));
+  const listed = await env.FILES.list({ prefix: advertPrefix(advert.userId, advert.id) });
+  const keys = listed.objects.map((o) => o.key);
+  if (keys.length) await env.FILES.delete(keys);
 }
 
 export interface Cursor {
@@ -142,14 +200,19 @@ export async function listAdverts(
     .limit(limit);
 }
 
-export async function loadLogo(env: Env, profile: Profile): Promise<Logo | null> {
+export async function loadLogoBytes(env: Env, profile: Profile): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
   if (!profile.logoKey) return null;
   const object = await env.FILES.get(profile.logoKey);
   if (!object) return null;
   return {
     mimeType: object.httpMetadata?.contentType ?? "image/png",
-    base64: bytesToBase64(new Uint8Array(await object.arrayBuffer())),
+    bytes: new Uint8Array(await object.arrayBuffer()),
   };
+}
+
+export async function loadLogo(env: Env, profile: Profile): Promise<Logo | null> {
+  const logo = await loadLogoBytes(env, profile);
+  return logo && { mimeType: logo.mimeType, base64: bytesToBase64(logo.bytes) };
 }
 
 export interface ImageJob {
@@ -159,21 +222,22 @@ export interface ImageJob {
   logo: Logo | null;
 }
 
-// Generates, crops and stores one platform image, replacing any earlier
-// one for the same platform (row and R2 object).
-export async function makePlatformImage(env: Env, job: ImageJob, platform: Platform): Promise<ImageJson> {
-  const prompt = imagePrompt(job.profile, job.advert.topic, platform, job.logo !== null);
-  const raw = await generateImage(env, prompt, platform, job.logo);
-  const fitted = await fitToPlatform(env, raw, platform);
-  // "posts", not "adverts": ad blockers block URLs containing the latter.
-  const key = `${userPrefix(job.userId)}posts/${job.advert.id}/${platform}-${crypto.randomUUID()}.jpg`;
-  await env.FILES.put(key, fitted, { httpMetadata: { contentType: "image/jpeg" } });
+// Stores one platform image, replacing any earlier one for the same
+// platform (row and R2 object).
+async function storePlatformImage(
+  env: Env,
+  advert: AdvertRow,
+  platform: Platform,
+  bytes: Uint8Array
+): Promise<ImageJson> {
+  const key = `${advertPrefix(advert.userId, advert.id)}${platform}-${crypto.randomUUID()}.jpg`;
+  await env.FILES.put(key, bytes, { httpMetadata: { contentType: "image/jpeg" } });
 
   const [previous] = await db(env)
     .select()
     .from(schema.advertImages)
-    .where(and(eq(schema.advertImages.advertId, job.advert.id), eq(schema.advertImages.platform, platform)));
-  const row = { advertId: job.advert.id, platform, r2Key: key, generatedAt: new Date() };
+    .where(and(eq(schema.advertImages.advertId, advert.id), eq(schema.advertImages.platform, platform)));
+  const row = { advertId: advert.id, platform, r2Key: key, generatedAt: new Date() };
   await db(env)
     .insert(schema.advertImages)
     .values(row)
@@ -183,4 +247,39 @@ export async function makePlatformImage(env: Env, job: ImageJob, platform: Platf
     });
   if (previous) await env.FILES.delete(previous.r2Key);
   return imageJson(row);
+}
+
+// Generates, crops and stores one platform image.
+export async function makePlatformImage(env: Env, job: ImageJob, platform: Platform): Promise<ImageJson> {
+  const prompt = imagePrompt(job.profile, job.advert.topic, platform, job.logo !== null);
+  const raw = await generateImage(env, prompt, PLATFORM_SPECS[platform].aspectRatio, job.logo);
+  return storePlatformImage(env, job.advert, platform, await fitToPlatform(env, raw, platform));
+}
+
+export interface PhotoJob {
+  advert: AdvertRow;
+  photo: Uint8Array;
+  logo: Uint8Array | null;
+  colour: string | null;
+}
+
+// Cuts and brands one platform image from the customer's own photo.
+export async function makePhotoImage(env: Env, job: PhotoJob, platform: Platform): Promise<ImageJson> {
+  const branded = await brandPhoto(env, job.photo, platform, { logo: job.logo, colour: job.colour });
+  return storePlatformImage(env, job.advert, platform, branded);
+}
+
+// Generates the one background every carousel slide is laid over,
+// replacing any earlier one.
+export async function makeCarouselBackground(
+  env: Env,
+  advert: AdvertRow,
+  profile: Profile
+): Promise<AdvertRow> {
+  const raw = await generateImage(env, carouselBackgroundPrompt(profile, advert.topic), CAROUSEL_SHAPE.aspectRatio, null);
+  const key = `${advertPrefix(advert.userId, advert.id)}background-${crypto.randomUUID()}.jpg`;
+  await env.FILES.put(key, await fitToShape(env, raw, CAROUSEL_SHAPE), { httpMetadata: { contentType: "image/jpeg" } });
+  const updated = await updateAdvert(env, advert, { backgroundKey: key });
+  if (advert.backgroundKey) await env.FILES.delete(advert.backgroundKey);
+  return updated;
 }

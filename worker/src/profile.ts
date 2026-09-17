@@ -2,6 +2,8 @@ import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { z } from "zod";
+import { readBusinessDetails } from "./copywriter";
+import type { BusinessDetails } from "./copywriter";
 import * as schema from "./db/schema";
 import type { Env } from "./env";
 import { fileUrl, storeLogo, userPrefix } from "./files";
@@ -161,6 +163,18 @@ profileApi.put("/profile", async (c) => {
   return c.json({ profile: toJson(saved) });
 });
 
+// The rest of the profile, read from the website's words. Best effort like
+// the rest of the scan: no words or a failed read is simply nothing found.
+async function readDetails(env: Env, url: URL, pageText: string): Promise<BusinessDetails | null> {
+  if (!pageText.trim()) return null;
+  try {
+    return await readBusinessDetails(env, url.toString(), pageText);
+  } catch (err) {
+    console.error("could not read business details", err);
+    return null;
+  }
+}
+
 const scanBody = z.object({ url: z.string().max(300) });
 
 profileApi.post("/profile/scan", async (c) => {
@@ -171,18 +185,19 @@ profileApi.post("/profile/scan", async (c) => {
 
   // Reading a website makes the Worker fetch someone else's site, so it
   // counts against the same generous text allowance as topic suggestions.
-  const lease = await beginGeneration(c.env, c.get("userId"), { kind: "text", images: 0, holdLock: false });
+  const lease = await beginGeneration(c.env, c.get("userId"), { kind: "text", units: 0, holdLock: false });
   if (isDenied(lease)) return deniedResponse(c, lease);
   const outcome = await scanWebsite(url).finally(() => lease.finish(0));
-  const logo =
-    outcome.logo?.kind === "raster"
-      ? await storeLogo(c.env, c.get("userId"), outcome.logo.bytes)
-      : null;
+  const [logo, details] = await Promise.all([
+    outcome.logo?.kind === "raster" ? storeLogo(c.env, c.get("userId"), outcome.logo.bytes) : null,
+    readDetails(c.env, url, outcome.pageText),
+  ]);
   return c.json({
     websiteUrl: url.toString(),
     reachable: outcome.reachable,
     colours: outcome.colours,
     logo,
     logoSvg: outcome.logo?.kind === "svg" ? outcome.logo.svg : null,
+    details,
   });
 });

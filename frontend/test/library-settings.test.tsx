@@ -106,7 +106,7 @@ describe('library', () => {
     renderApp('/library')
     await screen.findByText('No adverts yet')
     await userEvent.click(screen.getByRole('link', { name: 'Create your first advert' }))
-    await screen.findByRole('heading', { name: 'Create an advert' })
+    await screen.findByRole('heading', { name: 'Create' })
   })
 
   it('offers a retry when loading fails', async () => {
@@ -132,7 +132,7 @@ describe('settings', () => {
       ...base,
       'PUT /api/profile': ({ body }: { body: unknown }) => json({ profile: { ...PROFILE, ...(body as object), logoUrl: null } }),
       'POST /api/profile/scan': () =>
-        json({ websiteUrl: 'https://acme.co.uk/', reachable: true, colours: scanColours, logo: null, logoSvg: null }),
+        json({ websiteUrl: 'https://acme.co.uk/', reachable: true, colours: scanColours, logo: null, logoSvg: null, details: null }),
     }
   }
 
@@ -162,18 +162,35 @@ describe('settings', () => {
     expect(await screen.findByText(/could not be saved/)).toBeInTheDocument()
   })
 
-  it('fetches colours from the website on request and lets them be edited', async () => {
-    mockApi(settingsRoutes())
+  it('refetches the website on request, points out what changed, and saves only on Save', async () => {
+    mockApi({
+      ...settingsRoutes(),
+      'POST /api/profile/scan': () =>
+        json({
+          websiteUrl: 'https://acme.co.uk/',
+          reachable: true,
+          colours: ['#16a34a'],
+          logo: null,
+          logoSvg: null,
+          details: { businessName: 'Acme Cleaning', description: 'We clean ovens.', services: [], targetAudience: null, localArea: null, tone: null },
+        }),
+    })
     renderApp('/settings')
     await screen.findByTestId('business-name')
     await userEvent.click(screen.getByTestId('fetch-website'))
     await waitFor(() => expect(screen.getByTestId('colour-hex-0')).toHaveValue('#16a34a'))
+    expect(screen.getByTestId('description')).toHaveValue('We clean ovens.')
+    expect(screen.getByTestId('changed-summary')).toHaveTextContent('Updated from your website: what your business does and colours.')
+    expect(screen.getByTestId('changed-brandColours')).toBeInTheDocument()
+    expect(screen.queryByTestId('changed-businessName')).not.toBeInTheDocument()
+    expect(callsTo('PUT', '/api/profile')).toHaveLength(0)
     const hex = screen.getByTestId('colour-hex-0')
     await userEvent.clear(hex)
     await userEvent.type(hex, 'ff0000')
     await userEvent.click(screen.getByTestId('save-profile'))
     await screen.findByText('Profile saved.')
-    expect(callsTo('PUT', '/api/profile')[0]?.body).toMatchObject({ brandColours: ['#ff0000'] })
+    expect(callsTo('PUT', '/api/profile')[0]?.body).toMatchObject({ brandColours: ['#ff0000'], description: 'We clean ovens.' })
+    expect(screen.queryByTestId('changed-summary')).not.toBeInTheDocument()
   })
 
   it('says when website checks have been used up', async () => {
@@ -232,6 +249,6 @@ describe('loading the account', () => {
     await screen.findByText(/Could not load your account/)
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('heading', { name: 'Create an advert' })
+    await screen.findByRole('heading', { name: 'Create' })
   })
 })

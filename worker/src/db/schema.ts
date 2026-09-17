@@ -120,6 +120,16 @@ export const profileServices = sqliteTable(
   (t) => [index("profile_services_user_id_idx").on(t.userId, t.position)]
 );
 
+// What an advert is made of: generated platform images, platform images
+// cut from the customer's own photo, or a carousel of slides.
+export const ADVERT_FORMATS = ["images", "photo", "carousel"] as const;
+export type AdvertFormat = (typeof ADVERT_FORMATS)[number];
+
+export interface Slide {
+  heading: string;
+  body: string;
+}
+
 export const adverts = sqliteTable(
   "adverts",
   {
@@ -130,10 +140,17 @@ export const adverts = sqliteTable(
     topic: text("topic").notNull(),
     // Advert text as last saved: generated, regenerated or edited in place.
     body: text("body").notNull(),
+    format: text("format", { enum: ADVERT_FORMATS }).notNull().default("images"),
+    // Carousels only: the words of each slide, and the R2 key of the one
+    // background image every slide is laid over (in the browser).
+    slides: text("slides", { mode: "json" }).$type<Slide[]>(),
+    backgroundKey: text("background_key"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },
-  // The library lists an account's adverts newest first.
+  // The library lists an account's adverts newest first. (No CHECK on
+  // format: adding one would rebuild the table, and on D1 dropping the old
+  // table cascades to advert_images. The app only ever writes the enum.)
   (t) => [index("adverts_user_id_created_at_idx").on(t.userId, t.createdAt)]
 );
 
@@ -158,6 +175,32 @@ export const advertImages = sqliteTable(
       sql`${t.platform} IN ('instagram', 'facebook', 'nextdoor')`
     ),
   ]
+);
+
+export const VIDEO_STATUSES = ["pending", "ready", "failed"] as const;
+export type VideoStatus = (typeof VIDEO_STATUSES)[number];
+
+// At most one video per advert; regenerating replaces it. A video is made in
+// Google's background mode, so the row is written as pending with the job's
+// id and settled by whichever request next checks on it.
+export const advertVideos = sqliteTable(
+  "advert_videos",
+  {
+    advertId: text("advert_id")
+      .primaryKey()
+      .references(() => adverts.id, { onDelete: "cascade" }),
+    status: text("status", { enum: VIDEO_STATUSES }).notNull(),
+    // The limiter lease that counted this video, refunded if it fails.
+    leaseId: text("lease_id").notNull(),
+    interactionId: text("interaction_id"),
+    // The vertical starting image the video was animated from.
+    startKey: text("start_key").notNull(),
+    r2Key: text("r2_key"),
+    motion: text("motion"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [check("advert_videos_status_valid", sql`${t.status} IN ('pending', 'ready', 'failed')`)]
 );
 
 // billing

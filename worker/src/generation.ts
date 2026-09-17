@@ -1,7 +1,16 @@
-import { advertJson, createAdvert, loadLogo, makePlatformImage } from "./advert-store";
-import type { AdvertJson, ImageJson } from "./advert-store";
-import { writeAdvert } from "./copywriter";
-import type { Platform } from "./db/schema";
+import {
+  advertJson,
+  createAdvert,
+  fileJson,
+  loadLogo,
+  loadLogoBytes,
+  makeCarouselBackground,
+  makePhotoImage,
+  makePlatformImage,
+} from "./advert-store";
+import type { AdvertJson, AdvertRow, FileJson, ImageJson } from "./advert-store";
+import { writeAdvert, writeSlides } from "./copywriter";
+import type { AdvertFormat, Platform } from "./db/schema";
 import type { Env } from "./env";
 import type { Lease, UsageJson } from "./limits";
 import { usageFor, usageJson } from "./limits";
@@ -12,6 +21,8 @@ export type GenerationEvent =
   | { type: "advert"; advert: AdvertJson }
   | { type: "image"; advertId: string; image: ImageJson }
   | { type: "image_error"; advertId: string; platform: Platform; error: string }
+  | { type: "background"; advertId: string; background: FileJson }
+  | { type: "background_error"; advertId: string; error: string }
   | { type: "error"; error: string }
   | { type: "done"; usage: UsageJson };
 
@@ -19,23 +30,35 @@ export interface GenerationRequest {
   userId: string;
   profile: Profile;
   topic: string;
+  format: AdvertFormat;
   platforms: Platform[];
+  // Own-photo posts only: the uploaded photo, deleted once its platform
+  // images are cut.
+  photo?: { bytes: Uint8Array; key: string };
 }
 
 type Send = (event: GenerationEvent) => Promise<void>;
 
-async function makeImages(
-  env: Env,
-  req: GenerationRequest,
-  advert: Awaited<ReturnType<typeof createAdvert>>,
-  send: Send
-): Promise<number> {
+type ImageMaker = (platform: Platform) => Promise<ImageJson>;
+
+async function imageMaker(env: Env, req: GenerationRequest, advert: AdvertRow): Promise<ImageMaker> {
+  if (req.photo) {
+    const logo = await loadLogoBytes(env, req.profile);
+    const job = { advert, photo: req.photo.bytes, logo: logo?.bytes ?? null, colour: req.profile.brandColours[0] ?? null };
+    return (platform) => makePhotoImage(env, job, platform);
+  }
   const logo = await loadLogo(env, req.profile);
   const job = { userId: req.userId, advert, profile: req.profile, logo };
+  return (platform) => makePlatformImage(env, job, platform);
+}
+
+// Every ticked platform's image in parallel, each reported as it lands.
+async function makeImages(env: Env, req: GenerationRequest, advert: AdvertRow, send: Send): Promise<number> {
+  const make = await imageMaker(env, req, advert);
   const results = await Promise.all(
     req.platforms.map(async (platform) => {
       try {
-        const image = await makePlatformImage(env, job, platform);
+        const image = await make(platform);
         await send({ type: "image", advertId: advert.id, image });
         return true;
       } catch (err) {
@@ -44,7 +67,10 @@ async function makeImages(
           type: "image_error",
           advertId: advert.id,
           platform,
-          error: "This image could not be made. Try regenerating it.",
+          // An own-photo image cannot be regenerated: the photo is not kept.
+          error: req.photo
+            ? "This image could not be made from your photo. Try again."
+            : "This image could not be made. Try regenerating it.",
         });
         return false;
       }
@@ -53,27 +79,48 @@ async function makeImages(
   return results.filter(Boolean).length;
 }
 
-// Text first (it is quick and the advert is saved as soon as it exists),
-// then every ticked platform's image in parallel, each reported as it lands.
-// The lease is always finished so the in-flight lock is released and failed
-// images are refunded.
-export async function runGeneration(
-  env: Env,
-  req: GenerationRequest,
-  lease: Lease,
-  send: Send
-): Promise<void> {
+async function makeBackground(env: Env, req: GenerationRequest, advert: AdvertRow, send: Send): Promise<number> {
+  try {
+    const updated = await makeCarouselBackground(env, advert, req.profile);
+    const background = fileJson(String(updated.backgroundKey), "background", updated.updatedAt);
+    await send({ type: "background", advertId: advert.id, background });
+    return 1;
+  } catch (err) {
+    console.error("carousel background failed", err);
+    await send({
+      type: "background_error",
+      advertId: advert.id,
+      error: "The background could not be made. Try regenerating it.",
+    });
+    return 0;
+  }
+}
+
+async function writeCopy(env: Env, req: GenerationRequest): Promise<AdvertRow> {
+  const [body, slides] = await Promise.all([
+    writeAdvert(env, req.profile, req.topic),
+    req.format === "carousel" ? writeSlides(env, req.profile, req.topic) : undefined,
+  ]);
+  return createAdvert(env, req.userId, { topic: req.topic, body, format: req.format, slides });
+}
+
+// Words first (quick, and the advert is saved as soon as it exists), then
+// the pictures: platform images, or a carousel's background. The lease is
+// always finished so the in-flight lock is released and failed images are
+// refunded.
+export async function runGeneration(env: Env, req: GenerationRequest, lease: Lease, send: Send): Promise<void> {
   let made = 0;
   try {
-    const body = await writeAdvert(env, req.profile, req.topic);
-    const advert = await createAdvert(env, req.userId, req.topic, body);
+    const advert = await writeCopy(env, req);
     await send({ type: "advert", advert: advertJson(advert, []) });
-    if (req.platforms.length) made = await makeImages(env, req, advert, send);
+    if (req.format === "carousel") made = await makeBackground(env, req, advert, send);
+    else if (req.platforms.length) made = await makeImages(env, req, advert, send);
   } catch (err) {
     console.error("generation failed", err);
     await send({ type: "error", error: "The advert could not be written. Try again." });
   } finally {
     await lease.finish(made);
+    if (req.photo) await env.FILES.delete(req.photo.key);
   }
   await send({ type: "done", usage: usageJson(await usageFor(env, req.userId)) });
 }

@@ -14,6 +14,7 @@ const ownedTables = [
   schema.profileServices,
   schema.adverts,
   schema.advertImages,
+  schema.advertVideos,
   schema.subscriptions,
 ];
 
@@ -40,6 +41,9 @@ async function seed(): Promise<void> {
       "INSERT INTO advert_images (advert_id, platform, r2_key, generated_at) VALUES ('a1', 'instagram', 'adverts/a1/instagram.png', ?1)"
     ).bind(NOW),
     testEnv.DB.prepare(
+      "INSERT INTO advert_videos (advert_id, status, lease_id, start_key, created_at, updated_at) VALUES ('a1', 'pending', 'l1', 'k', ?1, ?1)"
+    ).bind(NOW),
+    testEnv.DB.prepare(
       "INSERT INTO subscriptions (user_id, source, stripe_customer_id, stripe_subscription_id, status, active, created_at, updated_at) VALUES ('u1', 'marketing', 'cus_u1', 'sub_u1', 'active', 1, ?1, ?1)"
     ).bind(NOW),
   ]);
@@ -47,7 +51,7 @@ async function seed(): Promise<void> {
 
 async function count(table: string): Promise<number> {
   const row = await testEnv.DB.prepare(
-    `SELECT COUNT(*) AS n FROM ${table} WHERE ${table === "advert_images" ? "advert_id = 'a1'" : "user_id = 'u1'"}`
+    `SELECT COUNT(*) AS n FROM ${table} WHERE ${table.startsWith("advert_") ? "advert_id = 'a1'" : "user_id = 'u1'"}`
   ).first<{
     n: number;
   }>();
@@ -90,6 +94,7 @@ describe("schema", () => {
       "profile_services",
       "adverts",
       "advert_images",
+      "advert_videos",
       "subscriptions",
     ]) {
       expect(await count(table)).toBe(0);
@@ -106,6 +111,14 @@ describe("schema", () => {
   it("rejects a tone outside 1 to 5", async () => {
     await expect(
       testEnv.DB.prepare("UPDATE business_profiles SET tone = 6 WHERE user_id = 'u1'").run()
+    ).rejects.toThrow(/CHECK constraint failed/);
+  });
+
+  it("defaults an advert to generated images and rejects an unknown video status", async () => {
+    const row = await testEnv.DB.prepare("SELECT format FROM adverts WHERE id = 'a1'").first<{ format: string }>();
+    expect(row?.format).toBe("images");
+    await expect(
+      testEnv.DB.prepare("UPDATE advert_videos SET status = 'lost' WHERE advert_id = 'a1'").run()
     ).rejects.toThrow(/CHECK constraint failed/);
   });
 

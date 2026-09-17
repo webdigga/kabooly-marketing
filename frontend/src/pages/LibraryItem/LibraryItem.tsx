@@ -5,12 +5,14 @@ import { ReadOnlyAdvertText } from '../../components/AdvertText/AdvertText'
 import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
+import CarouselSlides from '../../components/CarouselSlides/CarouselSlides'
 import ImageTile from '../../components/ImageTile/ImageTile'
 import LoadError from '../../components/LoadError/LoadError'
 import PageLoader from '../../components/PageLoader/PageLoader'
+import VideoPanel from '../../components/VideoPanel/VideoPanel'
 import { api, ApiError } from '../../lib/api'
 import { formatDate } from '../../lib/format'
-import type { Advert } from '../../lib/types'
+import type { Advert, Slide } from '../../lib/types'
 import styles from './LibraryItem.module.css'
 
 type LoadState = { status: 'loading' } | { status: 'missing' } | { status: 'error' } | { status: 'ready'; advert: Advert }
@@ -43,7 +45,7 @@ function DeleteAdvert({ id }: { id: string }) {
   }
   return (
     <div className={styles.confirm} role="group" aria-label="Confirm delete">
-      <span>Delete this advert and its images? This cannot be undone.</span>
+      <span>Delete this advert with its images and video? This cannot be undone.</span>
       <div className={styles.confirmButtons}>
         <Button size="sm" className={styles.deleteNow} loading={busy} onClick={() => void remove()} data-testid="confirm-delete">
           Delete
@@ -95,6 +97,12 @@ export default function LibraryItem() {
   }
 
   const { advert } = state
+
+  async function saveSlides(slides: Slide[]) {
+    const body = await api<{ advert: Advert }>(`/api/posts/${advert.id}`, { method: 'PATCH', body: { slides } })
+    setState({ status: 'ready', advert: body.advert })
+  }
+
   return (
     <div className={styles.page}>
       {back}
@@ -107,6 +115,21 @@ export default function LibraryItem() {
             ))}
           </div>
         )}
+        {advert.slides && (
+          <CarouselSlides
+            slides={advert.slides}
+            background={advert.background}
+            backgroundStatus={advert.background ? 'ready' : 'error'}
+            onSave={saveSlides}
+          />
+        )}
+      </Card>
+      <Card
+        title="Video"
+        description="A short vertical video from this advert, for Reels, Shorts, TikTok and Stories."
+        testId="library-video"
+      >
+        <VideoPanel advertId={advert.id} video={advert.video} />
       </Card>
     </div>
   )

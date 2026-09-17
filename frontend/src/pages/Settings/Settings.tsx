@@ -9,9 +9,10 @@ import { useProfile } from '../../context/ProfileContext'
 import { authClient } from '../../lib/auth-client'
 import { draftFromProfile, validate } from '../../profile/draft'
 import type { DraftField } from '../../profile/draft'
-import { BrandFields, BusinessFields, CustomerFields, ScanNotice, ServicesFields } from '../../profile/ProfileFields'
+import { BrandFields, BusinessFields, CustomerFields, ScanNotice, ServicesFields, WebsiteField } from '../../profile/ProfileFields'
 import { useProfileDraft } from '../../profile/useProfileDraft'
 import { useWebsiteScan } from '../../profile/useWebsiteScan'
+import { applyFindings, changedSummary } from '../../profile/website-fill'
 import styles from './Settings.module.css'
 
 const ALL_FIELDS: DraftField[] = ['businessName', 'description', 'websiteUrl', 'targetAudience', 'localArea', 'services']
@@ -21,20 +22,23 @@ export default function Settings() {
   const { profile, setProfile } = useProfile()
   const form = useProfileDraft(draftFromProfile(profile!))
   const { status: scanStatus, scan } = useWebsiteScan()
+  const [changed, setChanged] = useState<DraftField[]>([])
   const [result, setResult] = useState<'saved' | 'failed' | null>(null)
 
   // The user asked for it, so what the website shows replaces the current
-  // colours and logo; anything not found is left alone.
-  async function fetchFromWebsite() {
+  // values; anything not found is left alone. Nothing is saved until Save.
+  async function refetch() {
     const errors = validate(form.draft, ['websiteUrl'])
     if (errors.websiteUrl || !form.draft.websiteUrl.trim()) {
       form.setErrors({ websiteUrl: errors.websiteUrl ?? 'Enter your website first.' })
       return
     }
+    setResult(null)
     const findings = await scan(form.draft.websiteUrl.trim())
     if (!findings) return
-    if (findings.colours.length) form.update('brandColours', findings.colours)
-    if (findings.logo) form.update('logo', findings.logo)
+    const filled = applyFindings(form.draft, findings)
+    form.setDraft(filled.draft)
+    setChanged(filled.changed)
   }
 
   async function save(event: FormEvent) {
@@ -47,6 +51,7 @@ export default function Settings() {
     }
     try {
       setProfile(await form.save())
+      setChanged([])
       setResult('saved')
     } catch {
       setResult('failed')
@@ -58,38 +63,47 @@ export default function Settings() {
     navigate('/sign-in', { replace: true })
   }
 
+  const fields = { ...form, changed: new Set(changed) }
   return (
     <form className={styles.page} onSubmit={(e) => void save(e)} noValidate>
       <div>
         <h1>Settings</h1>
         <p className={styles.lead}>Your business profile. Every advert is written from this.</p>
       </div>
-      <Card title="Your business">
-        <BusinessFields {...form} />
-      </Card>
-      <Card title="Your customers">
-        <CustomerFields {...form} />
-      </Card>
-      <Card title="What you sell">
-        <ServicesFields {...form} />
-      </Card>
       <Card
-        title="Your brand"
+        title="Your website"
         actions={
           <Button
             variant="secondary"
             size="sm"
             loading={scanStatus === 'scanning'}
             icon={<RefreshCw size={16} aria-hidden="true" />}
-            onClick={() => void fetchFromWebsite()}
+            onClick={() => void refetch()}
             data-testid="fetch-website"
           >
-            Fetch from website
+            Refetch
           </Button>
         }
       >
+        <WebsiteField {...fields} />
         <ScanNotice status={scanStatus} />
-        <BrandFields {...form} />
+        {changed.length > 0 && (
+          <Alert tone="info" testId="changed-summary">
+            {changedSummary(changed)}
+          </Alert>
+        )}
+      </Card>
+      <Card title="Your business">
+        <BusinessFields {...fields} />
+      </Card>
+      <Card title="Your customers">
+        <CustomerFields {...fields} />
+      </Card>
+      <Card title="What you sell">
+        <ServicesFields {...fields} />
+      </Card>
+      <Card title="Your brand">
+        <BrandFields {...fields} />
       </Card>
       <div className={styles.saveBar}>
         {result === 'saved' && <Alert tone="success">Profile saved.</Alert>}

@@ -1,21 +1,25 @@
 import type { Context } from "hono";
 import type { Env } from "./env";
-import type { Admission, GenerationKind, Usage } from "./limiter";
+import type { Admission, Allowance, GenerationKind, Usage } from "./limiter";
 
 function limiter(env: Env, userId: string) {
   return env.LIMITER.get(env.LIMITER.idFromName(userId));
 }
 
 export interface Lease {
-  finish: (imagesMade: number) => Promise<void>;
+  // Kept by work that finishes in a later request (videos).
+  id: string;
+  finish: (unitsMade: number) => Promise<void>;
 }
 
 export type Denied = Exclude<Admission, { ok: true }>;
 
 export interface GenerationRequest {
   kind: GenerationKind;
-  images: number;
-  // False only for topic suggestions (see GenerationLimiter.begin).
+  // Images or videos the work will make; ignored for text.
+  units: number;
+  // False for work that must not wait for or take the in-flight lock (see
+  // GenerationLimiter.begin).
   holdLock: boolean;
 }
 
@@ -25,11 +29,17 @@ export async function beginGeneration(
   request: GenerationRequest
 ): Promise<Lease | Denied> {
   const stub = limiter(env, userId);
-  const admission = await stub.begin(request.kind, request.images, undefined, request.holdLock);
+  const admission = await stub.begin(request.kind, request.units, undefined, request.holdLock);
   if (!admission.ok) return admission;
+  return leaseFor(env, userId, admission.leaseId);
+}
+
+// A lease picked up again by id, for work that outlives its first request.
+export function leaseFor(env: Env, userId: string, leaseId: string): Lease {
   return {
-    finish: async (imagesMade) => {
-      await stub.finish(admission.leaseId, imagesMade);
+    id: leaseId,
+    finish: async (unitsMade) => {
+      await limiter(env, userId).finish(leaseId, unitsMade);
     },
   };
 }
@@ -46,17 +56,31 @@ function iso(ms: number): string {
   return new Date(ms).toISOString();
 }
 
-export interface UsageJson {
-  imagesUsed: number;
-  imagesLimit: number;
+export interface AllowanceJson {
+  used: number;
+  limit: number;
   nextFreeAt: string | null;
+}
+
+export interface UsageJson {
+  imagesToday: AllowanceJson;
+  imagesThisMonth: AllowanceJson;
+  videosThisMonth: AllowanceJson;
+}
+
+function allowanceJson(allowance: Allowance): AllowanceJson {
+  return {
+    used: allowance.used,
+    limit: allowance.limit,
+    nextFreeAt: allowance.nextFreeAt === null ? null : iso(allowance.nextFreeAt),
+  };
 }
 
 export function usageJson(usage: Usage): UsageJson {
   return {
-    imagesUsed: usage.imagesUsed,
-    imagesLimit: usage.imagesLimit,
-    nextFreeAt: usage.nextFreeAt === null ? null : iso(usage.nextFreeAt),
+    imagesToday: allowanceJson(usage.imagesToday),
+    imagesThisMonth: allowanceJson(usage.imagesThisMonth),
+    videosThisMonth: allowanceJson(usage.videosThisMonth),
   };
 }
 
@@ -73,11 +97,13 @@ export function deniedResponse(c: Context, denied: Denied): Response {
         { error: "Too many generations in a minute.", code: "rate_limit", retryAt: iso(denied.retryAt) },
         429
       );
-    case "daily":
+    case "allowance":
       return c.json(
         {
-          error: "Daily limit reached.",
-          code: denied.kind === "image" ? "daily_image_limit" : "daily_text_limit",
+          error: denied.window === "day" ? "Daily limit reached." : "Monthly limit reached.",
+          // daily_image_limit, monthly_image_limit, monthly_video_limit,
+          // daily_text_limit.
+          code: `${denied.window === "day" ? "daily" : "monthly"}_${denied.kind}_limit`,
           limit: denied.limit,
           remaining: denied.remaining,
           nextFreeAt: iso(denied.nextFreeAt),

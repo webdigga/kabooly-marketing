@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { bytesToBase64, generateImage, ImageError, imagePrompt } from "../src/image-maker";
+import {
+  bytesToBase64,
+  carouselBackgroundPrompt,
+  firstVideo,
+  generateImage,
+  ImageError,
+  imagePrompt,
+  videoStartPrompt,
+} from "../src/image-maker";
 import type { Profile } from "../src/profile";
 import { GEMINI_URL, geminiImage } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
@@ -39,6 +47,31 @@ describe("imagePrompt", () => {
   });
 });
 
+describe("videoStartPrompt and carouselBackgroundPrompt", () => {
+  it("asks for a vertical opening frame, with the logo when there is one", () => {
+    const prompt = videoStartPrompt(profile, "Spring ovens", true);
+    expect(prompt).toContain("vertical 9:16 opening frame");
+    expect(prompt).toContain("attached image is the business logo");
+    expect(videoStartPrompt(profile, "Spring ovens", false)).not.toContain("logo");
+  });
+
+  it("asks for a calm, logo-free background for slides", () => {
+    const prompt = carouselBackgroundPrompt(profile, "Spring ovens");
+    expect(prompt).toContain("4:5 background image");
+    expect(prompt).toContain("Do not include any logo.");
+    expect(prompt).not.toContain("attached image");
+  });
+});
+
+describe("firstVideo", () => {
+  it("finds inline or linked video output and ignores the rest", () => {
+    expect(firstVideo({ steps: [{ content: [{ type: "video", data: "AAA" }] }] })).toEqual({ type: "video", data: "AAA" });
+    expect(firstVideo({ steps: [{}, { content: [{ type: "video", uri: "https://x" }] }] })).toEqual({ type: "video", uri: "https://x" });
+    expect(firstVideo({ steps: [{ content: [{ type: "video" }, { type: "image", data: "B" }] }] })).toBeNull();
+    expect(firstVideo({})).toBeNull();
+  });
+});
+
 describe("bytesToBase64", () => {
   it("round-trips bytes, including inputs larger than one chunk", () => {
     expect(bytesToBase64(pngBytes())).toBe(PNG_BASE64);
@@ -50,7 +83,7 @@ describe("bytesToBase64", () => {
 describe("generateImage", () => {
   it("sends the prompt, logo and shape to Gemini without storing the interaction", async () => {
     onFetch(GEMINI_URL, () => Response.json(geminiImage()));
-    const bytes = await generateImage(testEnv, "prompt", "facebook", { mimeType: "image/png", base64: "TE9HTw==" });
+    const bytes = await generateImage(testEnv, "prompt", "16:9", { mimeType: "image/png", base64: "TE9HTw==" });
     expect(bytes).toEqual(pngBytes());
     const call = callsTo(GEMINI_URL)[0];
     const body = JSON.parse(call?.body ?? "{}") as Record<string, unknown>;
@@ -67,7 +100,7 @@ describe("generateImage", () => {
 
   it("sends only text when there is no logo", async () => {
     onFetch(GEMINI_URL, () => Response.json(geminiImage()));
-    await generateImage(testEnv, "prompt", "instagram", null);
+    await generateImage(testEnv, "prompt", "1:1", null);
     const body = JSON.parse(callsTo(GEMINI_URL)[0]?.body ?? "{}") as { input: unknown[]; response_format: { aspect_ratio: string } };
     expect(body.input).toHaveLength(1);
     expect(body.response_format.aspect_ratio).toBe("1:1");
@@ -86,6 +119,6 @@ describe("generateImage", () => {
     ],
   ])("throws an ImageError on %s", async (_label, handler) => {
     onFetch(GEMINI_URL, handler);
-    await expect(generateImage(testEnv, "p", "nextdoor", null)).rejects.toBeInstanceOf(ImageError);
+    await expect(generateImage(testEnv, "p", "1:1", null)).rejects.toBeInstanceOf(ImageError);
   });
 });

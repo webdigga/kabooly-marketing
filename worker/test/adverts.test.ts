@@ -1,3 +1,4 @@
+import { runInDurableObject } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AdvertJson, ImageJson } from "../src/advert-store";
 import { decodeCursor } from "../src/advert-store";
@@ -78,14 +79,14 @@ describe("generation", () => {
     const list = await events(res);
     expect(list.map((e) => e.type)).toEqual(["advert", "image", "image", "done"]);
     const advert = list[0]?.type === "advert" ? list[0].advert : null;
-    expect(advert).toMatchObject({ topic: "Spring ovens", images: [] });
+    expect(advert).toMatchObject({ format: "images", topic: "Spring ovens", images: [], slides: null, background: null, video: null });
     expect(advert?.body).toContain("oven clean");
     const images = list.flatMap((e) => (e.type === "image" ? [e.image] : []));
     expect(images.map((i) => i.platform).sort()).toEqual(["facebook", "instagram"]);
     const facebook = images.find((i) => i.platform === "facebook");
     expect(facebook).toMatchObject({ label: "Facebook", width: 1200, height: 630 });
     expect(facebook?.downloadUrl).toMatch(/\?download=kabooly-facebook-\d{4}-\d{2}-\d{2}\.jpg$/);
-    expect(list.at(-1)).toMatchObject({ type: "done", usage: { imagesUsed: 2, imagesLimit: 20, nextFreeAt: null } });
+    expect(list.at(-1)).toMatchObject({ type: "done", usage: { imagesToday: { used: 2, limit: 20, nextFreeAt: null } } });
 
     const served = await apiFetch(cookie, facebook?.url ?? "");
     expect(served.headers.get("Content-Type")).toBe("image/jpeg");
@@ -123,7 +124,7 @@ describe("generation", () => {
     const list = await events(await generate(cookie, "Spring", ["instagram"]));
     expect(list.map((e) => e.type)).toEqual(["advert", "image_error", "done"]);
     expect(list[1]).toMatchObject({ platform: "instagram", error: "This image could not be made. Try regenerating it." });
-    expect(list.at(-1)).toMatchObject({ usage: { imagesUsed: 0 } });
+    expect(list.at(-1)).toMatchObject({ usage: { imagesToday: { used: 0 } } });
   });
 
   it("reports failed text without saving anything", async () => {
@@ -179,8 +180,8 @@ describe("generation", () => {
       if (lease.ok) await stub.finish(lease.leaseId, 3, at);
     }
     const freeAt = new Date(start + 24 * 60 * 60_000).toISOString();
-    const usage: unknown = await (await apiFetch(cookie, "/api/usage")).json();
-    expect(usage).toEqual({ imagesUsed: 20, imagesLimit: 20, nextFreeAt: freeAt });
+    const usage: { imagesToday: unknown } = await (await apiFetch(cookie, "/api/usage")).json();
+    expect(usage.imagesToday).toEqual({ used: 20, limit: 20, nextFreeAt: freeAt });
     const res = await generate(cookie, "One more", ["instagram", "facebook", "nextdoor"]);
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({
@@ -196,10 +197,12 @@ describe("generation", () => {
     const cookie = await readyUser();
     const stub = await limiterFor(cookie);
     const start = Date.now() - 23 * 60 * 60_000;
-    for (let i = 0; i < 200; i++) {
-      const lease = await stub.begin("text", 0, start + i * 60_000);
-      if (lease.ok) await stub.finish(lease.leaseId, 0, start + i * 60_000);
-    }
+    // A full day of text work, written in one go: 200 round trips to the
+    // limiter can outrun the test timeout on a busy machine.
+    const history = Array.from({ length: 200 }, (_, i) => ({ id: `t${String(i)}`, at: start + i * 60_000, kind: "text", units: 0 }));
+    await runInDurableObject(stub, async (_instance, state) => {
+      await state.storage.put("state", { events: history, lock: null });
+    });
     const res = await apiFetch(cookie, "/api/topics/suggest", { method: "POST", body: {} });
     expect(res.status).toBe(429);
     expect(await res.json()).toMatchObject({ code: "daily_text_limit", limit: 200, remaining: 0 });
@@ -342,8 +345,8 @@ describe("editing and regenerating", () => {
 
     const after: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert.id}`)).json();
     expect(after.advert.images.find((i) => i.platform === "facebook")?.url).toBe(oldFacebook?.url);
-    const usage: { imagesUsed: number } = await (await apiFetch(cookie, "/api/usage")).json();
-    expect(usage.imagesUsed).toBe(3);
+    const usage: { imagesToday: { used: number } } = await (await apiFetch(cookie, "/api/usage")).json();
+    expect(usage.imagesToday.used).toBe(3);
   });
 
   it("answers 502 for a failed regeneration and does not count it", async () => {
@@ -352,8 +355,8 @@ describe("editing and regenerating", () => {
     onFetch(GEMINI_URL, () => new Response("down", { status: 503 }));
     const res = await apiFetch(cookie, `/api/posts/${advert.id}/images/facebook`, { method: "POST" });
     expect(res.status).toBe(502);
-    const usage: { imagesUsed: number } = await (await apiFetch(cookie, "/api/usage")).json();
-    expect(usage.imagesUsed).toBe(0);
+    const usage: { imagesToday: { used: number } } = await (await apiFetch(cookie, "/api/usage")).json();
+    expect(usage.imagesToday.used).toBe(0);
   });
 
   it("needs the business profile to regenerate", async () => {
@@ -385,9 +388,31 @@ describe("editing and regenerating", () => {
 });
 
 describe("usage", () => {
-  it("reports images used against the daily limit", async () => {
+  it("reports images today and this month, and videos this month", async () => {
     const cookie = await readyUser();
     const res = await apiFetch(cookie, "/api/usage");
-    expect(await res.json()).toEqual({ imagesUsed: 0, imagesLimit: 20, nextFreeAt: null });
+    expect(await res.json()).toEqual({
+      imagesToday: { used: 0, limit: 20, nextFreeAt: null },
+      imagesThisMonth: { used: 0, limit: 150, nextFreeAt: null },
+      videosThisMonth: { used: 0, limit: 20, nextFreeAt: null },
+    });
+  });
+
+  it("explains the monthly image and video limits", async () => {
+    const cookie = await readyUser();
+    const stub = await limiterFor(cookie);
+    const start = Date.now() - 29 * 24 * 60 * 60_000;
+    for (let day = 0; day < 10; day++) {
+      const at = start + day * 24 * 60 * 60_000;
+      const lease = await stub.begin("image", 15, at);
+      if (lease.ok) await stub.finish(lease.leaseId, 15, at);
+      for (let v = 0; v < 2; v++) await stub.begin("video", 1, at + v, false);
+    }
+    const res = await generate(cookie, "One more", ["instagram"]);
+    expect(await res.json()).toMatchObject({ error: "Monthly limit reached.", code: "monthly_image_limit", limit: 150 });
+    const advert = await generateAdvert(cookie, []);
+    const video = await apiFetch(cookie, `/api/posts/${advert.id}/video`, { method: "POST", body: {} });
+    expect(video.status).toBe(429);
+    expect(await video.json()).toMatchObject({ code: "monthly_video_limit", limit: 20, remaining: 0 });
   });
 });

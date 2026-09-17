@@ -1,8 +1,12 @@
 import { Hono } from "hono";
 import type { Env } from "./env";
+import { streamOf } from "./image-maker";
 import type { AppEnv } from "./session";
 
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
+// The largest platform image is 1200 pixels wide or tall.
+export const MIN_PHOTO_SIDE = 1200;
 
 export type RasterType = "image/png" | "image/jpeg" | "image/webp";
 
@@ -47,7 +51,60 @@ export async function storeLogo(
   return { key, url: fileUrl(key) };
 }
 
+// A customer's own photo waiting to become a post. Only the latest upload
+// is kept: uploading another replaces it, and generating a post from it
+// deletes it once the platform images are cut.
+export function uploadsPrefix(userId: string): string {
+  return `${userPrefix(userId)}uploads/`;
+}
+
+export type PhotoResult =
+  | { ok: true; key: string; url: string; width: number; height: number }
+  | { ok: false; status: 413 | 415 | 422; error: string; code: string };
+
+export async function storePhoto(env: Env, userId: string, bytes: Uint8Array): Promise<PhotoResult> {
+  if (bytes.byteLength > MAX_PHOTO_BYTES) {
+    return { ok: false, status: 413, error: "Photos must be 20 MB or smaller", code: "photo_too_large" };
+  }
+  const type = sniffRaster(bytes);
+  if (!type) return { ok: false, status: 415, error: "Upload a JPEG, PNG or WebP photo", code: "photo_type" };
+  const size = await photoSize(env, bytes);
+  if (!size) return { ok: false, status: 415, error: "That photo could not be read", code: "photo_type" };
+  const { width, height } = size;
+  if (Math.min(width, height) < MIN_PHOTO_SIDE) {
+    return {
+      ok: false,
+      status: 422,
+      error: `Photos must be at least ${MIN_PHOTO_SIDE} pixels on the shortest side`,
+      code: "photo_too_small",
+    };
+  }
+  const listed = await env.FILES.list({ prefix: uploadsPrefix(userId) });
+  if (listed.objects.length) await env.FILES.delete(listed.objects.map((o) => o.key));
+  const key = `${uploadsPrefix(userId)}${crypto.randomUUID()}.${EXTENSIONS[type]}`;
+  await env.FILES.put(key, bytes, { httpMetadata: { contentType: type } });
+  return { ok: true, key, url: fileUrl(key), width, height };
+}
+
+// Null when the bytes carry an image signature but cannot be read. Only
+// raster types reach here, and every raster info has a size.
+async function photoSize(env: Env, bytes: Uint8Array): Promise<{ width: number; height: number } | null> {
+  try {
+    const info = await env.IMAGES.info(streamOf(bytes));
+    return info as { width: number; height: number };
+  } catch {
+    return null;
+  }
+}
+
 export const filesApi = new Hono<AppEnv>();
+
+filesApi.post("/uploads/photo", async (c) => {
+  const result = await storePhoto(c.env, c.get("userId"), new Uint8Array(await c.req.arrayBuffer()));
+  if (!result.ok) return c.json({ error: result.error, code: result.code }, result.status);
+  const { ok: _ok, ...photo } = result;
+  return c.json(photo);
+});
 
 filesApi.post("/uploads/logo", async (c) => {
   const bytes = new Uint8Array(await c.req.arrayBuffer());
@@ -61,6 +118,14 @@ filesApi.post("/uploads/logo", async (c) => {
   return c.json(stored);
 });
 
+// The bytes R2 actually returned for a ranged read, or null when that is
+// the whole file (R2 answers a range it cannot satisfy with the whole file).
+// R2 reports a ranged read as a resolved offset and length.
+function servedRange(object: R2ObjectBody): { offset: number; length: number } | null {
+  const { offset, length } = object.range as { offset: number; length: number };
+  return offset === 0 && length === object.size ? null : { offset, length };
+}
+
 function safeFilename(name: string | undefined): string | null {
   if (!name) return null;
   const cleaned = name.replace(/[^\w.-]/g, "").slice(0, 80);
@@ -72,11 +137,15 @@ filesApi.get("/files/*", async (c) => {
   if (!key.startsWith(userPrefix(c.get("userId"))) || key.includes("..")) {
     return c.json({ error: "Not found" }, 404);
   }
-  const object = await c.env.FILES.get(key);
+  // Videos are played in pieces (iPhones will not play one without byte
+  // ranges), so a Range header is honoured.
+  const ranged = c.req.header("Range") !== undefined;
+  const object = await c.env.FILES.get(key, ranged ? { range: c.req.raw.headers } : undefined);
   if (!object) return c.json({ error: "Not found" }, 404);
 
   const headers = new Headers();
   object.writeHttpMetadata(headers);
+  headers.set("Accept-Ranges", "bytes");
   // Keys are unique per upload, so a stored file never changes.
   headers.set("Cache-Control", "private, max-age=31536000, immutable");
   headers.set("X-Content-Type-Options", "nosniff");
@@ -85,5 +154,9 @@ filesApi.get("/files/*", async (c) => {
   if (download) {
     headers.set("Content-Disposition", `attachment; filename="${download}"`);
   }
-  return new Response(object.body, { headers });
+  const part = ranged ? servedRange(object) : null;
+  if (!part) return new Response(object.body, { headers });
+  headers.set("Content-Range", `bytes ${part.offset}-${part.offset + part.length - 1}/${object.size}`);
+  headers.set("Content-Length", String(part.length));
+  return new Response(object.body, { status: 206, headers });
 });

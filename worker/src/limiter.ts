@@ -5,27 +5,36 @@ import { DurableObject } from "cloudflare:workers";
 // cannot all slip under a limit or both take the in-flight lock.
 
 export const LIMITS = {
-  // Images per account in any rolling 24 hours (regenerations included).
+  // Images per account in any rolling 24 hours and any rolling 30 days
+  // (regenerations included). A carousel counts as one image.
   imagesPerDay: 20,
+  imagesPerMonth: 150,
   // Generations that make images, per rolling minute.
   imageGenerationsPerMinute: 5,
-  // Text-only work (topic suggestions, text regeneration, image-free adverts).
+  // Videos per account in any rolling 30 days, and per rolling minute.
+  videosPerMonth: 20,
+  videosPerMinute: 3,
+  // Text-only work (topic suggestions, text regeneration, image-free adverts,
+  // own-photo posts, website reads).
   textPerDay: 200,
   textPerMinute: 20,
   // A generation that never reports back releases its lock after this.
   lockTtlMs: 5 * 60_000,
 } as const;
 
-const DAY_MS = 24 * 60 * 60_000;
 const MINUTE_MS = 60_000;
+export const DAY_MS = 24 * 60 * MINUTE_MS;
+export const MONTH_MS = 30 * DAY_MS;
 
-export type GenerationKind = "image" | "text";
+export type GenerationKind = "image" | "text" | "video";
 
 export interface UsageEvent {
   id: string;
   at: number;
   kind: GenerationKind;
-  images: number;
+  // Units the event still counts: images for "image", videos for "video",
+  // zero for "text". Failed units are refunded by finish().
+  units: number;
 }
 
 interface LimiterState {
@@ -33,74 +42,127 @@ interface LimiterState {
   lock: { id: string; expiresAt: number } | null;
 }
 
+export type Window = "day" | "month";
+
 export type Admission =
   | { ok: true; leaseId: string }
   | { ok: false; reason: "busy" }
   | { ok: false; reason: "rate"; retryAt: number }
-  | { ok: false; reason: "daily"; kind: GenerationKind; limit: number; remaining: number; nextFreeAt: number };
+  | {
+      ok: false;
+      reason: "allowance";
+      kind: GenerationKind;
+      window: Window;
+      limit: number;
+      remaining: number;
+      nextFreeAt: number;
+    };
 
-export interface Usage {
-  imagesUsed: number;
-  imagesLimit: number;
+export interface Allowance {
+  used: number;
+  limit: number;
+  // When the next unit frees up, only while the allowance is used up.
   nextFreeAt: number | null;
 }
 
-function imagesIn(events: UsageEvent[]): number {
-  return events.reduce((sum, e) => sum + e.images, 0);
+export interface Usage {
+  imagesToday: Allowance;
+  imagesThisMonth: Allowance;
+  videosThisMonth: Allowance;
 }
 
-// When enough images age out of the rolling window to fit `wanted` more.
-// Walking newest first, the first event that no longer fits alongside the
-// newer ones must expire, and with it everything older.
-export function imagesFreeAt(events: UsageEvent[], wanted: number, now: number): number {
-  const budget = LIMITS.imagesPerDay - wanted;
+export interface Cap {
+  kind: GenerationKind;
+  window: Window;
+  limit: number;
+}
+
+const WINDOW_MS: Record<Window, number> = { day: DAY_MS, month: MONTH_MS };
+
+export const IMAGES_DAY: Cap = { kind: "image", window: "day", limit: LIMITS.imagesPerDay };
+export const IMAGES_MONTH: Cap = { kind: "image", window: "month", limit: LIMITS.imagesPerMonth };
+export const VIDEOS_MONTH: Cap = { kind: "video", window: "month", limit: LIMITS.videosPerMonth };
+export const TEXT_DAY: Cap = { kind: "text", window: "day", limit: LIMITS.textPerDay };
+
+// Every allowance a kind of work must fit, tightest window first.
+const CAPS: Record<GenerationKind, Cap[]> = {
+  image: [IMAGES_DAY, IMAGES_MONTH],
+  video: [VIDEOS_MONTH],
+  text: [TEXT_DAY],
+};
+
+// Units an event uses up: text work counts one per event.
+function unitsOf(event: UsageEvent): number {
+  return event.kind === "text" ? 1 : event.units;
+}
+
+function inWindow(events: UsageEvent[], cap: Cap, now: number): UsageEvent[] {
+  const since = now - WINDOW_MS[cap.window];
+  return events.filter((e) => e.kind === cap.kind && e.at > since);
+}
+
+function unitsIn(events: UsageEvent[]): number {
+  return events.reduce((sum, e) => sum + unitsOf(e), 0);
+}
+
+// When enough units age out of the window to fit `wanted` more. Walking
+// newest first, the first event that no longer fits alongside the newer
+// ones must expire, and with it everything older.
+export function freeAt(events: UsageEvent[], cap: Cap, wanted: number, now: number): number {
+  const budget = cap.limit - wanted;
   let kept = 0;
-  const blocker = events
-    .filter((e) => e.images > 0)
+  const blocker = inWindow(events, cap, now)
+    .filter((e) => unitsOf(e) > 0)
     .sort((a, b) => b.at - a.at)
     .find((e) => {
-      kept += e.images;
+      kept += unitsOf(e);
       return kept > budget;
     });
-  return blocker ? blocker.at + DAY_MS : now;
+  return blocker ? blocker.at + WINDOW_MS[cap.window] : now;
 }
 
 function checkRate(events: UsageEvent[], kind: GenerationKind, now: number): Admission | null {
-  const perMinute =
-    kind === "image" ? LIMITS.imageGenerationsPerMinute : LIMITS.textPerMinute;
+  const perMinute = {
+    image: LIMITS.imageGenerationsPerMinute,
+    video: LIMITS.videosPerMinute,
+    text: LIMITS.textPerMinute,
+  }[kind];
   const recent = events.filter((e) => e.kind === kind && e.at > now - MINUTE_MS);
   if (recent.length < perMinute) return null;
   const oldest = Math.min(...recent.map((e) => e.at));
   return { ok: false, reason: "rate", retryAt: oldest + MINUTE_MS };
 }
 
-export function checkDaily(
+// Text work asks for one unit however it is called.
+export function checkAllowance(
   events: UsageEvent[],
   kind: GenerationKind,
-  images: number,
+  units: number,
   now: number
 ): Admission | null {
-  if (kind === "image") {
-    const used = imagesIn(events);
-    if (used + images <= LIMITS.imagesPerDay) return null;
+  const wanted = kind === "text" ? 1 : units;
+  for (const cap of CAPS[kind]) {
+    const used = unitsIn(inWindow(events, cap, now));
+    if (used + wanted <= cap.limit) continue;
     return {
       ok: false,
-      reason: "daily",
+      reason: "allowance",
       kind,
-      limit: LIMITS.imagesPerDay,
-      remaining: Math.max(0, LIMITS.imagesPerDay - used),
-      nextFreeAt: imagesFreeAt(events, Math.min(images, LIMITS.imagesPerDay), now),
+      window: cap.window,
+      limit: cap.limit,
+      remaining: Math.max(0, cap.limit - used),
+      nextFreeAt: freeAt(events, cap, Math.min(wanted, cap.limit), now),
     };
   }
-  const texts = events.filter((e) => e.kind === "text");
-  if (texts.length < LIMITS.textPerDay) return null;
+  return null;
+}
+
+export function allowance(events: UsageEvent[], cap: Cap, now: number): Allowance {
+  const used = unitsIn(inWindow(events, cap, now));
   return {
-    ok: false,
-    reason: "daily",
-    kind,
-    limit: LIMITS.textPerDay,
-    remaining: 0,
-    nextFreeAt: Math.min(...texts.map((e) => e.at)) + DAY_MS,
+    used,
+    limit: cap.limit,
+    nextFreeAt: used >= cap.limit ? freeAt(events, cap, 1, now) : null,
   };
 }
 
@@ -110,7 +172,7 @@ export class GenerationLimiter extends DurableObject {
       events: [],
       lock: null,
     };
-    state.events = state.events.filter((e) => e.at > now - DAY_MS);
+    state.events = state.events.filter((e) => e.at > now - MONTH_MS);
     if (state.lock && state.lock.expiresAt <= now) state.lock = null;
     return state;
   }
@@ -119,45 +181,45 @@ export class GenerationLimiter extends DurableObject {
     await this.ctx.storage.put("state", state);
   }
 
-  // Admits a generation or says why not. Images are counted up front, so a
-  // generation that is abandoned mid-way still counts; finish() refunds the
-  // ones that failed. Topic suggestions pass holdLock false: they count
-  // towards the text caps but neither wait for nor take the in-flight lock,
-  // because suggesting a topic is not making an advert.
+  // Admits a generation or says why not. Units (images or videos) are
+  // counted up front, so a generation that is abandoned mid-way still
+  // counts; finish() refunds the ones that failed. Work passing holdLock
+  // false (topic suggestions, website reads, videos, which take minutes)
+  // counts towards its caps but neither waits for nor takes the in-flight
+  // lock.
   async begin(
     kind: GenerationKind,
-    images: number,
+    units: number,
     now = Date.now(),
     holdLock = true
   ): Promise<Admission> {
     const state = await this.load(now);
     if (holdLock && state.lock) return { ok: false, reason: "busy" };
     const denied =
-      checkRate(state.events, kind, now) ?? checkDaily(state.events, kind, images, now);
+      checkRate(state.events, kind, now) ?? checkAllowance(state.events, kind, units, now);
     if (denied) return denied;
 
     const leaseId = crypto.randomUUID();
-    state.events.push({ id: leaseId, at: now, kind, images });
+    state.events.push({ id: leaseId, at: now, kind, units: kind === "text" ? 0 : units });
     if (holdLock) state.lock = { id: leaseId, expiresAt: now + LIMITS.lockTtlMs };
     await this.save(state);
     return { ok: true, leaseId };
   }
 
-  async finish(leaseId: string, imagesMade: number, now = Date.now()): Promise<void> {
+  async finish(leaseId: string, unitsMade: number, now = Date.now()): Promise<void> {
     const state = await this.load(now);
     const event = state.events.find((e) => e.id === leaseId);
-    if (event) event.images = Math.min(event.images, imagesMade);
+    if (event) event.units = Math.min(event.units, unitsMade);
     if (state.lock?.id === leaseId) state.lock = null;
     await this.save(state);
   }
 
   async usage(now = Date.now()): Promise<Usage> {
-    const state = await this.load(now);
-    const used = imagesIn(state.events);
+    const { events } = await this.load(now);
     return {
-      imagesUsed: used,
-      imagesLimit: LIMITS.imagesPerDay,
-      nextFreeAt: used >= LIMITS.imagesPerDay ? imagesFreeAt(state.events, 1, now) : null,
+      imagesToday: allowance(events, IMAGES_DAY, now),
+      imagesThisMonth: allowance(events, IMAGES_MONTH, now),
+      videosThisMonth: allowance(events, VIDEOS_MONTH, now),
     };
   }
 }

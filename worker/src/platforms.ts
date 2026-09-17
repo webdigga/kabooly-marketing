@@ -1,11 +1,17 @@
 import type { Platform } from "./db/schema";
 
-export interface PlatformSpec {
-  label: string;
+// Gemini draws the closest shape it can; the result is then cropped to the
+// exact pixel size.
+export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:5";
+
+export interface Shape {
   width: number;
   height: number;
-  // Closest shape Gemini can draw; the result is then cropped to size.
-  aspectRatio: "1:1" | "16:9";
+  aspectRatio: AspectRatio;
+}
+
+export interface PlatformSpec extends Shape {
+  label: string;
 }
 
 export const PLATFORM_SPECS: Record<Platform, PlatformSpec> = {
@@ -13,3 +19,9 @@ export const PLATFORM_SPECS: Record<Platform, PlatformSpec> = {
   facebook: { label: "Facebook", width: 1200, height: 630, aspectRatio: "16:9" },
   nextdoor: { label: "Nextdoor", width: 1200, height: 1200, aspectRatio: "1:1" },
 };
+
+// The first frame a video is animated from: Reels, Shorts, TikTok, Stories.
+export const VIDEO_SHAPE: Shape = { width: 1080, height: 1920, aspectRatio: "9:16" };
+
+// Instagram and Facebook carousel slides.
+export const CAROUSEL_SHAPE: Shape = { width: 1080, height: 1350, aspectRatio: "4:5" };

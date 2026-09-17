@@ -22,4 +22,5 @@ export interface Env {
   ANTHROPIC_API_KEY: string;
   GEMINI_API_KEY: string;
   GEMINI_IMAGE_MODEL: string;
+  GEMINI_VIDEO_MODEL: string;
 }

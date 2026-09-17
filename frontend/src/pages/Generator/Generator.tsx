@@ -5,32 +5,134 @@ import Alert from '../../components/Alert/Alert'
 import { EditableAdvertText } from '../../components/AdvertText/AdvertText'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
+import CarouselSlides from '../../components/CarouselSlides/CarouselSlides'
 import { TextArea } from '../../components/Field/Field'
+import FormatPicker from '../../components/FormatPicker/FormatPicker'
+import type { CreateFormat } from '../../components/FormatPicker/FormatPicker'
 import ImageTile from '../../components/ImageTile/ImageTile'
+import PhotoPicker from '../../components/PhotoPicker/PhotoPicker'
 import PlatformPicker from '../../components/PlatformPicker/PlatformPicker'
+import UsagePanel from '../../components/UsagePanel/UsagePanel'
+import VideoPanel, { MOTION_HINT } from '../../components/VideoPanel/VideoPanel'
 import { api } from '../../lib/api'
-import { localTime, usageLine } from '../../lib/limits'
 import { loadPlatformChoice, savePlatformChoice } from '../../lib/platform-choice'
-import type { Platform, Usage } from '../../lib/types'
+import type { Platform, UploadedPhoto, Usage } from '../../lib/types'
 import styles from './Generator.module.css'
 import { useGenerator } from './useGenerator'
 import { useTopicSuggestion } from './useTopicSuggestion'
 
-function UsageNote({ usage }: { usage: Usage | null }) {
-  if (!usage) return null
-  const out = usage.imagesUsed >= usage.imagesLimit
+const LEADS: Record<CreateFormat, string> = {
+  images: 'The text plus an image for each platform you tick.',
+  photo: 'Your own photo, cropped for each platform you tick with your logo added, plus the text.',
+  carousel: 'Five slides at 1080 × 1350 for Instagram and Facebook, plus the text. Uses one image from your allowance.',
+  video: 'A short vertical video plus the text. It takes a few minutes to make.',
+}
+
+const BUTTONS: Record<CreateFormat, [idle: string, running: string]> = {
+  images: ['Create advert', 'Creating your advert'],
+  photo: ['Create post', 'Creating your post'],
+  carousel: ['Create carousel', 'Creating your carousel'],
+  video: ['Create video', 'Writing your advert'],
+}
+
+type Generator = ReturnType<typeof useGenerator>
+
+function GeneratedImages({ generator }: { generator: Generator }) {
+  if (!generator.slots.length) return null
   return (
-    <p className={out ? styles.usageOut : styles.usage} data-testid="usage">
-      {out && usage.nextFreeAt
-        ? `You have used all ${usage.imagesLimit} images for now. More from ${localTime(usage.nextFreeAt)}.`
-        : usageLine(usage.imagesUsed, usage.imagesLimit)}
-    </p>
+    <div className={styles.images}>
+      {generator.slots.map((slot) => (
+        <ImageTile
+          key={slot.platform}
+          platform={slot.platform}
+          image={slot.image}
+          status={slot.status}
+          error={slot.error}
+          onRegenerate={generator.advert?.format === 'images' ? () => void generator.regenerateImage(slot.platform) : undefined}
+          disabled={generator.busy}
+        />
+      ))}
+    </div>
+  )
+}
+
+// What was made: the text, then the images, slides or video.
+function Result({ generator, onUsage }: { generator: Generator; onUsage: (usage: Usage) => void }) {
+  const { advert } = generator
+  return (
+    <Card title="Your advert" description="Saved to your library automatically." testId="result">
+      {advert ? (
+        <EditableAdvertText
+          body={advert.body}
+          onSave={generator.saveText}
+          onRegenerate={() => void generator.regenerateText()}
+          regenerating={generator.regeneratingText}
+          disabled={generator.busy}
+        />
+      ) : (
+        <p className={styles.writing} role="status">
+          Writing your advert...
+        </p>
+      )}
+      <GeneratedImages generator={generator} />
+      {advert?.slides && generator.backgroundStatus && (
+        <CarouselSlides
+          slides={advert.slides}
+          background={generator.background}
+          backgroundStatus={generator.backgroundStatus}
+          onSave={generator.saveSlides}
+          onRegenerateSlides={() => void generator.regenerateSlides()}
+          onRegenerateBackground={() => void generator.regenerateBackground()}
+          regenerating={generator.regeneratingSlides}
+          disabled={generator.busy}
+        />
+      )}
+      {advert && generator.videoMotion !== null && (
+        <VideoPanel advertId={advert.id} video={null} onUsage={onUsage} autoStart={generator.videoMotion} />
+      )}
+    </Card>
+  )
+}
+
+interface OptionsProps {
+  format: CreateFormat
+  busy: boolean
+  photo: UploadedPhoto | null
+  onPhoto: (photo: UploadedPhoto | null) => void
+  platforms: Platform[]
+  onPlatforms: (platforms: Platform[]) => void
+  motion: string
+  onMotion: (motion: string) => void
+}
+
+// The choices that belong to the chosen format.
+function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, motion, onMotion }: OptionsProps) {
+  return (
+    <>
+      {format === 'photo' && <PhotoPicker photo={photo} onChange={onPhoto} disabled={busy} />}
+      {(format === 'images' || format === 'photo') && <PlatformPicker selected={platforms} onChange={onPlatforms} disabled={busy} />}
+      {format === 'video' && (
+        <TextArea
+          label="Movement"
+          optional
+          hint={MOTION_HINT}
+          value={motion}
+          rows={2}
+          maxLength={300}
+          onChange={(e) => onMotion(e.target.value)}
+          data-testid="create-motion"
+        />
+      )}
+    </>
   )
 }
 
 export default function Generator() {
   const topic = useTopicSuggestion()
+  const [format, setFormat] = useState<CreateFormat>('images')
   const [platforms, setPlatforms] = useState<Platform[]>(loadPlatformChoice)
+  const [photo, setPhoto] = useState<UploadedPhoto | null>(null)
+  const [motion, setMotion] = useState('')
   const [usage, setUsage] = useState<Usage | null>(null)
   const onUsage = useCallback((u: Usage) => setUsage(u), [])
   const generator = useGenerator(onUsage)
@@ -46,24 +148,30 @@ export default function Generator() {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    void generator.generate(topic.topic.trim(), platforms)
+    void generator.generate({ format, topic: topic.topic.trim(), platforms, photoKey: photo?.key, motion })
+    // An uploaded photo is used up by the post made from it.
+    if (format === 'photo') setPhoto(null)
   }
 
-  const canGenerate = topic.topic.trim().length > 0 && !generator.busy && !topic.suggesting
-  const hasResult = generator.advert || generator.running
+  const ready = format !== 'photo' || (photo !== null && platforms.length > 0)
+  const canGenerate = topic.topic.trim().length > 0 && !generator.busy && !topic.suggesting && ready
+  const hasResult = Boolean(generator.advert) || generator.running
+  const [idleLabel, runningLabel] = BUTTONS[format]
 
   return (
     <div className={styles.page}>
       <div>
-        <h1>Create an advert</h1>
-        <p className={styles.lead}>One advert: the text plus an image for each platform you tick.</p>
+        <h1>Create</h1>
+        <p className={styles.lead}>{LEADS[format]}</p>
       </div>
+      <UsagePanel usage={usage} />
 
       <form onSubmit={submit}>
         <Card>
+          <FormatPicker value={format} onChange={setFormat} disabled={generator.busy} />
           <div className={styles.topicHead}>
             <TextArea
-              label="Advert topic"
+              label="Topic"
               hint={topic.suggesting ? 'Thinking of a topic for you...' : 'Use our suggestion, change it, or type your own.'}
               value={topic.topic}
               rows={2}
@@ -87,9 +195,17 @@ export default function Generator() {
             </div>
           </div>
           {topic.error && <Alert tone="warning">{topic.error}</Alert>}
-          <PlatformPicker selected={platforms} onChange={choosePlatforms} disabled={generator.busy} />
+          <FormatOptions
+            format={format}
+            busy={generator.busy}
+            photo={photo}
+            onPhoto={setPhoto}
+            platforms={platforms}
+            onPlatforms={choosePlatforms}
+            motion={motion}
+            onMotion={setMotion}
+          />
           <div className={styles.generateRow}>
-            <UsageNote usage={usage} />
             <Button
               type="submit"
               icon={<Sparkles size={18} aria-hidden="true" />}
@@ -97,7 +213,7 @@ export default function Generator() {
               disabled={!canGenerate}
               data-testid="generate"
             >
-              {generator.running ? 'Creating your advert' : 'Create advert'}
+              {generator.running ? runningLabel : idleLabel}
             </Button>
           </div>
         </Card>
@@ -109,38 +225,7 @@ export default function Generator() {
         </Alert>
       )}
 
-      {hasResult && (
-        <Card title="Your advert" description="Saved to your library automatically." testId="result">
-          {generator.advert ? (
-            <EditableAdvertText
-              body={generator.advert.body}
-              onSave={generator.saveText}
-              onRegenerate={() => void generator.regenerateText()}
-              regenerating={generator.regeneratingText}
-              disabled={generator.busy}
-            />
-          ) : (
-            <p className={styles.writing} role="status">
-              Writing your advert...
-            </p>
-          )}
-          {generator.slots.length > 0 && (
-            <div className={styles.images}>
-              {generator.slots.map((slot) => (
-                <ImageTile
-                  key={slot.platform}
-                  platform={slot.platform}
-                  image={slot.image}
-                  status={slot.status}
-                  error={slot.error}
-                  onRegenerate={generator.advert ? () => void generator.regenerateImage(slot.platform) : undefined}
-                  disabled={generator.busy}
-                />
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+      {hasResult && <Result generator={generator} onUsage={onUsage} />}
     </div>
   )
 }

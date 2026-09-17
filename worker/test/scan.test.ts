@@ -3,9 +3,11 @@ import { scanWebsite } from "../src/scan";
 import { detectBrandColours, parseColour, toHex } from "../src/scan/colours";
 import { decodeText, fetchLimited } from "../src/scan/fetch-limited";
 import { fetchFirstLogo, rankLogoCandidates } from "../src/scan/logo";
+import { findInfoPages } from "../src/scan/info-pages";
 import { extractPageFacts } from "../src/scan/page";
 import { normaliseWebsiteUrl, resolveUrl } from "../src/scan/url";
-import { installFetchMock, onFetch } from "./fetch-mock";
+import { ANTHROPIC_URL, DETAILS, mockClaude } from "./ai-mocks";
+import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
 import { apiFetch, mockEmail, pngBytes, testEnv, verifiedUser } from "./helpers";
 
 const SITE = "https://acme.example.co.uk";
@@ -137,6 +139,27 @@ describe("page facts", () => {
     ]);
   });
 
+  it("collects readable words and links, without repeats", async () => {
+    const facts = await extractPageFacts(`
+      <html><head><title>Acme Cleaning</title><meta name="description" content="Cleaners in  Twickenham"><meta name="description"></head>
+      <body><h1>Sparkling homes</h1><ul><li><p>Oven cleaning</p></li></ul><p>  </p><script>var x = 1</script>
+      <a href="/services">Our <b>services</b></a><a href="/about"></a></body></html>`);
+    expect(facts.text).toEqual(["Acme Cleaning", "Cleaners in Twickenham", "Sparkling homes", "Oven cleaning"]);
+    expect(facts.links).toEqual([
+      { href: "/services", text: "Our services" },
+      { href: "/about", text: "" },
+    ]);
+  });
+
+  it("caps words and links", async () => {
+    const paragraphs = Array.from({ length: 50 }, (_, i) => `<p>${String(i).padStart(3, "0")}${"x".repeat(297)}</p>`).join("");
+    const links = Array.from({ length: 210 }, (_, i) => `<a href="/${i}">${i}</a>`).join("");
+    const facts = await extractPageFacts(`<html><body>${paragraphs}${links}</body></html>`);
+    expect(facts.text).toHaveLength(40);
+    expect(facts.links).toHaveLength(200);
+    expect(facts.links.at(-1)).toEqual({ href: "/199", text: "199" });
+  });
+
   it("caps inline CSS and the number of images", async () => {
     const huge = `<style>${"a{color:red}".repeat(40_000)}</style>`;
     const images = Array.from({ length: 70 }, (_, i) => `<img src="/${i}.png">`).join("");
@@ -146,11 +169,39 @@ describe("page facts", () => {
   });
 });
 
+describe("findInfoPages", () => {
+  it("picks one services page and one about page on the same site", () => {
+    const pages = findInfoPages(
+      [
+        { href: "/", text: "Home" },
+        { href: "#top", text: "About" },
+        { href: "https://elsewhere.com/about", text: "About" },
+        { href: "javascript:void(0)", text: "Services" },
+        { href: "/pricing", text: "Prices" },
+        { href: "/about-us", text: "Who we are" },
+        { href: "/our-story", text: "Story" },
+        { href: "/what-we-do", text: "Work" },
+        { href: "/what-we-do#ovens", text: "Ovens" },
+        { href: "/contact", text: "Contact" },
+      ],
+      `${SITE}/`
+    );
+    expect(pages).toEqual([`${SITE}/what-we-do`, `${SITE}/about-us`]);
+  });
+
+  it("falls back to a products page and finds nothing on a bare site", () => {
+    expect(findInfoPages([{ href: "/menu", text: "" }], `${SITE}/`)).toEqual([`${SITE}/menu`]);
+    expect(findInfoPages([{ href: "/contact", text: "Contact" }], `${SITE}/`)).toEqual([]);
+  });
+});
+
 describe("logo ranking", () => {
   it("prefers a header logo, then other logos, the first header image, then icons", () => {
     const urls = rankLogoCandidates(
       {
         baseHref: null,
+        text: [],
+        links: [],
         themeColours: [],
         css: [],
         stylesheets: [],
@@ -183,7 +234,7 @@ describe("logo ranking", () => {
 
   it("falls back to the conventional touch icon", () => {
     const urls = rankLogoCandidates(
-      { baseHref: null, themeColours: [], css: [], stylesheets: [], icons: [], images: [] },
+      { baseHref: null, text: [], links: [], themeColours: [], css: [], stylesheets: [], icons: [], images: [] },
       SITE
     );
     expect(urls).toEqual([`${SITE}/apple-touch-icon.png`]);
@@ -250,6 +301,14 @@ describe("scanWebsite", () => {
     expect(outcome.logo?.kind).toBe("raster");
   });
 
+  it("reads the words of the home page and its services and about pages", async () => {
+    onFetch(`${SITE}/`, () => html('<h1>Acme</h1><a href="/services">Services</a><a href="/about">About</a>'));
+    onFetch(`${SITE}/services`, () => html("<li>Oven cleaning</li>"));
+    onFetch(`${SITE}/about`, () => new Response("", { status: 404 }));
+    const outcome = await scanWebsite(new URL(`${SITE}/`));
+    expect(outcome.pageText).toBe("Acme\n\nOven cleaning");
+  });
+
   it("honours <base href> when resolving links", async () => {
     onFetch(`${SITE}/home`, () => html('<img class="logo" src="logo.svg">', '<base href="/assets/">'));
     onFetch(`${SITE}/assets/logo.svg`, () => new Response(SVG, { headers: { "Content-Type": "image/svg+xml" } }));
@@ -260,12 +319,12 @@ describe("scanWebsite", () => {
   it("ignores an unusable <base href>", async () => {
     onFetch(`${SITE}/b`, () => html("", '<base href="javascript:void(0)">'));
     const outcome = await scanWebsite(new URL(`${SITE}/b`));
-    expect(outcome).toEqual({ reachable: true, colours: [], logo: null });
+    expect(outcome).toEqual({ reachable: true, colours: [], logo: null, pageText: "" });
   });
 
   it("reports an unreachable site as nothing found", async () => {
     onFetch(`${SITE}/down`, () => new Response("", { status: 503 }));
-    expect(await scanWebsite(new URL(`${SITE}/down`))).toEqual({ reachable: false, colours: [], logo: null });
+    expect(await scanWebsite(new URL(`${SITE}/down`))).toEqual({ reachable: false, colours: [], logo: null, pageText: "" });
   });
 });
 
@@ -282,6 +341,25 @@ describe("POST /api/profile/scan", () => {
     expect(body.logo && (await testEnv.FILES.head(body.logo.key))).not.toBeNull();
   });
 
+  it("fills in the rest of the profile from the website's words", async () => {
+    const { cookie } = await verifiedUser();
+    mockClaude();
+    onFetch(`${SITE}/`, () => html("<h1>Acme Cleaning</h1><p>Oven cleaning in Twickenham</p>"));
+    const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } });
+    expect(await res.json()).toMatchObject({ details: DETAILS });
+    const sent = callsTo(ANTHROPIC_URL).at(-1)?.body ?? "";
+    expect(sent).toContain("Oven cleaning in Twickenham");
+    expect(sent).toContain('"tool_choice":{"type":"tool","name":"record_profile"}');
+  });
+
+  it("still answers with colours and logo when reading the words fails", async () => {
+    const { cookie } = await verifiedUser();
+    onFetch(ANTHROPIC_URL, () => new Response("{}", { status: 400 }));
+    onFetch(`${SITE}/`, () => html("<p>Words</p>", '<meta name="theme-color" content="#1d4ed8">'));
+    const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } });
+    expect(await res.json()).toMatchObject({ colours: ["#1d4ed8"], details: null });
+  });
+
   it("hands an SVG logo back to the browser to convert", async () => {
     const { cookie } = await verifiedUser();
     onFetch(`${SITE}/`, () => html('<img alt="logo" src="/logo.svg">'));
@@ -294,7 +372,7 @@ describe("POST /api/profile/scan", () => {
     const { cookie } = await verifiedUser();
     const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: "nowhere.example.com" } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ reachable: false, colours: [], logo: null, logoSvg: null });
+    expect(await res.json()).toMatchObject({ reachable: false, colours: [], logo: null, logoSvg: null, details: null });
   });
 
   it("refuses when the account has scanned too many times in a minute", async () => {

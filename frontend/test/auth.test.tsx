@@ -48,14 +48,14 @@ describe('route guards', () => {
   it('keeps signed-in people away from the sign-in screen', async () => {
     signedIn()
     renderApp('/sign-in')
-    await screen.findByRole('heading', { name: 'Create an advert' })
+    await screen.findByRole('heading', { name: 'Create' })
     expect(location()).toBe('/')
   })
 
   it('sends an unknown address home', async () => {
     signedIn()
     renderApp('/nowhere')
-    await screen.findByRole('heading', { name: 'Create an advert' })
+    await screen.findByRole('heading', { name: 'Create' })
   })
 })
 
@@ -67,7 +67,7 @@ describe('sign in', () => {
     })
     renderApp('/sign-in')
     await fillCredentials('owner@example.com', 'secret-password')
-    await screen.findByRole('heading', { name: 'Create an advert' })
+    await screen.findByRole('heading', { name: 'Create' })
     expect(authMock.signIn.email).toHaveBeenCalledWith({ email: 'owner@example.com', password: 'secret-password' })
   })
 
@@ -190,7 +190,7 @@ describe('verify email', () => {
     renderApp('/verify')
     await userEvent.type(screen.getByTestId('otp-input'), '12a3456')
     await userEvent.click(screen.getByTestId('verify-button'))
-    await screen.findByRole('heading', { name: 'Create an advert' })
+    await screen.findByRole('heading', { name: 'Create' })
     expect(callsTo('POST', '/api/auth/email-otp/verify-email')[0]?.body).toEqual({ email: 'owner@example.com', otp: '123456' })
   })
 

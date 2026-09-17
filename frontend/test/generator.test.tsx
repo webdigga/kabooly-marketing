@@ -5,7 +5,7 @@ import { advert, callsTo, image, json, mockApi, ndjson, PROFILE, renderApp, sign
 
 vi.mock('../src/lib/auth-client', async () => ({ authClient: (await import('./auth-mock')).authMock }))
 
-const DONE = { type: 'done', usage: { imagesUsed: 4, imagesLimit: 20, nextFreeAt: null } }
+const DONE = { type: 'done', usage: { ...USAGE, imagesToday: { used: 4, limit: 20, nextFreeAt: null } } }
 
 function stream(platforms: ('instagram' | 'facebook' | 'nextdoor')[] = ['instagram', 'facebook']) {
   return () =>
@@ -45,7 +45,7 @@ async function landed() {
 describe('topic', () => {
   it('suggests a topic on landing and another on request, avoiding repeats', async () => {
     await landed()
-    expect(screen.getByTestId('usage')).toHaveTextContent('18 images left today')
+    expect(screen.getByTestId('usage')).toHaveTextContent('18 of 20 images left')
     await userEvent.click(screen.getByTestId('suggest-topic'))
     await waitFor(() => expect(screen.getByTestId('topic-input')).toHaveValue('Sparkling windows'))
     expect(callsTo('POST', '/api/topics/suggest')[1]?.body).toEqual({ avoid: ['Spring ovens'] })
@@ -83,8 +83,8 @@ describe('generation', () => {
     expect(within(instagram).getByRole('link', { name: 'Download' })).toHaveAttribute('href', image('instagram').downloadUrl)
     expect(screen.getByTestId('image-facebook')).toBeInTheDocument()
     expect(screen.queryByTestId('image-nextdoor')).not.toBeInTheDocument()
-    expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ topic: 'Spring ovens', platforms: ['instagram', 'facebook'] })
-    expect(screen.getByTestId('usage')).toHaveTextContent('16 images left today')
+    expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'images', topic: 'Spring ovens', platforms: ['instagram', 'facebook'] })
+    expect(screen.getByTestId('usage')).toHaveTextContent('16 of 20 images left')
     expect(localStorage.getItem('kabooly-marketing-platforms')).toBe('["instagram","facebook"]')
   })
 

@@ -15,8 +15,17 @@ export interface ImageRef {
   inHeader: boolean;
 }
 
+export interface PageLink {
+  href: string;
+  text: string;
+}
+
 export interface PageFacts {
   baseHref: string | null;
+  // Readable words (title, description, headings, paragraphs, list items),
+  // for reading what the business does.
+  text: string[];
+  links: PageLink[];
   themeColours: string[];
   css: string[];
   stylesheets: string[];
@@ -27,6 +36,8 @@ export interface PageFacts {
 const MAX_INLINE_CSS = 400_000;
 const MAX_STYLESHEETS = 3;
 const MAX_IMAGES = 60;
+const MAX_TEXT = 12_000;
+const MAX_LINKS = 200;
 
 function mentionsLogo(...values: (string | null)[]): boolean {
   return values.some((v) => v?.toLowerCase().includes("logo"));
@@ -45,6 +56,8 @@ function imageSource(el: Element): string | null {
 class Collector {
   facts: PageFacts = {
     baseHref: null,
+    text: [],
+    links: [],
     themeColours: [],
     css: [],
     stylesheets: [],
@@ -55,6 +68,9 @@ class Collector {
   private logoDepth = 0;
   private inlineCssSize = 0;
   private styleText = "";
+  private textSize = 0;
+  private pendingText = "";
+  private anchor: PageLink | null = null;
 
   // Tracks nesting so an <img> knows whether it sits in a header or logo.
   // Void and self-closing elements have no end tag (onEndTag throws for
@@ -105,6 +121,38 @@ class Collector {
     this.facts.css.push(css);
   }
 
+  addText(value: string): void {
+    const clean = value.replace(/\s+/g, " ").trim();
+    // Nested matches (a <p> inside an <li>) hand over the same words twice.
+    if (!clean || this.facts.text.includes(clean) || this.textSize + clean.length > MAX_TEXT) return;
+    this.textSize += clean.length;
+    this.facts.text.push(clean);
+  }
+
+  textChunk(chunk: Text): void {
+    this.pendingText += chunk.text;
+    if (chunk.lastInTextNode) {
+      this.addText(this.pendingText);
+      this.pendingText = "";
+    }
+  }
+
+  // Links are kept with their words so "About us" and "Our services" pages
+  // can be found. The selector guarantees an href.
+  startLink(el: Element): void {
+    if (this.facts.links.length >= MAX_LINKS) {
+      this.anchor = null;
+      return;
+    }
+    const link = { href: String(el.getAttribute("href")), text: "" };
+    this.facts.links.push(link);
+    this.anchor = link;
+  }
+
+  linkText(chunk: Text): void {
+    if (this.anchor) this.anchor.text = `${this.anchor.text}${chunk.text}`.slice(0, 100);
+  }
+
   styleChunk(chunk: Text): void {
     this.styleText += chunk.text;
     if (chunk.lastInTextNode) {
@@ -136,7 +184,17 @@ export async function extractPageFacts(html: string): Promise<PageFacts> {
     .on('[class*="logo"]', { element: (el) => { c.enter(el, "logo"); } })
     .on('[class*="Logo"]', { element: (el) => { c.enter(el, "logo"); } })
     .on('[id*="logo"]', { element: (el) => { c.enter(el, "logo"); } })
-    .on("img", { element: (el) => { c.image(el); } });
+    .on("img", { element: (el) => { c.image(el); } })
+    .on('meta[name="description"]', {
+      element: (el) => {
+        c.addText(el.getAttribute("content") ?? "");
+      },
+    })
+    .on("title, h1, h2, h3, p, li", { text: (chunk) => { c.textChunk(chunk); } })
+    .on("a[href]", {
+      element: (el) => { c.startLink(el); },
+      text: (chunk) => { c.linkText(chunk); },
+    });
   await rewriter.transform(new Response(html)).arrayBuffer();
   return c.facts;
 }

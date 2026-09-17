@@ -186,3 +186,23 @@ export async function uploadLogo(cookie: string, bytes: Uint8Array = pngBytes())
     body: bytes,
   });
 }
+
+// A real JPEG photo of the given size (the Images binding draws it).
+export async function photoBytes(width = 1600, height = 1200): Promise<Uint8Array> {
+  const source = new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(pngBytes());
+      c.close();
+    },
+  });
+  const out = await testEnv.IMAGES.input(source).transform({ width, height, fit: "squeeze" }).output({ format: "image/jpeg" });
+  return new Uint8Array(await out.response().arrayBuffer());
+}
+
+export async function uploadPhoto(cookie: string, bytes: Uint8Array): Promise<Response> {
+  return appFetch("/api/uploads/photo", {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/octet-stream" },
+    body: bytes,
+  });
+}

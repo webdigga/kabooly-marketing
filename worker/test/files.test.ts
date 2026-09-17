@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { MAX_LOGO_BYTES, sniffRaster } from "../src/files";
+import { MAX_LOGO_BYTES, MAX_PHOTO_BYTES, sniffRaster } from "../src/files";
 import { installFetchMock } from "./fetch-mock";
-import { apiFetch, mockEmail, pngBytes, testEnv, uploadLogo, verifiedUser } from "./helpers";
+import { apiFetch, appFetch, mockEmail, photoBytes, pngBytes, testEnv, uploadLogo, uploadPhoto, verifiedUser } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
@@ -75,6 +75,31 @@ describe("file serving", () => {
     await plain.arrayBuffer();
   });
 
+  it("serves byte ranges, so videos play on iPhones", async () => {
+    const { cookie } = await verifiedUser();
+    const { url }: { url: string } = await (await uploadLogo(cookie)).json();
+    const whole = pngBytes();
+    const get = (range: string) => appFetch(url, { headers: { Cookie: cookie, Range: range } });
+
+    const first = await get("bytes=0-3");
+    expect(first.status).toBe(206);
+    expect(first.headers.get("Content-Range")).toBe(`bytes 0-3/${whole.length}`);
+    expect(first.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(new Uint8Array(await first.arrayBuffer())).toEqual(whole.subarray(0, 4));
+
+    const rest = await get("bytes=10-");
+    expect(rest.headers.get("Content-Range")).toBe(`bytes 10-${whole.length - 1}/${whole.length}`);
+    expect(new Uint8Array(await rest.arrayBuffer())).toEqual(whole.subarray(10));
+
+    const tail = await get("bytes=-5");
+    expect(tail.headers.get("Content-Range")).toBe(`bytes ${whole.length - 5}-${whole.length - 1}/${whole.length}`);
+    await tail.arrayBuffer();
+
+    const beyond = await get("bytes=9999-");
+    expect(beyond.status).toBe(200);
+    expect(new Uint8Array(await beyond.arrayBuffer())).toEqual(whole);
+  });
+
   it("never serves another account's file", async () => {
     const owner = await verifiedUser("owner");
     const other = await verifiedUser("other");
@@ -88,5 +113,31 @@ describe("file serving", () => {
     const prefix = key.slice(0, key.indexOf("/logos/"));
     expect((await apiFetch(cookie, `/api/files/${prefix}/logos/missing.png`)).status).toBe(404);
     expect((await apiFetch(cookie, `/api/files/${prefix}/..%2F..%2Fx`)).status).toBe(404);
+  });
+});
+
+describe("photo upload", () => {
+  it("keeps one photo per account, with its size", async () => {
+    const { cookie } = await verifiedUser();
+    const first: { key: string } = await (await uploadPhoto(cookie, await photoBytes())).json();
+    const res = await uploadPhoto(cookie, await photoBytes(1200, 1500));
+    expect(res.status).toBe(200);
+    const body: { key: string; url: string; width: number; height: number } = await res.json();
+    expect(body).toMatchObject({ width: 1200, height: 1500, url: `/api/files/${body.key}` });
+    expect(body.key).toMatch(/^users\/[^/]+\/uploads\/[\w-]+\.jpg$/);
+    expect(await testEnv.FILES.head(first.key)).toBeNull();
+    expect(await testEnv.FILES.head(body.key)).not.toBeNull();
+  });
+
+  it.each([
+    ["too small", () => photoBytes(1600, 1000), 422, "photo_too_small"],
+    ["not an image", () => Promise.resolve(new TextEncoder().encode("hello")), 415, "photo_type"],
+    ["unreadable", () => Promise.resolve(new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x01])), 415, "photo_type"],
+    ["too large", () => Promise.resolve(new Uint8Array(MAX_PHOTO_BYTES + 1)), 413, "photo_too_large"],
+  ])("refuses a photo that is %s", async (_label, bytes, status, code) => {
+    const { cookie } = await verifiedUser();
+    const res = await uploadPhoto(cookie, await bytes());
+    expect(res.status).toBe(status);
+    expect(await res.json()).toMatchObject({ code });
   });
 });

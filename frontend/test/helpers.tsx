@@ -73,16 +73,24 @@ export const PROFILE: Profile = {
   logoUrl: null,
 }
 
-export const USAGE: Usage = { imagesUsed: 2, imagesLimit: 20, nextFreeAt: null }
+export const USAGE: Usage = {
+  imagesToday: { used: 2, limit: 20, nextFreeAt: null },
+  imagesThisMonth: { used: 12, limit: 150, nextFreeAt: null },
+  videosThisMonth: { used: 1, limit: 20, nextFreeAt: null },
+}
 
 export function advert(overrides: Partial<Advert> = {}): Advert {
   return {
     id: 'a1',
+    format: 'images',
     topic: 'Spring ovens',
     body: 'Book your spring oven clean in Twickenham.',
     createdAt: '2026-09-15T10:00:00.000Z',
     updatedAt: '2026-09-15T10:00:00.000Z',
     images: [],
+    slides: null,
+    background: null,
+    video: null,
     ...overrides,
   }
 }
