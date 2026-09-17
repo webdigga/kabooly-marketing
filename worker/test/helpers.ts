@@ -60,6 +60,7 @@ export interface SentEmail {
   to: string;
   subject: string;
   text: string;
+  html: string;
 }
 
 export const sentEmails: SentEmail[] = [];

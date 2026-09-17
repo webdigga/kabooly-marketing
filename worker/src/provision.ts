@@ -7,6 +7,7 @@ import { setSubscriptionState, statusGrantsAccess } from "./billing";
 import * as schema from "./db/schema";
 import { SUBSCRIPTION_SOURCES } from "./db/schema";
 import { sendEmail } from "./email";
+import type { EmailContent } from "./email-layout";
 import type { Env } from "./env";
 import { requireInternalSecret } from "./internal-auth";
 
@@ -59,11 +60,19 @@ async function createSetPasswordLink(env: Env, userId: string): Promise<string> 
   return `${env.BETTER_AUTH_URL}/set-password?token=${token}`;
 }
 
-function setPasswordEmail(body: ProvisionBody, link: string): string {
-  const greeting = body.name ? `Hi ${body.name},` : "Hi,";
-  const extra =
-    body.source === "bundle" ? "\n\nYour Kabooly CRM login arrives in a separate email." : "";
-  return `${greeting}\n\nYour Kabooly Marketing account is ready. Choose your password to sign in for the first time:\n\n${link}\n\nThis link works for ${String(SET_PASSWORD_LINK_DAYS)} days. If it runs out, use "Forgot your password?" on the sign in page.${extra}\n\nThe Kabooly Team`;
+function setPasswordEmail(body: ProvisionBody, link: string): EmailContent {
+  const after = [
+    `This link works for ${String(SET_PASSWORD_LINK_DAYS)} days. If it runs out, use "Forgot your password?" on the sign in page.`,
+  ];
+  if (body.source === "bundle") after.push("Your Kabooly CRM login arrives in a separate email.");
+  return {
+    paragraphs: [
+      body.name ? `Hi ${body.name},` : "Hi,",
+      "Your Kabooly Marketing account is ready. Choose your password to sign in for the first time:",
+    ],
+    button: { href: link, label: "Choose your password" },
+    after,
+  };
 }
 
 async function createAccount(env: Env, body: ProvisionBody): Promise<string> {

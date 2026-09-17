@@ -27,7 +27,12 @@ export function createAuth(env: Env) {
               env,
               email,
               "Your Kabooly Marketing password reset code",
-              `Your Kabooly Marketing password reset code is ${otp}\n\nIt expires in 5 minutes. If you did not ask for this, you can ignore it.`
+              {
+                paragraphs: [
+                  `Your Kabooly Marketing password reset code is ${otp}`,
+                  "It expires in 5 minutes. If you did not ask for this, you can ignore it.",
+                ],
+              }
             );
           }
           if (type === "email-verification") {
@@ -35,7 +40,12 @@ export function createAuth(env: Env) {
               env,
               email,
               "Your Kabooly Marketing verification code",
-              `Your Kabooly Marketing verification code is ${otp}\n\nEnter it to verify your email. It expires in 5 minutes. If you did not ask for this, you can ignore it.`
+              {
+                paragraphs: [
+                  `Your Kabooly Marketing verification code is ${otp}`,
+                  "Enter it to verify your email. It expires in 5 minutes. If you did not ask for this, you can ignore it.",
+                ],
+              }
             );
           }
         },
