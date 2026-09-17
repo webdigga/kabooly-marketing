@@ -172,7 +172,17 @@ export class GenerationLimiter extends DurableObject {
       events: [],
       lock: null,
     };
-    state.events = state.events.filter((e) => e.at > now - MONTH_MS);
+    state.events = state.events
+      .filter((e) => e.at > now - MONTH_MS)
+      // Events saved before 2026-09-17 call the count "images". Without this
+      // their count reads as undefined and every sum becomes NaN, which
+      // refused all image work while showing nothing used.
+      .map((e: Omit<UsageEvent, "units"> & { units?: number; images?: number }) => ({
+        id: e.id,
+        at: e.at,
+        kind: e.kind,
+        units: e.units ?? e.images ?? 0,
+      }));
     if (state.lock && state.lock.expiresAt <= now) state.lock = null;
     return state;
   }

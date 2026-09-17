@@ -1,3 +1,4 @@
+import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import {
   allowance,
@@ -208,5 +209,23 @@ describe("daily text cap", () => {
       remaining: 0,
       nextFreeAt: T0 + DAY,
     });
+  });
+});
+
+describe("stored events from before the monthly caps", () => {
+  it("reads their old image counts instead of refusing everything", async () => {
+    const stub = limiter();
+    await runInDurableObject(stub, async (_instance, state) => {
+      await state.storage.put("state", {
+        events: [
+          { id: "old-image", at: T0, kind: "image", images: 3 },
+          { id: "old-text", at: T0 + 1, kind: "text", images: 0 },
+          { id: "odd", at: T0 + 2, kind: "image" },
+        ],
+        lock: null,
+      });
+    });
+    expect((await stub.usage(T0 + 10)).imagesToday).toEqual({ used: 3, limit: 20, nextFreeAt: null });
+    expect((await stub.begin("image", 1, T0 + 20)).ok).toBe(true);
   });
 });
