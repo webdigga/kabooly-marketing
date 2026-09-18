@@ -10,6 +10,33 @@
   max-width: var(--shell-width);
   margin: 0 auto;
   padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.menuButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .brand {
@@ -27,18 +54,12 @@
   font-weight: var(--font-weight-medium);
 }
 
-/* Phones: one row of tabs that scrolls sideways, so every section is one
-   tap away with nothing hidden behind a menu button. */
-.tabs {
-  display: flex;
+/* Phones: the same sections, behind the menu button. */
+.menu {
+  display: grid;
   gap: var(--space-1);
-  padding: 0 var(--space-3) var(--space-2);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tabs::-webkit-scrollbar {
-  display: none;
+  padding: var(--space-2) var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .sidebar {
@@ -98,7 +119,8 @@
 }
 
 @media (min-width: 960px) {
-  .tabs {
+  .menuButton,
+  .menu {
     display: none;
   }
 

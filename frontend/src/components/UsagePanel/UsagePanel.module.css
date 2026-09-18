@@ -1,6 +1,7 @@
+/* Phones: one stat per row, so the labels never wrap unevenly. Wider
+   screens put the three side by side. */
 .strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-md);
@@ -9,14 +10,26 @@
 
 .stat {
   display: grid;
-  gap: var(--space-1);
-  align-content: start;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
   min-width: 0;
 }
 
+.stat .track {
+  grid-column: 1 / -1;
+}
+
+.stat .freeAt {
+  grid-column: 1 / -1;
+}
+
 .figure {
+  order: 2;
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .number {
@@ -27,7 +40,8 @@
 }
 
 .label {
-  font-size: var(--text-xs);
+  order: 1;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
   line-height: var(--line-height-tight);
 }
@@ -65,8 +79,24 @@
 
 @media (min-width: 640px) {
   .strip {
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--space-6);
     padding: var(--space-3) var(--space-4);
+  }
+
+  .stat {
+    grid-template-columns: 1fr;
+    align-content: start;
+  }
+
+  .figure {
+    order: 0;
+    text-align: left;
+  }
+
+  .label {
+    order: 0;
+    font-size: var(--text-xs);
   }
 
   .number {

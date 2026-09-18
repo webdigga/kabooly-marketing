@@ -35,6 +35,21 @@ describe('navigation', () => {
   })
 })
 
+describe('the phone menu', () => {
+  it('opens behind the menu button and closes when a page is chosen', async () => {
+    mockApi(base)
+    renderApp('/')
+    await screen.findByRole('heading', { name: 'Image advert' })
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('menu-button'))
+    const menu = screen.getByRole('navigation', { name: 'Main' })
+    expect(screen.getByTestId('menu-button')).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(within(menu).getByRole('link', { name: 'Carousel' }))
+    await screen.findByRole('heading', { name: 'Carousel' })
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument()
+  })
+})
+
 describe('library', () => {
   it('shows adverts as a compact grid, newest first, and loads older ones', async () => {
     mockApi({
