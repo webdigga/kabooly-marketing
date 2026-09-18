@@ -1,14 +1,18 @@
 import { api } from './api'
+import { PLATFORMS } from './platforms'
+import type { Platform } from './types'
 
-// The strip of branding stamped along the bottom of every generated image:
-// the real logo file and the website address, drawn here in the browser
-// (where the fonts are) and stored with the profile. Mirrors STRIP_SHARE in
-// worker/src/image-maker.ts: 12% of a 1200 wide image.
-export const STRIP_WIDTH = 1200
-export const STRIP_HEIGHT = 144
-const EDGE = 8
-const PADDING = 32
+// The strip of branding stamped along the bottom of every image: the real
+// logo file and the website address, drawn here in the browser (where the
+// fonts are) and stored with the profile, one per platform at that
+// platform's exact size. Mirrors stripSize in worker/src/platforms.ts.
+const STRIP_SHARE = 0.09
 const FONT = 'Inter, system-ui, sans-serif'
+
+export function stripSize(platform: Platform): { width: number; height: number } {
+  const { width } = PLATFORMS.find((p) => p.id === platform) ?? { width: 1200 }
+  return { width, height: Math.round(width * STRIP_SHARE) }
+}
 
 export interface BrandStripInput {
   logoUrl: string | null
@@ -27,67 +31,89 @@ export function websiteLabel(url: string): string {
     .slice(0, 60)
 }
 
+const LOAD_TIMEOUT_MS = 10_000
+
+// Never waits for ever: a logo that will not load must not block a save.
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error(`could not load ${src}`))
+    const fail = () => reject(new Error(`could not load ${src}`))
+    const timer = setTimeout(fail, LOAD_TIMEOUT_MS)
+    img.onload = () => {
+      clearTimeout(timer)
+      resolve(img)
+    }
+    img.onerror = fail
     img.src = src
   })
 }
 
-async function draw(input: BrandStripInput): Promise<Blob | null> {
+async function draw(input: BrandStripInput, platform: Platform, logo: HTMLImageElement | null): Promise<Blob | null> {
+  const { width, height } = stripSize(platform)
   const canvas = document.createElement('canvas')
-  canvas.width = STRIP_WIDTH
-  canvas.height = STRIP_HEIGHT
+  canvas.width = width
+  canvas.height = height
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
   const colour = input.colour ?? '#1d4ed8'
+  const edge = Math.max(3, Math.round(height * 0.07))
+  const padding = Math.round(height * 0.3)
   ctx.fillStyle = colour
-  ctx.fillRect(0, 0, STRIP_WIDTH, STRIP_HEIGHT)
+  ctx.fillRect(0, 0, width, height)
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, EDGE, STRIP_WIDTH, STRIP_HEIGHT - EDGE)
+  ctx.fillRect(0, edge, width, height - edge)
 
   const website = websiteLabel(input.websiteUrl)
+  const middle = edge + (height - edge) / 2
+  let textWidth = 0
   if (website) {
-    // Older browsers (and test environments) have no font loading API.
-    await document.fonts?.load(`600 44px Inter`).catch(() => undefined)
-    ctx.font = `600 44px ${FONT}`
+    const size = Math.round((height - edge) * 0.34)
+    await document.fonts?.load(`600 ${String(size)}px Inter`).catch(() => undefined)
+    ctx.font = `600 ${String(size)}px ${FONT}`
     ctx.fillStyle = colour
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
-    ctx.fillText(website, STRIP_WIDTH - PADDING, STRIP_HEIGHT / 2 + EDGE / 2)
+    ctx.fillText(website, width - padding, middle)
+    textWidth = ctx.measureText(website).width + padding * 2
   }
-  if (input.logoUrl) {
-    const logo = await loadImage(input.logoUrl)
-    const maxHeight = STRIP_HEIGHT - EDGE - 32
-    const maxWidth = website ? STRIP_WIDTH / 2 : STRIP_WIDTH - PADDING * 2
+  if (logo) {
+    const maxHeight = height - edge - padding
+    const maxWidth = width - textWidth - padding * 2
     const scale = Math.min(maxWidth / logo.naturalWidth, maxHeight / logo.naturalHeight)
-    ctx.drawImage(logo, PADDING, EDGE + (STRIP_HEIGHT - EDGE - logo.naturalHeight * scale) / 2, logo.naturalWidth * scale, logo.naturalHeight * scale)
+    const w = logo.naturalWidth * scale
+    const h = logo.naturalHeight * scale
+    ctx.drawImage(logo, padding, middle - h / 2, w, h)
   }
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
 }
 
-// The strip for a profile, or null when there is nothing to put on it (no
-// logo and no website) or the browser could not draw it.
-export async function makeBrandStrip(input: BrandStripInput): Promise<Blob | null> {
-  if (!input.logoUrl && !websiteLabel(input.websiteUrl)) return null
+// A strip for each platform, or null when there is nothing to put on one
+// (no logo and no website) or the browser could not draw it.
+export async function makeBrandStrips(input: BrandStripInput): Promise<Partial<Record<Platform, Blob>>> {
+  if (!input.logoUrl && !websiteLabel(input.websiteUrl)) return {}
   try {
-    return await draw(input)
+    const logo = input.logoUrl ? await loadImage(input.logoUrl) : null
+    const strips = await Promise.all(PLATFORMS.map(async (p) => [p.id, await draw(input, p.id, logo)] as const))
+    return Object.fromEntries(strips.filter(([, blob]) => blob !== null))
   } catch {
-    return null
+    return {}
   }
 }
 
-// Draws and stores the strip, returning its key for the profile. A failure
-// leaves the account without a strip rather than blocking the save.
-export async function uploadBrandStrip(input: BrandStripInput): Promise<string | null> {
-  const blob = await makeBrandStrip(input)
-  if (!blob) return null
+// Draws and stores the strips, returning their keys for the profile. A
+// failure leaves the account without strips rather than blocking the save.
+export async function uploadBrandStrips(input: BrandStripInput): Promise<Partial<Record<Platform, string>>> {
+  const strips = Object.entries(await makeBrandStrips(input))
+  if (!strips.length) return {}
   try {
-    const { key } = await api<{ key: string }>('/api/uploads/brand-strip', { blob })
-    return key
+    const stored = await Promise.all(
+      strips.map(async ([platform, blob]) => {
+        const { key } = await api<{ key: string }>('/api/uploads/brand-strip', { blob })
+        return [platform, key] as const
+      }),
+    )
+    return Object.fromEntries(stored)
   } catch {
-    return null
+    return {}
   }
 }

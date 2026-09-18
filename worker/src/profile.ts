@@ -5,6 +5,8 @@ import { z } from "zod";
 import { readBusinessDetails } from "./copywriter";
 import type { BusinessDetails } from "./copywriter";
 import * as schema from "./db/schema";
+import { PLATFORMS } from "./db/schema";
+import type { Platform } from "./db/schema";
 import type { Env } from "./env";
 import { brandPrefix, fileUrl, storeLogo, userPrefix } from "./files";
 import { beginGeneration, deniedResponse, isDenied } from "./limits";
@@ -23,7 +25,7 @@ export interface Profile {
   services: string[];
   brandColours: string[];
   logoKey: string | null;
-  brandStripKey: string | null;
+  brandStrips: Partial<Record<Platform, string>> | null;
 }
 
 export const MAX_SERVICES = 20;
@@ -51,12 +53,12 @@ export async function loadProfile(env: Env, userId: string): Promise<Profile | n
     services: services.map((s) => s.name),
     brandColours: row.brandColours,
     logoKey: row.logoKey,
-    brandStripKey: row.brandStripKey,
+    brandStrips: row.brandStrips ?? null,
   };
 }
 
 function toJson(profile: Profile) {
-  const { brandStripKey: _strip, ...shown } = profile;
+  const { brandStrips: _strips, ...shown } = profile;
   return { ...shown, logoUrl: profile.logoKey ? fileUrl(profile.logoKey) : null };
 }
 
@@ -72,8 +74,9 @@ const profileBody = z.object({
     .array(z.string().regex(/^#[0-9a-f]{6}$/i))
     .max(MAX_BRAND_COLOURS),
   logoKey: z.string().max(300).nullable(),
-  // Drawn and uploaded by the browser just before saving.
-  brandStripKey: z.string().max(300).nullish(),
+  // One strip per platform, drawn and uploaded by the browser just before
+  // saving.
+  brandStrips: z.partialRecord(z.enum(PLATFORMS), z.string().max(300)).nullish(),
 });
 
 type ProfileBody = z.infer<typeof profileBody>;
@@ -111,7 +114,7 @@ async function saveProfile(
     tone: body.tone,
     brandColours: body.brandColours.map((c) => c.toLowerCase()),
     logoKey: body.logoKey,
-    brandStripKey: body.brandStripKey ?? null,
+    brandStrips: body.brandStrips ?? null,
     updatedAt: now,
   };
   const services = uniqueCaseInsensitive(body.services).map((name, position) => ({
@@ -142,9 +145,9 @@ profileApi.get("/profile", async (c) => {
 // Saving settles which logo and brand strip an account uses, so every other
 // file in those folders (a replaced one, or one a scan stored and the user
 // never kept) goes.
-async function removeOtherFiles(env: Env, userId: string, prefix: string, keep: string | null): Promise<void> {
+async function removeOtherFiles(env: Env, userId: string, prefix: string, keep: (string | null)[]): Promise<void> {
   const listed = await env.FILES.list({ prefix });
-  const stale = listed.objects.map((o) => o.key).filter((key) => key !== keep);
+  const stale = listed.objects.map((o) => o.key).filter((key) => !keep.includes(key));
   if (stale.length) await env.FILES.delete(stale);
 }
 
@@ -153,7 +156,9 @@ async function removeOtherFiles(env: Env, userId: string, prefix: string, keep: 
 async function invalidField(env: Env, userId: string, body: ProfileBody): Promise<string | null> {
   if (body.websiteUrl && !normaliseWebsiteUrl(body.websiteUrl)) return "websiteUrl";
   if (body.logoKey && !(await owns(env, userId, body.logoKey, `${userPrefix(userId)}logos/`))) return "logoKey";
-  if (body.brandStripKey && !(await owns(env, userId, body.brandStripKey, brandPrefix(userId)))) return "brandStripKey";
+  for (const key of Object.values(body.brandStrips ?? {})) {
+    if (!(await owns(env, userId, key, brandPrefix(userId)))) return "brandStrips";
+  }
   return null;
 }
 
@@ -167,8 +172,8 @@ profileApi.put("/profile", async (c) => {
 
   const websiteUrl = body.websiteUrl ? normaliseWebsiteUrl(body.websiteUrl) : null;
   const saved = await saveProfile(c.env, userId, body, websiteUrl?.toString() ?? null);
-  await removeOtherFiles(c.env, userId, `${userPrefix(userId)}logos/`, saved.logoKey);
-  await removeOtherFiles(c.env, userId, brandPrefix(userId), saved.brandStripKey);
+  await removeOtherFiles(c.env, userId, `${userPrefix(userId)}logos/`, [saved.logoKey]);
+  await removeOtherFiles(c.env, userId, brandPrefix(userId), Object.values(saved.brandStrips ?? {}));
   return c.json({ profile: toJson(saved) });
 });
 

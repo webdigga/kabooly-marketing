@@ -15,7 +15,7 @@ const profile: Profile = {
   services: ["Oven cleaning", "Windows"],
   brandColours: [],
   logoKey: null,
-  brandStripKey: null,
+  brandStrips: null,
 };
 
 interface SentRequest {

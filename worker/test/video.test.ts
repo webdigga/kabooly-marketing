@@ -26,7 +26,7 @@ const profile: Profile = {
   services: ["Oven cleaning"],
   brandColours: [],
   logoKey: null,
-  brandStripKey: null,
+  brandStrips: null,
 };
 
 const JOB_URL = `${GEMINI_URL}/v1_video`;

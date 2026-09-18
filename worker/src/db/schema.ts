@@ -79,6 +79,10 @@ export const verification = sqliteTable(
 
 // app tables
 
+export const PLATFORMS = ["instagram", "facebook", "nextdoor"] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+
 // One per account. Its existence is what marks onboarding as done.
 export const businessProfiles = sqliteTable(
   "business_profiles",
@@ -100,10 +104,10 @@ export const businessProfiles = sqliteTable(
       .default(sql`'[]'`),
     // R2 key of the logo, whether detected from the website or uploaded.
     logoKey: text("logo_key"),
-    // R2 key of the brand strip: the logo and website address on a bar,
-    // drawn by the browser when the profile is saved and stamped onto every
-    // generated image.
-    brandStripKey: text("brand_strip_key"),
+    // R2 keys of the brand strips, one per platform: the logo and website
+    // address on a bar, drawn by the browser at that platform's exact size
+    // when the profile is saved and stamped onto every image.
+    brandStrips: text("brand_strips", { mode: "json" }).$type<Partial<Record<Platform, string>>>(),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },
@@ -158,8 +162,6 @@ export const adverts = sqliteTable(
   (t) => [index("adverts_user_id_created_at_idx").on(t.userId, t.createdAt)]
 );
 
-export const PLATFORMS = ["instagram", "facebook", "nextdoor"] as const;
-export type Platform = (typeof PLATFORMS)[number];
 
 // At most one image per platform per advert; regenerating replaces it.
 export const advertImages = sqliteTable(

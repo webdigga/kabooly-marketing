@@ -23,7 +23,7 @@ const profile: Profile = {
   services: ["Oven cleaning"],
   brandColours: ["#1d4ed8", "#f59e0b"],
   logoKey: null,
-  brandStripKey: null,
+  brandStrips: null,
 };
 
 beforeEach(() => {

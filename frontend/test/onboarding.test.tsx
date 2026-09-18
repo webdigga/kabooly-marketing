@@ -109,7 +109,7 @@ describe('onboarding', () => {
       services: ['Oven cleaning', 'Windows'],
       brandColours: ['#e11d48'],
       logoKey: LOGO.key,
-      brandStripKey: null,
+      brandStrips: {},
     })
   })
 

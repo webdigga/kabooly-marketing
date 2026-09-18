@@ -36,6 +36,20 @@
       "when": 1789724618854,
       "tag": "0004_sleepy_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789728732725,
+      "tag": "0005_overconfident_shinko_yamashiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789728741193,
+      "tag": "0006_mute_manta",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import type { Platform } from "./db/schema";
 import type { Env } from "./env";
 import { sniffRaster } from "./files";
-import { PLATFORM_SPECS } from "./platforms";
+import { PLATFORM_SPECS, stripSize } from "./platforms";
 import type { AspectRatio, Shape } from "./platforms";
 import type { Profile } from "./profile";
 
@@ -188,9 +188,6 @@ export async function fitToShape(env: Env, bytes: Uint8Array, shape: Shape): Pro
   );
 }
 
-// Share of the image height the brand strip takes.
-const STRIP_SHARE = 0.12;
-
 // Stamps the brand strip (the real logo and website address, drawn by the
 // browser when the profile was saved) along the bottom of a finished image.
 // Without a strip the image is returned as it is.
@@ -201,13 +198,10 @@ export async function brandImage(
   strip: Uint8Array | null
 ): Promise<Uint8Array> {
   if (!strip) return jpegOf(image);
-  const { width, height } = PLATFORM_SPECS[platform];
-  const bar = env.IMAGES.input(streamOf(strip)).transform({
-    width,
-    height: Math.round(height * STRIP_SHARE),
-    fit: "pad",
-    background: "#ffffff",
-  });
+  const { width, height } = stripSize(platform);
+  // The browser drew it at exactly this size, so it is only squeezed back
+  // to it if an older strip is a little out.
+  const bar = env.IMAGES.input(streamOf(strip)).transform({ width, height, fit: "squeeze" });
   return jpegOf(image.draw(bar, { bottom: 0, left: 0 }));
 }
 

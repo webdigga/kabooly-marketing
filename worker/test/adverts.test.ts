@@ -5,7 +5,7 @@ import { decodeCursor } from "../src/advert-store";
 import type { GenerationEvent } from "../src/generation";
 import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
-import { apiFetch, mockEmail, testEnv, uploadStrip, verifiedUser, withProfile } from "./helpers";
+import { apiFetch, mockEmail, PROFILE, testEnv, uploadStrip, verifiedUser, withProfile } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
@@ -96,7 +96,7 @@ describe("generation", () => {
   it("stamps the brand strip on every image, and never sends the logo to Gemini", async () => {
     const { cookie } = await verifiedUser();
     const { key }: { key: string } = await (await uploadStrip(cookie)).json();
-    await withProfile(cookie, { brandStripKey: key });
+    await withProfile(cookie, { brandStrips: { nextdoor: key } });
     const advert = await generateAdvert(cookie, ["nextdoor"]);
     expect(advert.images).toHaveLength(0);
     expect(callsTo(GEMINI_URL).at(-1)?.body).not.toContain("image/png");
@@ -106,10 +106,18 @@ describe("generation", () => {
     await served.arrayBuffer();
   });
 
+  it("carries on when an account has no brand strips", async () => {
+    const { cookie } = await verifiedUser();
+    const { brandStrips: _strips, ...withoutStrips } = PROFILE;
+    await apiFetch(cookie, "/api/profile", { method: "PUT", body: withoutStrips });
+    const list = await events(await generate(cookie, "Spring", ["instagram"]));
+    expect(list.map((e) => e.type)).toEqual(["advert", "image", "done"]);
+  });
+
   it("carries on when the brand strip file has gone", async () => {
     const { cookie } = await verifiedUser();
     const { key }: { key: string } = await (await uploadStrip(cookie)).json();
-    await withProfile(cookie, { brandStripKey: key });
+    await withProfile(cookie, { brandStrips: { instagram: key } });
     await testEnv.FILES.delete(key);
     const list = await events(await generate(cookie, "Spring", ["instagram"]));
     expect(list.map((e) => e.type)).toEqual(["advert", "image", "done"]);

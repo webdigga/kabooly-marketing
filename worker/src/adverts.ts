@@ -11,7 +11,7 @@ import {
   imagesFor,
   listAdverts,
   loadAdvertJson,
-  loadStrip,
+  loadStrips,
   makeCarouselBackground,
   makePlatformImage,
   updateAdvert,
@@ -22,7 +22,7 @@ import { suggestTopic, writeAdvert, writeSlides, SLIDE_COUNT } from "./copywrite
 import { PLATFORMS } from "./db/schema";
 import type { Platform } from "./db/schema";
 import { uploadsPrefix } from "./files";
-import { streamGeneration } from "./generation";
+import { streamGeneration, withRetry } from "./generation";
 import { beginGeneration, deniedResponse, isDenied, usageFor, usageJson } from "./limits";
 import type { GenerationRequest } from "./limits";
 import { loadProfile } from "./profile";
@@ -270,9 +270,9 @@ advertsApi.post("/posts/:id/images/:platform", async (c) => {
   const profile = await requireProfile(c);
   if (profile instanceof Response) return profile;
   return limited(c, { kind: "image", units: 1, holdLock: true }, async () => {
-    const strip = await loadStrip(c.env, profile);
-    const job = { userId: c.get("userId"), advert, profile, strip };
-    const image = await makePlatformImage(c.env, job, platform);
+    const strips = await loadStrips(c.env, profile);
+    const job = { userId: c.get("userId"), advert, profile, strips };
+    const image = await withRetry(() => makePlatformImage(c.env, job, platform));
     return { response: c.json({ image }), unitsMade: 1 };
   });
 });

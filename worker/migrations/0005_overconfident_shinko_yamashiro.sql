@@ -1,0 +1,1 @@
+ALTER TABLE `business_profiles` DROP COLUMN `brand_strip_key`;

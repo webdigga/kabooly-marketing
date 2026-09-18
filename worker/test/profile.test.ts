@@ -78,17 +78,36 @@ describe("business profile", () => {
     expect(await res.json()).toEqual({ error: "Invalid JSON body" });
   });
 
-  it("keeps a brand strip the account uploaded and rejects one it did not", async () => {
+  it("keeps the brand strips the account uploaded and rejects ones it did not", async () => {
     const { cookie } = await verifiedUser();
     const { key }: { key: string } = await (await uploadStrip(cookie)).json();
-    expect((await withProfile(cookie, { brandStripKey: key })).status).toBe(200);
-    const stored = await testEnv.DB.prepare("SELECT brand_strip_key AS k FROM business_profiles WHERE brand_strip_key = ?1")
-      .bind(key)
-      .first<{ k: string }>();
-    expect(stored?.k).toBe(key);
-    const bad = await withProfile(cookie, { brandStripKey: "users/someone/brand/x.png" });
+    expect((await withProfile(cookie, { brandStrips: { instagram: key } })).status).toBe(200);
+    const stored = await testEnv.DB.prepare(
+      "SELECT brand_strips AS s FROM business_profiles WHERE user_id = (SELECT user_id FROM business_profiles WHERE brand_strips = ?1)"
+    )
+      .bind(JSON.stringify({ instagram: key }))
+      .first<{ s: string }>();
+    expect(JSON.parse(stored?.s ?? "{}")).toEqual({ instagram: key });
+    const bad = await withProfile(cookie, { brandStrips: { facebook: "users/someone/brand/x.png" } });
     expect(bad.status).toBe(400);
-    expect(await bad.json()).toMatchObject({ field: "brandStripKey" });
+    expect(await bad.json()).toMatchObject({ field: "brandStrips" });
+    const unknown = await withProfile(cookie, { brandStrips: { tiktok: key } });
+    expect(unknown.status).toBe(400);
+  });
+
+  it("saves a profile with no brand strips at all", async () => {
+    const { cookie } = await verifiedUser();
+    const { brandStrips: _strips, ...withoutStrips } = PROFILE;
+    const res = await apiFetch(cookie, "/api/profile", { method: "PUT", body: withoutStrips });
+    expect(res.status).toBe(200);
+    const stored = await testEnv.DB.prepare(
+      "SELECT brand_strips AS s FROM business_profiles WHERE user_id IN (SELECT user_id FROM session WHERE token = ?1)"
+    )
+      .bind(decodeURIComponent(cookie.split("=")[1] ?? "").split(".")[0] ?? "")
+      .first<{ s: string | null }>();
+    expect(stored?.s).toBeNull();
+    const profile: { profile: { brandStrips?: unknown } } = await (await apiFetch(cookie, "/api/profile")).json();
+    expect(profile.profile.brandStrips).toBeUndefined();
   });
 
   it("rejects a logo key that was never uploaded", async () => {

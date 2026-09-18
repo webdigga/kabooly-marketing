@@ -2,7 +2,7 @@ import {
   advertJson,
   createAdvert,
   fileJson,
-  loadStrip,
+  loadStrips,
   makeCarouselBackground,
   makePhotoImage,
   makePlatformImage,
@@ -41,40 +41,50 @@ type Send = (event: GenerationEvent) => Promise<void>;
 type ImageMaker = (platform: Platform) => Promise<ImageJson>;
 
 async function imageMaker(env: Env, req: GenerationRequest, advert: AdvertRow): Promise<ImageMaker> {
-  const strip = await loadStrip(env, req.profile);
+  const strips = await loadStrips(env, req.profile);
   if (req.photo) {
-    const job = { advert, photo: req.photo.bytes, strip };
+    const job = { advert, photo: req.photo.bytes, strips };
     return (platform) => makePhotoImage(env, job, platform);
   }
-  const job = { userId: req.userId, advert, profile: req.profile, strip };
+  const job = { userId: req.userId, advert, profile: req.profile, strips };
   return (platform) => makePlatformImage(env, job, platform);
 }
 
-// Every ticked platform's image in parallel, each reported as it lands.
+// One attempt, then one retry: a single image failing is usually Gemini
+// being busy, and a second try costs nothing when the first made nothing.
+export async function withRetry(make: () => Promise<ImageJson>): Promise<ImageJson> {
+  try {
+    return await make();
+  } catch (err) {
+    console.error("image generation failed, trying once more", err);
+    return make();
+  }
+}
+
+// The ticked platforms one at a time, each reported as it lands. One at a
+// time, not all at once: three together run into Gemini's limits.
 async function makeImages(env: Env, req: GenerationRequest, advert: AdvertRow, send: Send): Promise<number> {
   const make = await imageMaker(env, req, advert);
-  const results = await Promise.all(
-    req.platforms.map(async (platform) => {
-      try {
-        const image = await make(platform);
-        await send({ type: "image", advertId: advert.id, image });
-        return true;
-      } catch (err) {
-        console.error(`image generation failed for ${platform}`, err);
-        await send({
-          type: "image_error",
-          advertId: advert.id,
-          platform,
-          // An own-photo image cannot be regenerated: the photo is not kept.
-          error: req.photo
-            ? "This image could not be made from your photo. Try again."
-            : "This image could not be made. Try regenerating it.",
-        });
-        return false;
-      }
-    })
-  );
-  return results.filter(Boolean).length;
+  let made = 0;
+  for (const platform of req.platforms) {
+    try {
+      const image = await withRetry(() => make(platform));
+      made += 1;
+      await send({ type: "image", advertId: advert.id, image });
+    } catch (err) {
+      console.error(`image generation failed for ${platform}`, err);
+      await send({
+        type: "image_error",
+        advertId: advert.id,
+        platform,
+        // An own-photo image cannot be regenerated: the photo is not kept.
+        error: req.photo
+          ? "This image could not be made from your photo. Try again."
+          : "This image could not be made. Try regenerating it.",
+      });
+    }
+  }
+  return made;
 }
 
 async function makeBackground(env: Env, req: GenerationRequest, advert: AdvertRow, send: Send): Promise<number> {

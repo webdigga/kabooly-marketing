@@ -1,4 +1,4 @@
-import type { Profile } from '../lib/types'
+import type { Platform, Profile } from '../lib/types'
 
 export const MAX_SERVICES = 20
 export const MAX_COLOURS = 5
@@ -44,7 +44,7 @@ export function draftFromProfile(profile: Profile): ProfileDraft {
   }
 }
 
-export function draftToBody(draft: ProfileDraft, brandStripKey: string | null = null) {
+export function draftToBody(draft: ProfileDraft, brandStrips: Partial<Record<Platform, string>> = {}) {
   return {
     businessName: draft.businessName.trim(),
     description: draft.description.trim(),
@@ -55,7 +55,7 @@ export function draftToBody(draft: ProfileDraft, brandStripKey: string | null = 
     services: draft.services,
     brandColours: draft.brandColours,
     logoKey: draft.logo?.key ?? null,
-    brandStripKey,
+    brandStrips,
   }
 }
 

@@ -25,3 +25,12 @@ export const VIDEO_SHAPE: Shape = { width: 1080, height: 1920, aspectRatio: "9:1
 
 // Instagram and Facebook carousel slides.
 export const CAROUSEL_SHAPE: Shape = { width: 1080, height: 1350, aspectRatio: "4:5" };
+
+// The brand strip along the bottom of every image: a share of the image
+// width, so it carries the same weight on a square and on a wide image.
+const STRIP_SHARE = 0.09;
+
+export function stripSize(platform: Platform): { width: number; height: number } {
+  const { width } = PLATFORM_SPECS[platform];
+  return { width, height: Math.round(width * STRIP_SHARE) };
+}

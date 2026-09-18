@@ -170,7 +170,7 @@ export const PROFILE = {
   services: ["Oven cleaning", "Carpet cleaning"],
   brandColours: ["#1D4ED8"],
   logoKey: null,
-  brandStripKey: null,
+  brandStrips: {},
 };
 
 export async function withProfile(
