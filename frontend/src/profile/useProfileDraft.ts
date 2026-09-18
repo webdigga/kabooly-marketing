@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { api, ApiError } from '../lib/api'
+import { uploadBrandStrip } from '../lib/brand-strip'
 import type { Profile } from '../lib/types'
 import { draftToBody, fieldFromServer } from './draft'
 import type { DraftErrors, DraftField, ProfileDraft } from './draft'
@@ -16,12 +17,19 @@ export function useProfileDraft(initial: ProfileDraft) {
     setErrors((e) => ({ ...e, [field]: undefined }))
   }, [])
 
-  // Returns the saved profile. On failure, marks the field the server
-  // rejected (if it named one) and rethrows.
+  // Returns the saved profile. The brand strip (logo and website on a bar)
+  // is drawn and stored first, so every image can be stamped with it. On
+  // failure, marks the field the server rejected (if it named one) and
+  // rethrows.
   async function save(): Promise<Profile> {
     setSaving(true)
     try {
-      const { profile } = await api<{ profile: Profile }>('/api/profile', { method: 'PUT', body: draftToBody(draft) })
+      const brandStripKey = await uploadBrandStrip({
+        logoUrl: draft.logo?.url ?? null,
+        colour: draft.brandColours[0] ?? null,
+        websiteUrl: draft.websiteUrl,
+      })
+      const { profile } = await api<{ profile: Profile }>('/api/profile', { method: 'PUT', body: draftToBody(draft, brandStripKey) })
       return profile
     } catch (err) {
       const field = err instanceof ApiError ? fieldFromServer(err.body.field) : null

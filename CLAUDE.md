@@ -13,10 +13,11 @@ Done:   2026-09-17, deployed: account emails are HTML with the shared
         email hello@kabooly.com". To delete an account by hand: cancel in
         Stripe, delete the D1 user row (cascades) AND the R2 prefix
         users/{userId}/.
-Built:  2026-09-17, not deployed: monthly caps, videos (Gemini Omni
-        Flash), own-photo posts, carousels, website fill, reworked create
-        screen and usage panel. Live checks listed in docs/PLAN.md
-        "Built 2026-09-17".
+Built:  2026-09-17 and 18, not deployed: monthly caps, captioned videos
+        (Gemini Omni Flash at 720p), own-photo posts, carousels, website
+        fill, Nano Banana Pro images branded with a browser-drawn brand
+        strip, and a sidebar navigation with a page per format. Live checks
+        in docs/PLAN.md "Built 2026-09-17".
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
@@ -34,7 +35,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 
 ## Map
 - `worker/src/index.ts` routes; `auth.ts`; `session.ts` (verified-user gate); `profile.ts` (profile + website scan route); `scan/` (colour + logo detection); `files.ts` (logo upload, owner-only file serving); `files.ts` also takes photo uploads; `adverts.ts` (topics, generations for every format, library, regeneration, video routes, usage); `advert-store.ts` (rows and files); `generation.ts` (NDJSON stream, runs under waitUntil); `copywriter.ts` (Haiku); `image-maker.ts` (Gemini, crop, photo branding); `video-maker.ts` (Omni jobs) and `video-store.ts` (pending video rows); `scan/info-pages.ts` (about and services pages); `limiter.ts` (Durable Object) and `limits.ts` (429 responses).
-- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook, `website-fill.ts`); `components/` shared UI (Button, Card, Field, Alert, ImageTile, AdvertText, FormatPicker, PhotoPicker, CarouselSlides, VideoPanel, UsagePanel...); `lib/slide-render.ts` draws carousel slides on a canvas.
+- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook, `website-fill.ts`); `components/` shared UI (AppShell with the sidebar and phone menu, Button, Card, Field, Alert, ImageTile, AdvertText, PhotoPicker, CarouselSlides, VideoPanel, UsagePanel...); `lib/slide-render.ts` draws carousel slides on a canvas and `lib/brand-strip.ts` draws the brand strip. Each thing you can make is its own page: `/`, `/photo`, `/carousel`, `/video`.
 
 ## Hard rules
 - Follow the TrackShows auth pattern. Do not invent a new auth approach.
@@ -42,6 +43,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - Paid accounts only (added 2026-09-16). Nobody can register: email sign-up, sign-in codes and Google are all set to `disableSignUp`. Accounts are created only by `POST /api/internal/provision`, called by the kabooly.com checkout after payment, which emails a 7 day set-password link (`/set-password?token=`). Checkout never sends a password.
 - Access = a `subscriptions` row with `active = true`, checked in `session.ts` (402 `SUBSCRIPTION_INACTIVE`). The founder's account (`FOUNDER_LOGIN_EMAIL`, webdigga42@gmail.com) works without one. `source = marketing` rows follow this worker's Stripe webhook (`/api/stripe/webhook`, metadata `plan=marketing`); `source = bundle` rows are switched by the CRM webhook through `POST /api/internal/bundle-access`.
 - `/api/internal/*` is server-to-server only: `Authorization: Bearer INTERNAL_API_SECRET`.
+- The logo is never drawn by an AI model. The browser draws the brand strip (logo plus website) when the profile is saved, and Cloudflare Images stamps it onto every image (`brandImage` in `worker/src/image-maker.ts`).
 - Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h and 150 per rolling 30 days, 20 videos per rolling 30 days, 5 image generations and 3 videos per minute, one generation in flight (topic suggestions, website reads and videos exempt from the lock), text 200/day and 20/min. A carousel is one image. Regenerations count.
 - Schema changes go through `npm run db:generate` in `worker/` (drizzle-kit); never hand-edit an applied migration.
 - Worker: strict ESLint (TrackShows config) and 100% coverage (`npm run test:coverage`). Frontend: `npm run lint` at 0 warnings, tests with data-testid or role selectors.

@@ -170,6 +170,7 @@ export const PROFILE = {
   services: ["Oven cleaning", "Carpet cleaning"],
   brandColours: ["#1D4ED8"],
   logoKey: null,
+  brandStripKey: null,
 };
 
 export async function withProfile(
@@ -177,6 +178,14 @@ export async function withProfile(
   overrides: Partial<typeof PROFILE> | Record<string, unknown> = {}
 ): Promise<Response> {
   return apiFetch(cookie, "/api/profile", { method: "PUT", body: { ...PROFILE, ...overrides } });
+}
+
+export async function uploadStrip(cookie: string, bytes: Uint8Array = pngBytes()): Promise<Response> {
+  return appFetch("/api/uploads/brand-strip", {
+    method: "POST",
+    headers: { Cookie: cookie, "Content-Type": "application/octet-stream" },
+    body: bytes,
+  });
 }
 
 export async function uploadLogo(cookie: string, bytes: Uint8Array = pngBytes()): Promise<Response> {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { installFetchMock } from "./fetch-mock";
-import { apiFetch, appFetch, mockEmail, PROFILE, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
+import { apiFetch, appFetch, mockEmail, PROFILE, testEnv, uploadLogo, uploadStrip, verifiedUser, withProfile } from "./helpers";
 
 interface ProfileJson {
   businessName: string;
@@ -76,6 +76,19 @@ describe("business profile", () => {
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Invalid JSON body" });
+  });
+
+  it("keeps a brand strip the account uploaded and rejects one it did not", async () => {
+    const { cookie } = await verifiedUser();
+    const { key }: { key: string } = await (await uploadStrip(cookie)).json();
+    expect((await withProfile(cookie, { brandStripKey: key })).status).toBe(200);
+    const stored = await testEnv.DB.prepare("SELECT brand_strip_key AS k FROM business_profiles WHERE brand_strip_key = ?1")
+      .bind(key)
+      .first<{ k: string }>();
+    expect(stored?.k).toBe(key);
+    const bad = await withProfile(cookie, { brandStripKey: "users/someone/brand/x.png" });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toMatchObject({ field: "brandStripKey" });
   });
 
   it("rejects a logo key that was never uploaded", async () => {

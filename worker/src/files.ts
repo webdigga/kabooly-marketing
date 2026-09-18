@@ -4,6 +4,7 @@ import { streamOf } from "./image-maker";
 import type { AppEnv } from "./session";
 
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+export const MAX_STRIP_BYTES = 1024 * 1024;
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 // The largest platform image is 1200 pixels wide or tall.
 export const MIN_PHOTO_SIDE = 1200;
@@ -54,6 +55,11 @@ export async function storeLogo(
 // A customer's own photo waiting to become a post. Only the latest upload
 // is kept: uploading another replaces it, and generating a post from it
 // deletes it once the platform images are cut.
+// The brand strip the browser draws when the profile is saved.
+export function brandPrefix(userId: string): string {
+  return `${userPrefix(userId)}brand/`;
+}
+
 export function uploadsPrefix(userId: string): string {
   return `${userPrefix(userId)}uploads/`;
 }
@@ -98,6 +104,19 @@ async function photoSize(env: Env, bytes: Uint8Array): Promise<{ width: number; 
 }
 
 export const filesApi = new Hono<AppEnv>();
+
+filesApi.post("/uploads/brand-strip", async (c) => {
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (bytes.byteLength > MAX_STRIP_BYTES) {
+    return c.json({ error: "That image is too large" }, 413);
+  }
+  if (sniffRaster(bytes) !== "image/png") {
+    return c.json({ error: "The brand strip must be a PNG" }, 415);
+  }
+  const key = `${brandPrefix(c.get("userId"))}${crypto.randomUUID()}.png`;
+  await c.env.FILES.put(key, bytes, { httpMetadata: { contentType: "image/png" } });
+  return c.json({ key, url: fileUrl(key) });
+});
 
 filesApi.post("/uploads/photo", async (c) => {
   const result = await storePhoto(c.env, c.get("userId"), new Uint8Array(await c.req.arrayBuffer()));

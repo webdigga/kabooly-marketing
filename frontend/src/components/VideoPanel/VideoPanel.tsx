@@ -1,10 +1,9 @@
 import { Clapperboard, Download } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import type { AdvertVideo, Usage } from '../../lib/types'
 import Alert from '../Alert/Alert'
 import Button from '../Button/Button'
 import { buttonClass } from '../Button/buttonClass'
-import { TextArea } from '../Field/Field'
 import styles from './VideoPanel.module.css'
 import { useVideo } from './useVideo'
 
@@ -15,8 +14,8 @@ interface VideoPanelProps {
   advertId: string
   video: AdvertVideo | null
   onUsage?: (usage: Usage) => void
-  // Starts a video straight away with this movement (the create screen's
-  // video option). Undefined means wait for the button.
+  // Starts a video straight away with this direction (the Video page).
+  // Undefined means wait for the button.
   autoStart?: string
 }
 
@@ -48,23 +47,19 @@ function Ready({ video }: { video: AdvertVideo }) {
   )
 }
 
-function StartControls({ hasVideo, starting, onStart }: { hasVideo: boolean; starting: boolean; onStart: (motion: string) => void }) {
-  const [motion, setMotion] = useState('')
+function StartControls({ hasVideo, starting, onStart }: { hasVideo: boolean; starting: boolean; onStart: () => void }) {
   return (
-    <div className={styles.start}>
-      <TextArea label={MOTION_LABEL} optional hint={MOTION_HINT} value={motion} rows={2} maxLength={300} onChange={(e) => setMotion(e.target.value)} data-testid="video-motion" />
-      <div>
-        <Button
-          variant={hasVideo ? 'secondary' : 'primary'}
-          size="sm"
-          icon={<Clapperboard size={16} aria-hidden="true" />}
-          loading={starting}
-          onClick={() => onStart(motion)}
-          data-testid="make-video"
-        >
-          {hasVideo ? 'Make a new video' : 'Make a video'}
-        </Button>
-      </div>
+    <div>
+      <Button
+        variant={hasVideo ? 'secondary' : 'primary'}
+        size="sm"
+        icon={<Clapperboard size={16} aria-hidden="true" />}
+        loading={starting}
+        onClick={onStart}
+        data-testid="make-video"
+      >
+        {hasVideo ? 'Make a new video' : 'Make a video'}
+      </Button>
     </div>
   )
 }
@@ -96,7 +91,7 @@ export default function VideoPanel({ advertId, video: initial, onUsage, autoStar
         </Alert>
       )}
       {!pending && !(starting && waiting) && (
-        <StartControls hasVideo={Boolean(video)} starting={starting} onStart={(motion) => void start(motion)} />
+        <StartControls hasVideo={Boolean(video)} starting={starting} onStart={() => void start(autoStart ?? '')} />
       )}
       {starting && waiting && (
         <p className={styles.meta} role="status">

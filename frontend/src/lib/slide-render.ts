@@ -169,7 +169,7 @@ export async function renderSlide(design: SlideDesign, slides: Slide[], index: n
   canvas.height = SLIDE_HEIGHT
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas unavailable')
-  await Promise.all([document.fonts.load(`700 72px Inter`), document.fonts.load(`400 46px Inter`)]).catch(() => undefined)
+  await Promise.all([document.fonts?.load(`700 72px Inter`), document.fonts?.load(`400 46px Inter`)]).catch(() => undefined)
   const slide = slides[index]!
   const kind = slideKind(index, slides.length)
   if (kind === 'hook') {

@@ -7,7 +7,7 @@ import { findVideo, refreshVideo } from "../src/video-store";
 import type { VideoJson } from "../src/video-store";
 import { ANTHROPIC_URL, GEMINI_URL, geminiImage, geminiVideo, mockClaude, mockGemini, MP4_BYTES, VIDEO_PLAN } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
-import { apiFetch, mockEmail, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
+import { apiFetch, mockEmail, testEnv, verifiedUser, withProfile } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
@@ -26,14 +26,15 @@ const profile: Profile = {
   services: ["Oven cleaning"],
   brandColours: [],
   logoKey: null,
+  brandStripKey: null,
 };
 
 const JOB_URL = `${GEMINI_URL}/v1_video`;
 
 describe("videoPrompt", () => {
   it("films the planned shots with their captions and an end card", () => {
-    const prompt = videoPrompt(profile, VIDEO_PLAN, true);
-    expect(prompt).toContain("[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]");
+    const prompt = videoPrompt(profile, VIDEO_PLAN);
+    expect(prompt).toContain("[# Sources <FIRST_FRAME>@Image1]");
     expect(prompt).toContain("A 10 second vertical");
     expect(prompt).toContain('[0-3s] Slow push in on a greasy oven door in a bright kitchen. On screen, the words "Dreading your oven?"');
     expect(prompt).toContain('[3-5s] Cut to: Gloved hands wipe the oven glass clean. On screen, the words "We deep clean it"');
@@ -41,19 +42,14 @@ describe("videoPrompt", () => {
     expect(prompt).toContain('[7-10s] Cut to an end card');
     expect(prompt).toContain('"Acme Cleaning" in large bold letters, and below it "Book your clean today"');
     expect(prompt).toContain("Audio: upbeat acoustic guitar. No dialogue");
-    expect(prompt).toContain("Image2 is the business logo");
-  });
-
-  it("leaves out the logo reference when there is no logo", () => {
-    const prompt = videoPrompt(profile, VIDEO_PLAN, false);
-    expect(prompt.startsWith("[# Sources <FIRST_FRAME>@Image1]\n")).toBe(true);
-    expect(prompt).not.toContain("Image2");
+    // The logo is never drawn by the model; the end card carries the name.
+    expect(prompt).not.toContain("logo");
   });
 });
 
 describe("startVideo", () => {
-  it("starts a stored background job with the frame, logo and prompt", async () => {
-    const id = await startVideo(testEnv, new Uint8Array([1, 2, 3]), { mimeType: "image/png", base64: "TE9HTw==" }, "go");
+  it("starts a stored background job with the frame and prompt", async () => {
+    const id = await startVideo(testEnv, new Uint8Array([1, 2, 3]), "go");
     expect(id).toBe("v1_video");
     const body = JSON.parse(callsTo(GEMINI_URL).at(-1)?.body ?? "{}") as Record<string, unknown>;
     expect(body).toMatchObject({
@@ -61,15 +57,11 @@ describe("startVideo", () => {
       background: true,
       input: [
         { type: "image", mime_type: "image/jpeg", data: "AQID" },
-        { type: "image", mime_type: "image/png", data: "TE9HTw==" },
         { type: "text", text: "go" },
       ],
       response_format: { type: "video", aspect_ratio: "9:16", resolution: "720p" },
     });
     expect(body).not.toHaveProperty("store");
-    await startVideo(testEnv, new Uint8Array([1]), null, "go");
-    const plain = JSON.parse(callsTo(GEMINI_URL).at(-1)?.body ?? "{}") as { input: unknown[] };
-    expect(plain.input).toHaveLength(2);
   });
 
   it.each([
@@ -83,7 +75,7 @@ describe("startVideo", () => {
     ],
   ])("throws a VideoError on %s", async (_label, handler) => {
     onFetch(GEMINI_URL, handler);
-    await expect(startVideo(testEnv, new Uint8Array([1]), null, "go")).rejects.toBeInstanceOf(VideoError);
+    await expect(startVideo(testEnv, new Uint8Array([1]), "go")).rejects.toBeInstanceOf(VideoError);
   });
 });
 
@@ -157,9 +149,7 @@ function keyOf(url: string): string {
 
 describe("video routes", () => {
   it("starts a video from a vertical frame, then saves it once Google has made it", async () => {
-    const { cookie } = await verifiedUser();
-    const { key }: { key: string } = await (await uploadLogo(cookie)).json();
-    await withProfile(cookie, { logoKey: key });
+    const cookie = await readyUser();
     const advert = await textAdvert(cookie);
 
     const res = await startVideoFor(cookie, advert.id, "  Steam rises from a clean oven ");
@@ -167,8 +157,7 @@ describe("video routes", () => {
     const started: { video: VideoJson; usage: { videosThisMonth: { used: number } } } = await res.json();
     expect(started.video).toMatchObject({ status: "pending", motion: "Steam rises from a clean oven", video: null });
     expect(started.usage.videosThisMonth.used).toBe(1);
-    const imageCall = callsTo(GEMINI_URL).find((c) => c.body.includes('"aspect_ratio":"9:16"') && c.body.includes("opening frame"));
-    expect(imageCall?.body).toContain('"mime_type":"image/png"');
+    expect(callsTo(GEMINI_URL).some((c) => c.body.includes('"aspect_ratio":"9:16"') && c.body.includes("opening frame"))).toBe(true);
     const start = await testEnv.FILES.get(keyOf(started.video.start.url));
     expect(start?.httpMetadata?.contentType).toBe("image/jpeg");
     await start?.arrayBuffer();

@@ -100,6 +100,10 @@ export const businessProfiles = sqliteTable(
       .default(sql`'[]'`),
     // R2 key of the logo, whether detected from the website or uploaded.
     logoKey: text("logo_key"),
+    // R2 key of the brand strip: the logo and website address on a bar,
+    // drawn by the browser when the profile is saved and stamped onto every
+    // generated image.
+    brandStripKey: text("brand_strip_key"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },

@@ -5,15 +5,13 @@ import type { AdvertFormat, Platform, Slide } from "./db/schema";
 import type { Env } from "./env";
 import { fileUrl, userPrefix } from "./files";
 import {
+  brandGenerated,
   brandPhoto,
-  bytesToBase64,
   carouselBackgroundPrompt,
-  fitToPlatform,
   fitToShape,
   generateImage,
   imagePrompt,
 } from "./image-maker";
-import type { Logo } from "./image-maker";
 import { CAROUSEL_SHAPE, PLATFORM_SPECS } from "./platforms";
 import type { Profile } from "./profile";
 import { videoJson } from "./video-store";
@@ -200,26 +198,20 @@ export async function listAdverts(
     .limit(limit);
 }
 
-export async function loadLogoBytes(env: Env, profile: Profile): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
-  if (!profile.logoKey) return null;
-  const object = await env.FILES.get(profile.logoKey);
-  if (!object) return null;
-  return {
-    mimeType: object.httpMetadata?.contentType ?? "image/png",
-    bytes: new Uint8Array(await object.arrayBuffer()),
-  };
-}
-
-export async function loadLogo(env: Env, profile: Profile): Promise<Logo | null> {
-  const logo = await loadLogoBytes(env, profile);
-  return logo && { mimeType: logo.mimeType, base64: bytesToBase64(logo.bytes) };
+// The brand strip stamped onto every image, if the account has one and its
+// file is still there.
+export async function loadStrip(env: Env, profile: Profile): Promise<Uint8Array | null> {
+  if (!profile.brandStripKey) return null;
+  const object = await env.FILES.get(profile.brandStripKey);
+  return object ? new Uint8Array(await object.arrayBuffer()) : null;
 }
 
 export interface ImageJob {
   userId: string;
   advert: AdvertRow;
   profile: Profile;
-  logo: Logo | null;
+  // The brand strip stamped along the bottom of every image.
+  strip: Uint8Array | null;
 }
 
 // Stores one platform image, replacing any earlier one for the same
@@ -249,23 +241,22 @@ async function storePlatformImage(
   return imageJson(row);
 }
 
-// Generates, crops and stores one platform image.
+// Generates, crops, brands and stores one platform image.
 export async function makePlatformImage(env: Env, job: ImageJob, platform: Platform): Promise<ImageJson> {
-  const prompt = imagePrompt(job.profile, job.advert.topic, platform, job.logo !== null);
-  const raw = await generateImage(env, prompt, PLATFORM_SPECS[platform].aspectRatio, job.logo);
-  return storePlatformImage(env, job.advert, platform, await fitToPlatform(env, raw, platform));
+  const prompt = imagePrompt(job.profile, job.advert.topic, platform);
+  const raw = await generateImage(env, prompt, PLATFORM_SPECS[platform].aspectRatio, null);
+  return storePlatformImage(env, job.advert, platform, await brandGenerated(env, raw, platform, job.strip));
 }
 
 export interface PhotoJob {
   advert: AdvertRow;
   photo: Uint8Array;
-  logo: Uint8Array | null;
-  colour: string | null;
+  strip: Uint8Array | null;
 }
 
 // Cuts and brands one platform image from the customer's own photo.
 export async function makePhotoImage(env: Env, job: PhotoJob, platform: Platform): Promise<ImageJson> {
-  const branded = await brandPhoto(env, job.photo, platform, { logo: job.logo, colour: job.colour });
+  const branded = await brandPhoto(env, job.photo, platform, job.strip);
   return storePlatformImage(env, job.advert, platform, branded);
 }
 

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ApiError, errorMessage } from '../src/lib/api'
+import { makeBrandStrip, uploadBrandStrip, websiteLabel } from '../src/lib/brand-strip'
 import { readEvents } from '../src/lib/generation-stream'
 import { limitMessage, localTime, usageRows } from '../src/lib/limits'
 import { loadPlatformChoice, savePlatformChoice } from '../src/lib/platform-choice'
@@ -189,5 +190,60 @@ describe('slide design', () => {
     expect(headingColour('#1d4ed8')).toBe('#1d4ed8')
     expect(headingColour('#facc15')).toBe('#111827')
     expect(headingColour('#000000')).toBe('#000000')
+  })
+})
+
+describe('brand strip', () => {
+  it('shows a website address the way an advert would', () => {
+    expect(websiteLabel('https://www.acme.co.uk/about?x=1')).toBe('acme.co.uk')
+    expect(websiteLabel('  acme.co.uk  ')).toBe('acme.co.uk')
+    expect(websiteLabel('')).toBe('')
+  })
+
+  it('makes no strip when there is nothing to put on it', async () => {
+    expect(await makeBrandStrip({ logoUrl: null, colour: '#1d4ed8', websiteUrl: '' })).toBeNull()
+  })
+
+  it('draws the logo and website, then stores it', async () => {
+    const drawImage = vi.fn()
+    const fillText = vi.fn()
+    const context = {
+      fillRect: vi.fn(),
+      fillText,
+      drawImage,
+      measureText: () => ({ width: 100 }),
+      set font(_value: string) {},
+      set fillStyle(_value: string) {},
+      set textAlign(_value: string) {},
+      set textBaseline(_value: string) {},
+    }
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D)
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => {
+      callback(new Blob(['png'], { type: 'image/png' }))
+    })
+    class FakeImage {
+      onload: (() => void) | null = null
+      naturalWidth = 400
+      naturalHeight = 100
+      set src(_value: string) {
+        setTimeout(() => this.onload?.())
+      }
+    }
+    vi.stubGlobal('Image', FakeImage)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ key: 'users/u1/brand/strip.png' }), { headers: { 'Content-Type': 'application/json' } })),
+    )
+
+    const key = await uploadBrandStrip({ logoUrl: '/api/files/users/u1/logos/l.png', colour: '#1d4ed8', websiteUrl: 'https://acme.co.uk/' })
+    expect(key).toBe('users/u1/brand/strip.png')
+    expect(fillText).toHaveBeenCalledWith('acme.co.uk', expect.any(Number), expect.any(Number))
+    expect(drawImage).toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('carries on without a strip when the browser cannot draw it', async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    expect(await uploadBrandStrip({ logoUrl: '/logo.png', colour: null, websiteUrl: 'acme.co.uk' })).toBeNull()
   })
 })

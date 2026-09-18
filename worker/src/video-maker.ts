@@ -1,12 +1,6 @@
 import type { Env } from "./env";
-import {
-  base64ToBytes,
-  bytesToBase64,
-  firstVideo,
-  INTERACTIONS_URL,
-  logoInput,
-} from "./image-maker";
-import type { InteractionResponse, Logo } from "./image-maker";
+import { base64ToBytes, bytesToBase64, firstVideo, INTERACTIONS_URL } from "./image-maker";
+import type { InteractionResponse } from "./image-maker";
 import type { VideoPlan, VideoShot } from "./copywriter";
 import type { Profile } from "./profile";
 
@@ -22,14 +16,11 @@ function onScreen(caption: string): string {
 
 // The timecoded prompt Omni films: the planned shots, their captions and an
 // end card with the business name.
-export function videoPrompt(profile: Profile, plan: VideoPlan, hasLogo: boolean): string {
-  const references = hasLogo
-    ? "[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2]"
-    : "[# Sources <FIRST_FRAME>@Image1]";
+export function videoPrompt(profile: Profile, plan: VideoPlan): string {
   // The plan's schema guarantees exactly two middle shots.
   const [second, third] = plan.middle as [VideoShot, VideoShot];
-  const lines = [
-    references,
+  return [
+    "[# Sources <FIRST_FRAME>@Image1]",
     `A 10 second vertical social media video advert for ${profile.businessName}, a small local business (${profile.description}). Quick, confident editing with clean cuts.`,
     `[0-3s] ${plan.hook.scene} ${onScreen(plan.hook.caption)}`,
     `[3-5s] Cut to: ${second.scene} ${onScreen(second.caption)}`,
@@ -38,11 +29,7 @@ export function videoPrompt(profile: Profile, plan: VideoPlan, hasLogo: boolean)
     `Audio: ${plan.music}. No dialogue, voice-over or singing.`,
     "Any people move naturally and are anatomically correct. No text other than the words given above.",
     "Use Image1 as the starting frame.",
-  ];
-  if (hasLogo) {
-    lines.push("Image2 is the business logo, already in the starting frame. Use it as a reference so it is never redrawn or distorted.");
-  }
-  return lines.join("\n");
+  ].join("\n");
 }
 
 function headers(env: Env): Record<string, string> {
@@ -62,17 +49,11 @@ async function call(url: string, init: RequestInit): Promise<Response> {
 // Starts a video in Google's background mode and returns the job's id.
 // Background jobs must be stored by Google, so the job is deleted once the
 // video has been collected (see deleteVideoJob).
-export async function startVideo(
-  env: Env,
-  startImage: Uint8Array,
-  logo: Logo | null,
-  prompt: string
-): Promise<string> {
+export async function startVideo(env: Env, startImage: Uint8Array, prompt: string): Promise<string> {
   const input: Record<string, string>[] = [
     { type: "image", mime_type: "image/jpeg", data: bytesToBase64(startImage) },
+    { type: "text", text: prompt },
   ];
-  if (logo) input.push(logoInput(logo));
-  input.push({ type: "text", text: prompt });
   const res = await call(INTERACTIONS_URL, {
     method: "POST",
     headers: headers(env),

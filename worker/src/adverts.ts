@@ -11,7 +11,7 @@ import {
   imagesFor,
   listAdverts,
   loadAdvertJson,
-  loadLogo,
+  loadStrip,
   makeCarouselBackground,
   makePlatformImage,
   updateAdvert,
@@ -270,8 +270,8 @@ advertsApi.post("/posts/:id/images/:platform", async (c) => {
   const profile = await requireProfile(c);
   if (profile instanceof Response) return profile;
   return limited(c, { kind: "image", units: 1, holdLock: true }, async () => {
-    const logo = await loadLogo(c.env, profile);
-    const job = { userId: c.get("userId"), advert, profile, logo };
+    const strip = await loadStrip(c.env, profile);
+    const job = { userId: c.get("userId"), advert, profile, strip };
     const image = await makePlatformImage(c.env, job, platform);
     return { response: c.json({ image }), unitsMade: 1 };
   });

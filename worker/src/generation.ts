@@ -2,8 +2,7 @@ import {
   advertJson,
   createAdvert,
   fileJson,
-  loadLogo,
-  loadLogoBytes,
+  loadStrip,
   makeCarouselBackground,
   makePhotoImage,
   makePlatformImage,
@@ -42,13 +41,12 @@ type Send = (event: GenerationEvent) => Promise<void>;
 type ImageMaker = (platform: Platform) => Promise<ImageJson>;
 
 async function imageMaker(env: Env, req: GenerationRequest, advert: AdvertRow): Promise<ImageMaker> {
+  const strip = await loadStrip(env, req.profile);
   if (req.photo) {
-    const logo = await loadLogoBytes(env, req.profile);
-    const job = { advert, photo: req.photo.bytes, logo: logo?.bytes ?? null, colour: req.profile.brandColours[0] ?? null };
+    const job = { advert, photo: req.photo.bytes, strip };
     return (platform) => makePhotoImage(env, job, platform);
   }
-  const logo = await loadLogo(env, req.profile);
-  const job = { userId: req.userId, advert, profile: req.profile, logo };
+  const job = { userId: req.userId, advert, profile: req.profile, strip };
   return (platform) => makePlatformImage(env, job, platform);
 }
 

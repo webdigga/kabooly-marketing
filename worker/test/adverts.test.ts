@@ -5,7 +5,7 @@ import { decodeCursor } from "../src/advert-store";
 import type { GenerationEvent } from "../src/generation";
 import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
-import { apiFetch, mockEmail, testEnv, uploadLogo, verifiedUser, withProfile } from "./helpers";
+import { apiFetch, mockEmail, testEnv, uploadStrip, verifiedUser, withProfile } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
@@ -93,22 +93,26 @@ describe("generation", () => {
     await served.arrayBuffer();
   });
 
-  it("sends the profile logo to Gemini when there is one", async () => {
+  it("stamps the brand strip on every image, and never sends the logo to Gemini", async () => {
     const { cookie } = await verifiedUser();
-    const { key }: { key: string } = await (await uploadLogo(cookie)).json();
-    await withProfile(cookie, { logoKey: key });
-    await generateAdvert(cookie, ["nextdoor"]);
-    expect(callsTo(GEMINI_URL).at(-1)?.body).toContain('"mime_type":"image/png"');
+    const { key }: { key: string } = await (await uploadStrip(cookie)).json();
+    await withProfile(cookie, { brandStripKey: key });
+    const advert = await generateAdvert(cookie, ["nextdoor"]);
+    expect(advert.images).toHaveLength(0);
+    expect(callsTo(GEMINI_URL).at(-1)?.body).not.toContain("image/png");
+    const saved: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert.id}`)).json();
+    const served = await apiFetch(cookie, saved.advert.images[0]?.url ?? "");
+    expect(served.status).toBe(200);
+    await served.arrayBuffer();
   });
 
-  it("carries on without a logo whose file has gone", async () => {
+  it("carries on when the brand strip file has gone", async () => {
     const { cookie } = await verifiedUser();
-    const { key }: { key: string } = await (await uploadLogo(cookie)).json();
-    await withProfile(cookie, { logoKey: key });
+    const { key }: { key: string } = await (await uploadStrip(cookie)).json();
+    await withProfile(cookie, { brandStripKey: key });
     await testEnv.FILES.delete(key);
     const list = await events(await generate(cookie, "Spring", ["instagram"]));
     expect(list.map((e) => e.type)).toEqual(["advert", "image", "done"]);
-    expect(callsTo(GEMINI_URL).at(-1)?.body).not.toContain("image/png");
   });
 
   it("makes a text-only advert when no platform is ticked", async () => {
@@ -367,17 +371,6 @@ describe("editing and regenerating", () => {
       .run();
     expect((await apiFetch(cookie, `/api/posts/${advert.id}/text`, { method: "POST" })).status).toBe(409);
     expect((await apiFetch(cookie, `/api/posts/${advert.id}/images/facebook`, { method: "POST" })).status).toBe(409);
-  });
-
-  it("sends a logo stored without a content type as PNG", async () => {
-    const { cookie } = await verifiedUser();
-    const { key }: { key: string } = await (await uploadLogo(cookie)).json();
-    await withProfile(cookie, { logoKey: key });
-    const object = await testEnv.FILES.get(key);
-    await testEnv.FILES.put(key, await object?.arrayBuffer() ?? new ArrayBuffer(0));
-    const advert = await generateAdvert(cookie, []);
-    await apiFetch(cookie, `/api/posts/${advert.id}/images/instagram`, { method: "POST" });
-    expect(callsTo(GEMINI_URL).at(-1)?.body).toContain('"mime_type":"image/png"');
   });
 
   it("rejects unknown platforms and adverts", async () => {

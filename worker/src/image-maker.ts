@@ -49,9 +49,10 @@ export function streamOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
   });
 }
 
-// The lines every image prompt shares: the business, the brief, and how to
-// use the brand colours and logo.
-function briefLines(profile: Profile, topic: string, hasLogo: boolean): string[] {
+// The lines every image prompt shares: the business, the brief and the
+// brand colours. The logo is never drawn by the model: the app stamps the
+// real file on afterwards (brandImage).
+function briefLines(profile: Profile, topic: string): string[] {
   const lines = [
     `What the business does: ${profile.description}`,
     `Area served: ${profile.localArea}`,
@@ -61,11 +62,6 @@ function briefLines(profile: Profile, topic: string, hasLogo: boolean): string[]
   if (profile.brandColours.length) {
     lines.push(
       `Where it looks natural, echo the brand colours ${profile.brandColours.join(", ")} in props, clothing or surroundings. Keep all colours realistic: no colour filters, tints or recolouring of the scene.`
-    );
-  }
-  if (hasLogo) {
-    lines.push(
-      "The attached image is the business logo. Place it once, small, in a clear corner away from faces and the main subject. Copy it exactly: same shapes, letters and colours, never redrawn, restyled or recoloured."
     );
   }
   return lines;
@@ -81,31 +77,27 @@ const REALISM = [
 
 const NO_TEXT = "Do not add any words, slogans, prices, phone numbers or other text to the image.";
 
-export function imagePrompt(
-  profile: Profile,
-  topic: string,
-  platform: Platform,
-  hasLogo: boolean
-): string {
+export function imagePrompt(profile: Profile, topic: string, platform: Platform): string {
   const spec = PLATFORM_SPECS[platform];
   const lines = [
     `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business.`,
-    ...briefLines(profile, topic, hasLogo),
+    ...briefLines(profile, topic),
     ...REALISM,
     NO_TEXT,
   ];
+  lines.push("Leave the bottom eighth of the image simple: a branding strip is placed there afterwards.");
   if (spec.aspectRatio === "16:9") {
-    lines.push("Keep the key subject and the logo away from the top and bottom edges; the image will be cropped slightly there.");
+    lines.push("Keep the key subject away from the top and bottom edges; the image will be cropped slightly there.");
   }
   return lines.join("\n");
 }
 
 // The first frame of a vertical video: the planned hook scene, so the video
 // opens on it.
-export function videoStartPrompt(profile: Profile, topic: string, scene: string, hasLogo: boolean): string {
+export function videoStartPrompt(profile: Profile, topic: string, scene: string): string {
   return [
     `Create a vertical 9:16 opening frame for a short social media video advert for ${profile.businessName}, a small business.`,
-    ...briefLines(profile, topic, hasLogo),
+    ...briefLines(profile, topic),
     `The scene: ${scene}`,
     ...REALISM,
     NO_TEXT,
@@ -118,7 +110,7 @@ export function videoStartPrompt(profile: Profile, topic: string, scene: string,
 export function carouselBackgroundPrompt(profile: Profile, topic: string): string {
   return [
     `Create a 4:5 photograph for the first slide of a social media carousel for ${profile.businessName}, a small business.`,
-    ...briefLines(profile, topic, false),
+    ...briefLines(profile, topic),
     ...REALISM,
     "Full bleed, edge to edge. Do not add panels, boxes, borders, fog or blur effects.",
     NO_TEXT,
@@ -196,98 +188,50 @@ export async function fitToShape(env: Env, bytes: Uint8Array, shape: Shape): Pro
   );
 }
 
-export async function fitToPlatform(
+// Share of the image height the brand strip takes.
+const STRIP_SHARE = 0.12;
+
+// Stamps the brand strip (the real logo and website address, drawn by the
+// browser when the profile was saved) along the bottom of a finished image.
+// Without a strip the image is returned as it is.
+export async function brandImage(
+  env: Env,
+  image: ImageTransformer,
+  platform: Platform,
+  strip: Uint8Array | null
+): Promise<Uint8Array> {
+  if (!strip) return jpegOf(image);
+  const { width, height } = PLATFORM_SPECS[platform];
+  const bar = env.IMAGES.input(streamOf(strip)).transform({
+    width,
+    height: Math.round(height * STRIP_SHARE),
+    fit: "pad",
+    background: "#ffffff",
+  });
+  return jpegOf(image.draw(bar, { bottom: 0, left: 0 }));
+}
+
+// A generated image, cropped to the platform's exact size and branded.
+export async function brandGenerated(
   env: Env,
   bytes: Uint8Array,
-  platform: Platform
+  platform: Platform,
+  strip: Uint8Array | null
 ): Promise<Uint8Array> {
-  return fitToShape(env, bytes, PLATFORM_SPECS[platform]);
-}
-
-/* eslint-disable no-bitwise -- CRC-32 is defined in terms of bit operations */
-function crc32(bytes: Uint8Array): number {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let k = 0; k < 8; k++) crc = crc & 1 ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1;
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-/* eslint-enable no-bitwise */
-
-function pngChunk(type: string, data: Uint8Array): Uint8Array {
-  const out = new Uint8Array(12 + data.length);
-  const view = new DataView(out.buffer);
-  view.setUint32(0, data.length);
-  out.set(new TextEncoder().encode(type), 4);
-  out.set(data, 8);
-  view.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
-  return out;
-}
-
-// A 1x1 PNG of one colour (#rrggbb), stretched by the Images binding into a
-// solid bar: the binding has no "fill a rectangle" operation.
-export async function solidPng(hex: string): Promise<Uint8Array> {
-  const header = new Uint8Array(13);
-  new DataView(header.buffer).setUint32(0, 1);
-  new DataView(header.buffer).setUint32(4, 1);
-  header.set([8, 2, 0, 0, 0], 8);
-  const channel = (i: number) => parseInt(hex.slice(i, i + 2), 16);
-  const scanline = new Uint8Array([0, channel(1), channel(3), channel(5)]);
-  const compressed = new Uint8Array(
-    await new Response(streamOf(scanline).pipeThrough(new CompressionStream("deflate"))).arrayBuffer()
-  );
-  const parts = [
-    new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    pngChunk("IHDR", header),
-    pngChunk("IDAT", compressed),
-    pngChunk("IEND", new Uint8Array()),
-  ];
-  const png = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-  let offset = 0;
-  for (const part of parts) {
-    png.set(part, offset);
-    offset += part.length;
-  }
-  return png;
-}
-
-// Share of the image height the logo strip takes, and its brand-coloured
-// top edge in pixels.
-const STRIP_SHARE = 0.12;
-const STRIP_EDGE = 8;
-
-export interface Branding {
-  logo: Uint8Array | null;
-  colour: string | null;
+  const { width, height } = PLATFORM_SPECS[platform];
+  const image = env.IMAGES.input(streamOf(bytes)).transform({ width, height, fit: "cover" });
+  return brandImage(env, image, platform, strip);
 }
 
 // A customer's own photo, cropped to a platform's size around its most
-// interesting part. With a logo, the real logo file sits centred on a white
-// strip along the bottom, edged in the first brand colour. The photo itself
-// is never altered.
+// interesting part and branded. The photo itself is never altered.
 export async function brandPhoto(
   env: Env,
   photo: Uint8Array,
   platform: Platform,
-  branding: Branding
+  strip: Uint8Array | null
 ): Promise<Uint8Array> {
   const { width, height } = PLATFORM_SPECS[platform];
-  let image = env.IMAGES.input(streamOf(photo)).transform({ width, height, fit: "cover", gravity: "auto" });
-  if (branding.logo) {
-    const strip = Math.round(height * STRIP_SHARE);
-    const edge = env.IMAGES.input(streamOf(await solidPng(branding.colour ?? "#ffffff"))).transform({
-      width,
-      height: strip + STRIP_EDGE,
-      fit: "squeeze",
-    });
-    const logo = env.IMAGES.input(streamOf(branding.logo)).transform({
-      width,
-      height: strip,
-      fit: "pad",
-      background: "#ffffff",
-    });
-    image = image.draw(edge, { bottom: 0, left: 0 }).draw(logo, { bottom: 0, left: 0 });
-  }
-  return jpegOf(image);
+  const image = env.IMAGES.input(streamOf(photo)).transform({ width, height, fit: "cover", gravity: "auto" });
+  return brandImage(env, image, platform, strip);
 }

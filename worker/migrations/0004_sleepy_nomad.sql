@@ -1,0 +1,1 @@
+ALTER TABLE `business_profiles` ADD `brand_strip_key` text;

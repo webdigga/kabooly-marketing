@@ -44,7 +44,7 @@ export function draftFromProfile(profile: Profile): ProfileDraft {
   }
 }
 
-export function draftToBody(draft: ProfileDraft) {
+export function draftToBody(draft: ProfileDraft, brandStripKey: string | null = null) {
   return {
     businessName: draft.businessName.trim(),
     description: draft.description.trim(),
@@ -55,6 +55,7 @@ export function draftToBody(draft: ProfileDraft) {
     services: draft.services,
     brandColours: draft.brandColours,
     logoKey: draft.logo?.key ?? null,
+    brandStripKey,
   }
 }
 

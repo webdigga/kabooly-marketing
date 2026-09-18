@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { MAX_LOGO_BYTES, MAX_PHOTO_BYTES, sniffRaster } from "../src/files";
+import { MAX_LOGO_BYTES, MAX_PHOTO_BYTES, MAX_STRIP_BYTES, sniffRaster } from "../src/files";
 import { installFetchMock } from "./fetch-mock";
-import { apiFetch, appFetch, mockEmail, photoBytes, pngBytes, testEnv, uploadLogo, uploadPhoto, verifiedUser } from "./helpers";
+import { apiFetch, appFetch, mockEmail, photoBytes, pngBytes, testEnv, uploadLogo, uploadPhoto, uploadStrip, verifiedUser } from "./helpers";
 
 beforeEach(() => {
   installFetchMock();
@@ -113,6 +113,25 @@ describe("file serving", () => {
     const prefix = key.slice(0, key.indexOf("/logos/"));
     expect((await apiFetch(cookie, `/api/files/${prefix}/logos/missing.png`)).status).toBe(404);
     expect((await apiFetch(cookie, `/api/files/${prefix}/..%2F..%2Fx`)).status).toBe(404);
+  });
+});
+
+describe("brand strip upload", () => {
+  it("stores the strip the browser drew", async () => {
+    const { cookie } = await verifiedUser();
+    const res = await uploadStrip(cookie);
+    expect(res.status).toBe(200);
+    const body: { key: string; url: string } = await res.json();
+    expect(body.key).toMatch(/^users\/[^/]+\/brand\/[\w-]+\.png$/);
+    expect(await testEnv.FILES.head(body.key)).not.toBeNull();
+  });
+
+  it("refuses anything that is not a PNG, or is too large", async () => {
+    const { cookie } = await verifiedUser();
+    const jpeg = await uploadStrip(cookie, new Uint8Array([0xff, 0xd8, 0xff, 0xe0]));
+    expect(jpeg.status).toBe(415);
+    const huge = await uploadStrip(cookie, new Uint8Array(MAX_STRIP_BYTES + 1));
+    expect(huge.status).toBe(413);
   });
 });
 

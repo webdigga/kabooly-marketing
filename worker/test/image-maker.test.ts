@@ -23,6 +23,7 @@ const profile: Profile = {
   services: ["Oven cleaning"],
   brandColours: ["#1d4ed8", "#f59e0b"],
   logoKey: null,
+  brandStripKey: null,
 };
 
 beforeEach(() => {
@@ -30,35 +31,33 @@ beforeEach(() => {
 });
 
 describe("imagePrompt", () => {
-  it("brings in brand colours, the logo and a crop warning for Facebook", () => {
-    const prompt = imagePrompt(profile, "Spring ovens", "facebook", true);
+  it("brings in brand colours, room for the strip and a crop warning for Facebook", () => {
+    const prompt = imagePrompt(profile, "Spring ovens", "facebook");
     expect(prompt).toContain("Facebook advert image for Acme Cleaning");
     expect(prompt).toContain("#1d4ed8, #f59e0b");
     expect(prompt).toContain("no colour filters, tints or recolouring");
-    expect(prompt).toContain("attached image is the business logo");
-    expect(prompt).toContain("never redrawn, restyled or recoloured");
     expect(prompt).toContain("Do not add icons, symbols, emoji");
     expect(prompt).toContain("two arms, two hands");
-    expect(prompt).not.toContain("polished graphic");
+    expect(prompt).toContain("bottom eighth of the image simple");
     expect(prompt).toContain("cropped slightly");
     expect(prompt).toContain("Do not add any words");
+    // The logo is stamped on afterwards, never drawn by the model.
+    expect(prompt).not.toContain("logo");
   });
 
   it("leaves out what does not apply", () => {
-    const prompt = imagePrompt({ ...profile, brandColours: [] }, "Spring ovens", "instagram", false);
+    const prompt = imagePrompt({ ...profile, brandColours: [] }, "Spring ovens", "instagram");
     expect(prompt).not.toContain("brand colours");
-    expect(prompt).not.toContain("logo");
     expect(prompt).not.toContain("cropped");
   });
 });
 
 describe("videoStartPrompt and carouselBackgroundPrompt", () => {
-  it("asks for a vertical opening frame, with the logo when there is one", () => {
-    const prompt = videoStartPrompt(profile, "Spring ovens", "A greasy oven door", true);
+  it("asks for a vertical opening frame of the planned scene", () => {
+    const prompt = videoStartPrompt(profile, "Spring ovens", "A greasy oven door");
     expect(prompt).toContain("vertical 9:16 opening frame");
     expect(prompt).toContain("The scene: A greasy oven door");
-    expect(prompt).toContain("attached image is the business logo");
-    expect(videoStartPrompt(profile, "Spring ovens", "A greasy oven door", false)).not.toContain("logo");
+    expect(prompt).not.toContain("logo");
   });
 
   it("asks for a plain, logo-free photograph for the first slide", () => {

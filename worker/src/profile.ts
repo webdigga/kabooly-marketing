@@ -6,7 +6,7 @@ import { readBusinessDetails } from "./copywriter";
 import type { BusinessDetails } from "./copywriter";
 import * as schema from "./db/schema";
 import type { Env } from "./env";
-import { fileUrl, storeLogo, userPrefix } from "./files";
+import { brandPrefix, fileUrl, storeLogo, userPrefix } from "./files";
 import { beginGeneration, deniedResponse, isDenied } from "./limits";
 import { scanWebsite } from "./scan";
 import { normaliseWebsiteUrl } from "./scan/url";
@@ -23,6 +23,7 @@ export interface Profile {
   services: string[];
   brandColours: string[];
   logoKey: string | null;
+  brandStripKey: string | null;
 }
 
 export const MAX_SERVICES = 20;
@@ -50,11 +51,13 @@ export async function loadProfile(env: Env, userId: string): Promise<Profile | n
     services: services.map((s) => s.name),
     brandColours: row.brandColours,
     logoKey: row.logoKey,
+    brandStripKey: row.brandStripKey,
   };
 }
 
 function toJson(profile: Profile) {
-  return { ...profile, logoUrl: profile.logoKey ? fileUrl(profile.logoKey) : null };
+  const { brandStripKey: _strip, ...shown } = profile;
+  return { ...shown, logoUrl: profile.logoKey ? fileUrl(profile.logoKey) : null };
 }
 
 const profileBody = z.object({
@@ -69,6 +72,8 @@ const profileBody = z.object({
     .array(z.string().regex(/^#[0-9a-f]{6}$/i))
     .max(MAX_BRAND_COLOURS),
   logoKey: z.string().max(300).nullable(),
+  // Drawn and uploaded by the browser just before saving.
+  brandStripKey: z.string().max(300).nullish(),
 });
 
 type ProfileBody = z.infer<typeof profileBody>;
@@ -83,9 +88,9 @@ function uniqueCaseInsensitive(values: string[]): string[] {
   });
 }
 
-// A logo must be one this account uploaded (or the scan stored for it).
-async function ownsLogo(env: Env, userId: string, key: string): Promise<boolean> {
-  if (!key.startsWith(`${userPrefix(userId)}logos/`) || key.includes("..")) return false;
+// A file must be one this account uploaded (or the scan stored for it).
+async function owns(env: Env, userId: string, key: string, prefix: string): Promise<boolean> {
+  if (!key.startsWith(prefix) || key.includes("..")) return false;
   return (await env.FILES.head(key)) !== null;
 }
 
@@ -106,6 +111,7 @@ async function saveProfile(
     tone: body.tone,
     brandColours: body.brandColours.map((c) => c.toLowerCase()),
     logoKey: body.logoKey,
+    brandStripKey: body.brandStripKey ?? null,
     updatedAt: now,
   };
   const services = uniqueCaseInsensitive(body.services).map((name, position) => ({
@@ -133,10 +139,11 @@ profileApi.get("/profile", async (c) => {
   return c.json({ profile: profile ? toJson(profile) : null });
 });
 
-// Saving settles which logo an account uses, so every other logo file it
-// has (a replaced one, or one a scan stored and the user never kept) goes.
-async function removeOtherLogos(env: Env, userId: string, keep: string | null): Promise<void> {
-  const listed = await env.FILES.list({ prefix: `${userPrefix(userId)}logos/` });
+// Saving settles which logo and brand strip an account uses, so every other
+// file in those folders (a replaced one, or one a scan stored and the user
+// never kept) goes.
+async function removeOtherFiles(env: Env, userId: string, prefix: string, keep: string | null): Promise<void> {
+  const listed = await env.FILES.list({ prefix });
   const stale = listed.objects.map((o) => o.key).filter((key) => key !== keep);
   if (stale.length) await env.FILES.delete(stale);
 }
@@ -145,7 +152,8 @@ async function removeOtherLogos(env: Env, userId: string, keep: string | null): 
 // the logo belongs to this account. Returns the offending field, if any.
 async function invalidField(env: Env, userId: string, body: ProfileBody): Promise<string | null> {
   if (body.websiteUrl && !normaliseWebsiteUrl(body.websiteUrl)) return "websiteUrl";
-  if (body.logoKey && !(await ownsLogo(env, userId, body.logoKey))) return "logoKey";
+  if (body.logoKey && !(await owns(env, userId, body.logoKey, `${userPrefix(userId)}logos/`))) return "logoKey";
+  if (body.brandStripKey && !(await owns(env, userId, body.brandStripKey, brandPrefix(userId)))) return "brandStripKey";
   return null;
 }
 
@@ -159,7 +167,8 @@ profileApi.put("/profile", async (c) => {
 
   const websiteUrl = body.websiteUrl ? normaliseWebsiteUrl(body.websiteUrl) : null;
   const saved = await saveProfile(c.env, userId, body, websiteUrl?.toString() ?? null);
-  await removeOtherLogos(c.env, userId, saved.logoKey);
+  await removeOtherFiles(c.env, userId, `${userPrefix(userId)}logos/`, saved.logoKey);
+  await removeOtherFiles(c.env, userId, brandPrefix(userId), saved.brandStripKey);
   return c.json({ profile: toJson(saved) });
 });
 
