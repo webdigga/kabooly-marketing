@@ -199,7 +199,7 @@ describe('instagram stories', () => {
     expect(within(tile).getByText('Dreading your oven?')).toBeInTheDocument()
     expect(within(tile).getByText('Book at acme.co.uk')).toBeInTheDocument()
     expect(within(tile).getByText('1080 × 1920')).toBeInTheDocument()
-    expect(within(within(tile).getByTestId('story-strip')).getByText('acme.co.uk')).toBeInTheDocument()
+    expect(within(within(tile).getByTestId('story-lockup')).getByText('acme.co.uk')).toBeInTheDocument()
     expect(callsTo('POST', '/api/generations')[0]?.body).toMatchObject({ platforms: expect.arrayContaining(['story']) })
 
     await userEvent.click(within(tile).getByTestId('download-story'))

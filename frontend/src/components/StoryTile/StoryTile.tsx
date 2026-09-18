@@ -1,10 +1,10 @@
 import { Download, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useProfile } from '../../context/ProfileContext'
 import { websiteLabel } from '../../lib/brand-strip'
 import { PLATFORM_INFO } from '../../lib/platforms'
 import { saveBlob } from '../../lib/slide-render'
-import { renderStory } from '../../lib/story-render'
+import { loadLogoForStory, renderStory } from '../../lib/story-render'
 import type { AdvertImage, StoryWords } from '../../lib/types'
 import Alert from '../Alert/Alert'
 import Button from '../Button/Button'
@@ -18,39 +18,50 @@ interface StoryTileProps {
   disabled?: boolean
 }
 
-// The preview of the brand strip drawn along the bottom of the finished
-// story (lib/story-render.ts draws the real one).
-function Strip({ logoUrl, website, colour }: { logoUrl: string | null; website: string; colour: string }) {
+// The branding at the foot of the story: the logo, larger than on a square
+// advert because a story is twice as tall, and the web address under it.
+// The preview mirrors lib/story-render.ts, which draws the real one.
+function Lockup({ logoUrl, website, carded }: { logoUrl: string | null; website: string; carded: boolean }) {
   if (!logoUrl && !website) return null
   return (
-    <div className={styles.strip} style={{ borderTopColor: colour }} data-testid="story-strip">
-      {logoUrl && <img className={styles.logo} src={logoUrl} alt="" />}
-      {website && (
-        <span className={styles.website} style={{ color: colour }}>
-          {website}
-        </span>
-      )}
+    <div className={styles.lockup} data-testid="story-lockup">
+      {logoUrl && <img className={carded ? styles.cardedLogo : styles.logo} src={logoUrl} alt="" />}
+      {website && <span className={styles.website}>{website}</span>}
     </div>
   )
 }
 
-// An Instagram Story: the photo with its words and logo drawn over it,
+// An Instagram Story: the photo with its words and branding drawn over it,
 // clear of the areas Instagram covers with its own controls. The finished
 // image is drawn here in the browser when it is downloaded.
 export default function StoryTile({ image, words, onRegenerate, disabled }: StoryTileProps) {
   const { profile } = useProfile()
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
+  // A dark logo needs a white card behind it; a light one sits straight on
+  // the darkened photo.
+  const [carded, setCarded] = useState(false)
   const info = PLATFORM_INFO.story
   const colour = profile?.brandColours[0] ?? '#1d4ed8'
-  const website = websiteLabel(profile?.websiteUrl ?? '')
-  const design = { photo: image.url, logo: profile?.logoUrl ?? null, colour, websiteUrl: profile?.websiteUrl ?? '' }
+  const websiteUrl = profile?.websiteUrl ?? ''
+  const logoUrl = profile?.logoUrl ?? null
+
+  useEffect(() => {
+    if (!logoUrl) return
+    let live = true
+    void loadLogoForStory(logoUrl).then((needed) => {
+      if (live) setCarded(needed)
+    })
+    return () => {
+      live = false
+    }
+  }, [logoUrl])
 
   async function download() {
     setSaving(true)
     setFailed(false)
     try {
-      const blob = await renderStory(design, words)
+      const blob = await renderStory({ photo: image.url, logo: logoUrl, colour, websiteUrl }, words)
       saveBlob(blob, `kabooly-story-${new Date().toISOString().slice(0, 10)}.png`)
     } catch {
       setFailed(true)
@@ -68,13 +79,13 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
         </span>
       </figcaption>
       <div className={styles.frame} style={{ backgroundImage: `url("${image.url}")` }}>
-        <div className={styles.words}>
+        <div className={styles.stack}>
           <p className={styles.headline}>{words.headline}</p>
           <p className={styles.cta} style={{ backgroundColor: colour }}>
             {words.cta}
           </p>
+          <Lockup logoUrl={logoUrl} website={websiteLabel(websiteUrl)} carded={carded} />
         </div>
-        <Strip logoUrl={profile?.logoUrl ?? null} website={website} colour={colour} />
       </div>
       {failed && <Alert tone="error">The story could not be downloaded. Try again.</Alert>}
       <div className={styles.actions}>

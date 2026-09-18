@@ -40,45 +40,19 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgb(15 23 42 / 0%) 35%, rgb(15 23 42 / 90%) 100%);
+  background: linear-gradient(to bottom, rgb(15 23 42 / 0%) 30%, rgb(15 23 42 / 92%) 100%);
 }
 
-/* The brand strip, sitting clear of Instagram's reply bar (23.1cqw is the
-   250 pixel safe area at the bottom of a 1080 wide story). */
-.strip {
+/* The stack sits on top of the 250 pixel strip Instagram covers with its
+   reply bar (23.1cqw of a 1080 wide story). */
+.stack {
   position: absolute;
-  right: 0;
-  bottom: 23.1cqw;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2.7cqw;
-  height: 9cqw;
-  padding: 0 2.7cqw;
-  border-top: 0.63cqw solid;
-  background-color: var(--color-white);
-}
-
-.logo {
-  max-width: 45%;
-  max-height: 5.6cqw;
-  object-fit: contain;
-}
-
-.website {
-  font-size: 2.8cqw;
-  font-weight: var(--font-weight-semibold);
-}
-
-.words {
-  position: absolute;
-  inset: auto 7.4cqw 36.6cqw;
+  inset: auto 0 23.1cqw;
   display: grid;
-  gap: 3.7cqw;
+  gap: 5.6cqw;
   justify-items: center;
+  padding: 0 7.4cqw;
   color: var(--color-white);
-  text-align: center;
 }
 
 .headline {
@@ -93,6 +67,30 @@
   padding: 1.9cqw 3.7cqw;
   border-radius: 999px;
   font-size: 4.3cqw;
+  font-weight: var(--font-weight-semibold);
+}
+
+.lockup {
+  display: grid;
+  gap: 2.6cqw;
+  justify-items: center;
+}
+
+.logo,
+.cardedLogo {
+  max-width: 42.6cqw;
+  max-height: 19.4cqw;
+  object-fit: contain;
+}
+
+.cardedLogo {
+  padding: 2.8cqw;
+  border-radius: 2.6cqw;
+  background-color: var(--color-white);
+}
+
+.website {
+  font-size: 4.1cqw;
   font-weight: var(--font-weight-semibold);
 }
 

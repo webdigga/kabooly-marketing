@@ -48,33 +48,23 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-export interface StripBox {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-// Paints the strip into a box on any canvas: the coloured edge, the white
-// bar, the logo on the left and the website on the right. Used both for the
-// stored strips and for the Story the browser draws whole.
-export async function drawStrip(
-  ctx: CanvasRenderingContext2D,
-  box: StripBox,
-  input: Pick<BrandStripInput, 'colour' | 'websiteUrl'>,
-  logo: HTMLImageElement | null,
-): Promise<void> {
-  const { x, y, width, height } = box
+async function draw(input: BrandStripInput, platform: Platform, logo: HTMLImageElement | null): Promise<Blob | null> {
+  const { width, height } = stripSize(platform)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
   const colour = input.colour ?? '#1d4ed8'
   const edge = Math.max(3, Math.round(height * 0.07))
   const padding = Math.round(height * 0.3)
   ctx.fillStyle = colour
-  ctx.fillRect(x, y, width, height)
+  ctx.fillRect(0, 0, width, height)
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x, y + edge, width, height - edge)
+  ctx.fillRect(0, edge, width, height - edge)
 
   const website = websiteLabel(input.websiteUrl)
-  const middle = y + edge + (height - edge) / 2
+  const middle = edge + (height - edge) / 2
   let textWidth = 0
   if (website) {
     const size = Math.round((height - edge) * 0.34)
@@ -83,7 +73,7 @@ export async function drawStrip(
     ctx.fillStyle = colour
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
-    ctx.fillText(website, x + width - padding, middle)
+    ctx.fillText(website, width - padding, middle)
     textWidth = ctx.measureText(website).width + padding * 2
   }
   if (logo) {
@@ -92,18 +82,8 @@ export async function drawStrip(
     const scale = Math.min(maxWidth / logo.naturalWidth, maxHeight / logo.naturalHeight)
     const w = logo.naturalWidth * scale
     const h = logo.naturalHeight * scale
-    ctx.drawImage(logo, x + padding, middle - h / 2, w, h)
+    ctx.drawImage(logo, padding, middle - h / 2, w, h)
   }
-}
-
-async function draw(input: BrandStripInput, platform: Platform, logo: HTMLImageElement | null): Promise<Blob | null> {
-  const { width, height } = stripSize(platform)
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return null
-  await drawStrip(ctx, { x: 0, y: 0, width, height }, input, logo)
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
 }
 

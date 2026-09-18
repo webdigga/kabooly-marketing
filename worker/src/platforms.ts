@@ -19,7 +19,7 @@ export const PLATFORM_SPECS: Record<Platform, PlatformSpec> = {
   facebook: { label: "Facebook", width: 1200, height: 630, aspectRatio: "16:9" },
   nextdoor: { label: "Nextdoor", width: 1200, height: 1200, aspectRatio: "1:1" },
   // A Story is full screen, carries no caption, and the browser draws the
-  // words and the brand strip over it (nothing is stamped server-side).
+  // words and the branding over it (nothing is stamped server-side).
   story: { label: "Instagram Story", width: 1080, height: 1920, aspectRatio: "9:16" },
 };
 
