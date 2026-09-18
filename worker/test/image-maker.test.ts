@@ -38,7 +38,7 @@ describe("imagePrompt", () => {
     expect(prompt).toContain("no colour filters, tints or recolouring");
     expect(prompt).toContain("Do not add icons, symbols, emoji");
     expect(prompt).toContain("two arms, two hands");
-    expect(prompt).toContain("bottom eighth of the image simple");
+    expect(prompt).toContain("fills the whole frame, edge to edge");
     expect(prompt).toContain("cropped slightly");
     expect(prompt).toContain("Do not add any words");
     // The logo is stamped on afterwards, never drawn by the model.

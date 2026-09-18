@@ -71,6 +71,7 @@ function briefLines(profile: Profile, topic: string): string[] {
 // broken anatomy.
 const REALISM = [
   "Style: a realistic, professional photograph of a real scene, as a skilled photographer would shoot it, with natural light.",
+  "The photograph fills the whole frame, edge to edge. No borders, bands, blank areas, plain panels or empty space.",
   "Do not add icons, symbols, emoji, illustrations, stickers, motion lines, speech bubbles, badges, frames or any other graphic elements.",
   "Any people must look natural and anatomically correct: two arms, two hands, five fingers on each hand, natural faces.",
 ];
@@ -85,7 +86,6 @@ export function imagePrompt(profile: Profile, topic: string, platform: Platform)
     ...REALISM,
     NO_TEXT,
   ];
-  lines.push("Leave the bottom eighth of the image simple: a branding strip is placed there afterwards.");
   if (spec.aspectRatio === "16:9") {
     lines.push("Keep the key subject away from the top and bottom edges; the image will be cropped slightly there.");
   }
