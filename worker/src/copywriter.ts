@@ -220,8 +220,9 @@ export async function readBusinessDetails(env: Env, websiteUrl: string, pageText
 
 const STORY_SYSTEM = `You write the words laid over an Instagram Story for a small local business.
 A Story is full screen, disappears after 24 hours and carries no caption, so the words on the image are the whole message.
-- headline: what the Story is about, at most 8 words, in the business's voice.
-- cta: what to do next, at most 5 words (for example "Book at acme.co.uk", "Send us a message").
+The business's logo and web address are already printed along the bottom of the Story, so never repeat the web address in the words.
+- headline: what the Story is about, at most 8 words, in the business's voice. Correct, properly punctuated English: one complete sentence, or two short ones separated by a full stop. Two ideas run together need a comma or a full stop between them, never a gap.
+- cta: what to do next, at most 5 words, an action only (for example "Book your first session", "Send us a message"). No web address, no phone number.
 Plain words only: no emoji or symbols, no hashtags, no quotation marks. UK English spelling. Never invent prices, offers, discounts, phone numbers, awards or claims the business has not given.`;
 
 const storySchema = z.object({

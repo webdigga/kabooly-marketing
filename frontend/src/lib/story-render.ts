@@ -1,15 +1,17 @@
+import { drawStrip, stripSize, websiteLabel } from './brand-strip'
 import { PLATFORM_INFO } from './platforms'
 import type { StoryWords } from './types'
 
 // Draws the finished Instagram Story in the browser: the photo, the words
-// and the logo, laid out clear of the areas Instagram covers with its own
-// controls. The words are exact because they are drawn here, not by an AI.
+// and the brand strip, laid out clear of the areas Instagram covers with
+// its own controls (the account name across the top, the reply bar across
+// the bottom). The words are exact because they are drawn here, not by an
+// AI, and the logo is the customer's real file.
 export const STORY_WIDTH = PLATFORM_INFO.story.width
 export const STORY_HEIGHT = PLATFORM_INFO.story.height
 
-// Instagram puts the account name across the top and the reply bar across
-// the bottom of a Story.
-export const SAFE_TOP = 250
+// Instagram lays its reply bar across the bottom of a Story, so nothing is
+// drawn in the last of it.
 export const SAFE_BOTTOM = 250
 const PADDING = 80
 const FONT = 'Inter, system-ui, sans-serif'
@@ -18,7 +20,13 @@ export interface StoryDesign {
   photo: string
   logo: string | null
   colour: string
+  websiteUrl: string
 }
+
+// The brand strip sits just above the reply bar, so the bottom of the words
+// is the top of the strip.
+export const STRIP_HEIGHT = stripSize('story').height
+const STRIP_GAP = 48
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -89,7 +97,13 @@ export async function renderStory(design: StoryDesign, words: StoryWords): Promi
   ctx.fillStyle = shade
   ctx.fillRect(0, 0, STORY_WIDTH, STORY_HEIGHT)
 
-  const ctaBottom = STORY_HEIGHT - SAFE_BOTTOM
+  const branded = Boolean(logo) || Boolean(websiteLabel(design.websiteUrl))
+  if (branded) {
+    const top = STORY_HEIGHT - SAFE_BOTTOM - STRIP_HEIGHT
+    await drawStrip(ctx, { x: 0, y: top, width: STORY_WIDTH, height: STRIP_HEIGHT }, design, logo)
+  }
+
+  const ctaBottom = STORY_HEIGHT - SAFE_BOTTOM - (branded ? STRIP_HEIGHT + STRIP_GAP : 0)
   drawCta(ctx, words.cta, design.colour, ctaBottom)
 
   ctx.font = `700 76px ${FONT}`
@@ -101,19 +115,6 @@ export async function renderStory(design: StoryDesign, words: StoryWords): Promi
   for (const line of lines) {
     ctx.fillText(line, PADDING, y)
     y += 88
-  }
-
-  if (logo) {
-    const maxWidth = 320
-    const maxHeight = 130
-    const scale = Math.min(maxWidth / logo.naturalWidth, maxHeight / logo.naturalHeight, 1)
-    const w = logo.naturalWidth * scale
-    const h = logo.naturalHeight * scale
-    ctx.fillStyle = '#ffffff'
-    ctx.beginPath()
-    ctx.roundRect(PADDING - 20, SAFE_TOP - 20, w + 40, h + 40, 20)
-    ctx.fill()
-    ctx.drawImage(logo, PADDING, SAFE_TOP, w, h)
   }
 
   return new Promise((resolve, reject) => {

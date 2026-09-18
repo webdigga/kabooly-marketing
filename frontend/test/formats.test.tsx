@@ -199,12 +199,13 @@ describe('instagram stories', () => {
     expect(within(tile).getByText('Dreading your oven?')).toBeInTheDocument()
     expect(within(tile).getByText('Book at acme.co.uk')).toBeInTheDocument()
     expect(within(tile).getByText('1080 × 1920')).toBeInTheDocument()
+    expect(within(within(tile).getByTestId('story-strip')).getByText('acme.co.uk')).toBeInTheDocument()
     expect(callsTo('POST', '/api/generations')[0]?.body).toMatchObject({ platforms: expect.arrayContaining(['story']) })
 
     await userEvent.click(within(tile).getByTestId('download-story'))
     await waitFor(() => expect(slideRender.saveBlob).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^kabooly-story-/)))
     expect(storyRender.renderStory).toHaveBeenCalledWith(
-      { photo: STORY.url, logo: '/api/files/users/u1/logos/logo.png', colour: '#1d4ed8' },
+      { photo: STORY.url, logo: '/api/files/users/u1/logos/logo.png', colour: '#1d4ed8', websiteUrl: 'https://acme.co.uk/' },
       WORDS,
     )
   })

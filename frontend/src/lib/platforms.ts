@@ -18,6 +18,6 @@ export const PLATFORM_INFO: Record<Platform, PlatformInfo> = {
 
 export const PLATFORMS: PlatformInfo[] = Object.values(PLATFORM_INFO)
 
-// A Story carries the words and logo drawn over it in the browser, so it
-// has no brand strip of its own.
+// A Story is composed whole in the browser, brand strip included, so it
+// needs no stored strip file.
 export const STRIP_PLATFORMS: PlatformInfo[] = PLATFORMS.filter((p) => p.id !== 'story')

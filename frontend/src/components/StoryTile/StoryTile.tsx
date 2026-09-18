@@ -1,6 +1,7 @@
 import { Download, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useProfile } from '../../context/ProfileContext'
+import { websiteLabel } from '../../lib/brand-strip'
 import { PLATFORM_INFO } from '../../lib/platforms'
 import { saveBlob } from '../../lib/slide-render'
 import { renderStory } from '../../lib/story-render'
@@ -17,6 +18,22 @@ interface StoryTileProps {
   disabled?: boolean
 }
 
+// The preview of the brand strip drawn along the bottom of the finished
+// story (lib/story-render.ts draws the real one).
+function Strip({ logoUrl, website, colour }: { logoUrl: string | null; website: string; colour: string }) {
+  if (!logoUrl && !website) return null
+  return (
+    <div className={styles.strip} style={{ borderTopColor: colour }} data-testid="story-strip">
+      {logoUrl && <img className={styles.logo} src={logoUrl} alt="" />}
+      {website && (
+        <span className={styles.website} style={{ color: colour }}>
+          {website}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // An Instagram Story: the photo with its words and logo drawn over it,
 // clear of the areas Instagram covers with its own controls. The finished
 // image is drawn here in the browser when it is downloaded.
@@ -26,12 +43,14 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
   const [failed, setFailed] = useState(false)
   const info = PLATFORM_INFO.story
   const colour = profile?.brandColours[0] ?? '#1d4ed8'
+  const website = websiteLabel(profile?.websiteUrl ?? '')
+  const design = { photo: image.url, logo: profile?.logoUrl ?? null, colour, websiteUrl: profile?.websiteUrl ?? '' }
 
   async function download() {
     setSaving(true)
     setFailed(false)
     try {
-      const blob = await renderStory({ photo: image.url, logo: profile?.logoUrl ?? null, colour }, words)
+      const blob = await renderStory(design, words)
       saveBlob(blob, `kabooly-story-${new Date().toISOString().slice(0, 10)}.png`)
     } catch {
       setFailed(true)
@@ -49,13 +68,13 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
         </span>
       </figcaption>
       <div className={styles.frame} style={{ backgroundImage: `url("${image.url}")` }}>
-        {profile?.logoUrl && <img className={styles.logo} src={profile.logoUrl} alt="" />}
         <div className={styles.words}>
           <p className={styles.headline}>{words.headline}</p>
           <p className={styles.cta} style={{ backgroundColor: colour }}>
             {words.cta}
           </p>
         </div>
+        <Strip logoUrl={profile?.logoUrl ?? null} website={website} colour={colour} />
       </div>
       {failed && <Alert tone="error">The story could not be downloaded. Try again.</Alert>}
       <div className={styles.actions}>
