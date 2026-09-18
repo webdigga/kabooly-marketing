@@ -79,7 +79,9 @@ export async function startVideo(
     body: JSON.stringify({
       model: env.GEMINI_VIDEO_MODEL,
       input,
-      response_format: { type: "video", aspect_ratio: "9:16", resolution: "1080p" },
+      // 720p, not 1080p: Omni makes 720p and upscales, which adds no real
+      // detail, costs more a second, and the platforms re-encode anyway.
+      response_format: { type: "video", aspect_ratio: "9:16", resolution: "720p" },
       background: true,
     }),
   });

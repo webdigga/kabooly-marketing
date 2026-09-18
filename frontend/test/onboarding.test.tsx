@@ -98,7 +98,7 @@ describe('onboarding', () => {
 
     await userEvent.click(screen.getByLabelText('Remove colour 2'))
     await next()
-    await screen.findByRole('heading', { name: 'Create' })
+    await screen.findByRole('heading', { name: 'Image advert' })
     expect(callsTo('PUT', '/api/profile')[0]?.body).toEqual({
       businessName: 'Acme Cleaning',
       description: 'We clean homes in Twickenham.',
@@ -120,7 +120,7 @@ describe('onboarding', () => {
     await typeEverythingByHand()
     await userEvent.click(screen.getByTestId('add-colour'))
     await next()
-    await screen.findByRole('heading', { name: 'Create' })
+    await screen.findByRole('heading', { name: 'Image advert' })
   })
 
   it('says when a website had nothing to fill in, and treats a failed request as unreadable', async () => {
@@ -151,7 +151,7 @@ describe('onboarding', () => {
     expect(screen.getByTestId('services-list')).toHaveTextContent('Oven cleaning')
     await next()
     await next()
-    await screen.findByRole('heading', { name: 'Create' })
+    await screen.findByRole('heading', { name: 'Image advert' })
     expect(callsTo('PUT', '/api/profile')[0]?.body).toMatchObject({ websiteUrl: null })
   })
 

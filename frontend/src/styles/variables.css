@@ -80,5 +80,7 @@
   --focus-ring: 0 0 0 3px rgb(29 78 216 / 0.25);
 
   --content-width: 64rem;
+  /* Content plus the sidebar beside it. */
+  --shell-width: 79rem;
   --narrow-width: 28rem;
 }

@@ -7,8 +7,6 @@ import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
 import CarouselSlides from '../../components/CarouselSlides/CarouselSlides'
 import { TextArea } from '../../components/Field/Field'
-import FormatPicker from '../../components/FormatPicker/FormatPicker'
-import type { CreateFormat } from '../../components/FormatPicker/FormatPicker'
 import ImageTile from '../../components/ImageTile/ImageTile'
 import PhotoPicker from '../../components/PhotoPicker/PhotoPicker'
 import PlatformPicker from '../../components/PlatformPicker/PlatformPicker'
@@ -20,6 +18,15 @@ import type { Platform, UploadedPhoto, Usage } from '../../lib/types'
 import styles from './Generator.module.css'
 import { useGenerator } from './useGenerator'
 import { useTopicSuggestion } from './useTopicSuggestion'
+
+export type CreateFormat = 'images' | 'photo' | 'carousel' | 'video'
+
+const TITLES: Record<CreateFormat, string> = {
+  images: 'Image advert',
+  photo: 'Photo post',
+  carousel: 'Carousel',
+  video: 'Video',
+}
 
 const LEADS: Record<CreateFormat, string> = {
   images: 'The text plus an image for each platform you tick.',
@@ -127,9 +134,8 @@ function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, m
   )
 }
 
-export default function Generator() {
+export default function Generator({ format }: { format: CreateFormat }) {
   const topic = useTopicSuggestion()
-  const [format, setFormat] = useState<CreateFormat>('images')
   const [platforms, setPlatforms] = useState<Platform[]>(loadPlatformChoice)
   const [photo, setPhoto] = useState<UploadedPhoto | null>(null)
   const [motion, setMotion] = useState('')
@@ -161,14 +167,13 @@ export default function Generator() {
   return (
     <div className={styles.page}>
       <div>
-        <h1>Create</h1>
+        <h1>{TITLES[format]}</h1>
         <p className={styles.lead}>{LEADS[format]}</p>
       </div>
       <UsagePanel usage={usage} />
 
       <form onSubmit={submit}>
         <Card>
-          <FormatPicker value={format} onChange={setFormat} disabled={generator.busy} />
           <div className={styles.topicHead}>
             <TextArea
               label="Topic"

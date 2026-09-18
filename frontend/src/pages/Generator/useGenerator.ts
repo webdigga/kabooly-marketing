@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { BackgroundStatus } from '../../components/CarouselSlides/CarouselSlides'
-import type { CreateFormat } from '../../components/FormatPicker/FormatPicker'
+import type { CreateFormat } from './Generator'
 import type { TileStatus } from '../../components/ImageTile/ImageTile'
 import { api, request } from '../../lib/api'
 import { readEvents } from '../../lib/generation-stream'

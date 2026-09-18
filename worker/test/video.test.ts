@@ -64,7 +64,7 @@ describe("startVideo", () => {
         { type: "image", mime_type: "image/png", data: "TE9HTw==" },
         { type: "text", text: "go" },
       ],
-      response_format: { type: "video", aspect_ratio: "9:16", resolution: "1080p" },
+      response_format: { type: "video", aspect_ratio: "9:16", resolution: "720p" },
     });
     expect(body).not.toHaveProperty("store");
     await startVideo(testEnv, new Uint8Array([1]), null, "go");

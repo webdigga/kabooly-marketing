@@ -15,6 +15,26 @@ beforeEach(() => {
   signedIn()
 })
 
+describe('navigation', () => {
+  it('moves between the four things you can make, the library and settings', async () => {
+    mockApi({ ...base, 'GET /api/posts': () => json({ adverts: [], nextCursor: null }) })
+    renderApp('/')
+    await screen.findByRole('heading', { name: 'Image advert' })
+    for (const [label, heading] of [
+      ['Photo post', 'Photo post'],
+      ['Carousel', 'Carousel'],
+      ['Video', 'Video'],
+      ['Library', 'Library'],
+      ['Settings', 'Settings'],
+      ['Image advert', 'Image advert'],
+    ]) {
+      // The same links appear in the sidebar and in the phone tab row.
+      await userEvent.click(screen.getAllByRole('link', { name: label })[0]!)
+      await screen.findByRole('heading', { name: heading })
+    }
+  })
+})
+
 describe('library', () => {
   it('shows adverts as a compact grid, newest first, and loads older ones', async () => {
     mockApi({
@@ -106,7 +126,7 @@ describe('library', () => {
     renderApp('/library')
     await screen.findByText('No adverts yet')
     await userEvent.click(screen.getByRole('link', { name: 'Create your first advert' }))
-    await screen.findByRole('heading', { name: 'Create' })
+    await screen.findByRole('heading', { name: 'Image advert' })
   })
 
   it('offers a retry when loading fails', async () => {
@@ -256,6 +276,6 @@ describe('loading the account', () => {
     await screen.findByText(/Could not load your account/)
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('heading', { name: 'Create' })
+    await screen.findByRole('heading', { name: 'Image advert' })
   })
 })

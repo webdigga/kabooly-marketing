@@ -80,10 +80,11 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function landed(format: 'images' | 'photo' | 'carousel' | 'video') {
-  renderApp('/')
+const PATHS = { images: '/', photo: '/photo', carousel: '/carousel', video: '/video' }
+
+async function landed(format: keyof typeof PATHS) {
+  renderApp(PATHS[format])
   await waitFor(() => expect(screen.getByTestId('topic-input')).toHaveValue('Spring ovens'))
-  await userEvent.click(screen.getByTestId(`format-${format}`))
 }
 
 function photoFile(name = 'garden.jpg', type = 'image/jpeg') {
