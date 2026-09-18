@@ -1,6 +1,7 @@
 import { Download, RefreshCw } from 'lucide-react'
 import { PLATFORM_INFO } from '../../lib/platforms'
 import type { AdvertImage, Platform } from '../../lib/types'
+import PlatformIcon from '../PlatformIcon/PlatformIcon'
 import Button from '../Button/Button'
 import { buttonClass } from '../Button/buttonClass'
 import styles from './ImageTile.module.css'
@@ -42,7 +43,10 @@ export default function ImageTile({ platform, image, status, error, onRegenerate
   return (
     <figure className={styles.tile} data-testid={`image-${platform}`}>
       <figcaption className={styles.caption}>
-        <span className={styles.platform}>{info.label}</span>
+        <span className={styles.platform}>
+          <PlatformIcon platform={platform} />
+          {info.label}
+        </span>
         <span className={styles.size}>
           {info.width} × {info.height}
         </span>

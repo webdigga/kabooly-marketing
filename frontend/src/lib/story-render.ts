@@ -67,17 +67,36 @@ export function logoBrightness(img: HTMLImageElement): number {
   return seen ? light / seen : 0
 }
 
-// The bottom of a Story is darkened, so a light logo sits straight on the
-// photo and only a dark one needs a card behind it.
-export function needsCard(img: HTMLImageElement): boolean {
-  return logoBrightness(img) < 0.55
+export interface LogoBacking {
+  // A badge for a logo that is roughly square, a rounded rectangle for a
+  // wordmark, which a circle would either crop or shrink to nothing.
+  circle: boolean
+  // White behind a dark logo, dark behind a light one, so the logo reads
+  // whatever the photo is doing underneath.
+  fill: string
 }
 
-export async function loadLogoForStory(src: string): Promise<boolean> {
+const SQUARE_MIN = 0.8
+const SQUARE_MAX = 1.25
+const DARK_LOGO = 0.55
+export const LIGHT_FILL = '#ffffff'
+export const DARK_FILL = '#0f172a'
+
+export function logoBacking(img: HTMLImageElement): LogoBacking {
+  const aspect = img.naturalWidth / img.naturalHeight
+  return {
+    circle: aspect >= SQUARE_MIN && aspect <= SQUARE_MAX,
+    fill: logoBrightness(img) < DARK_LOGO ? LIGHT_FILL : DARK_FILL,
+  }
+}
+
+// What the browser should draw behind a logo, or the safe default when the
+// logo cannot be read.
+export async function readLogoBacking(src: string): Promise<LogoBacking> {
   try {
-    return needsCard(await loadImage(src))
+    return logoBacking(await loadImage(src))
   } catch {
-    return true
+    return { circle: false, fill: LIGHT_FILL }
   }
 }
 
@@ -120,20 +139,23 @@ function drawCta(ctx: CanvasRenderingContext2D, cta: string, colour: string, bot
   ctx.fillText(cta, STORY_WIDTH / 2, top + height / 2)
 }
 
+// The logo on its badge, sitting on top of the given line. Returns the top
+// of the badge.
 function drawLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, bottom: number): number {
+  const { circle, fill } = logoBacking(logo)
   const scale = Math.min(LOGO_MAX_WIDTH / logo.naturalWidth, LOGO_MAX_HEIGHT / logo.naturalHeight)
   const w = logo.naturalWidth * scale
   const h = logo.naturalHeight * scale
-  const left = (STORY_WIDTH - w) / 2
-  const top = bottom - h
-  if (needsCard(logo)) {
-    ctx.fillStyle = '#ffffff'
-    ctx.beginPath()
-    ctx.roundRect(left - CARD_PADDING, top - CARD_PADDING, w + CARD_PADDING * 2, h + CARD_PADDING * 2, 28)
-    ctx.fill()
-  }
-  ctx.drawImage(logo, left, top, w, h)
-  return needsCard(logo) ? top - CARD_PADDING : top
+  const boxWidth = (circle ? Math.max(w, h) : w) + CARD_PADDING * 2
+  const boxHeight = (circle ? Math.max(w, h) : h) + CARD_PADDING * 2
+  const boxLeft = (STORY_WIDTH - boxWidth) / 2
+  const boxTop = bottom - boxHeight
+  ctx.fillStyle = fill
+  ctx.beginPath()
+  ctx.roundRect(boxLeft, boxTop, boxWidth, boxHeight, circle ? boxHeight / 2 : 28)
+  ctx.fill()
+  ctx.drawImage(logo, (STORY_WIDTH - w) / 2, boxTop + (boxHeight - h) / 2, w, h)
+  return boxTop
 }
 
 // The logo and web address at the foot of the Story. Returns the top of

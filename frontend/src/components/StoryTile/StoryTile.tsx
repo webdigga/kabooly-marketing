@@ -4,9 +4,11 @@ import { useProfile } from '../../context/ProfileContext'
 import { websiteLabel } from '../../lib/brand-strip'
 import { PLATFORM_INFO } from '../../lib/platforms'
 import { saveBlob } from '../../lib/slide-render'
-import { loadLogoForStory, renderStory } from '../../lib/story-render'
+import { LIGHT_FILL, readLogoBacking, renderStory } from '../../lib/story-render'
+import type { LogoBacking } from '../../lib/story-render'
 import type { AdvertImage, StoryWords } from '../../lib/types'
 import Alert from '../Alert/Alert'
+import PlatformIcon from '../PlatformIcon/PlatformIcon'
 import Button from '../Button/Button'
 import styles from './StoryTile.module.css'
 
@@ -21,11 +23,19 @@ interface StoryTileProps {
 // The branding at the foot of the story: the logo, larger than on a square
 // advert because a story is twice as tall, and the web address under it.
 // The preview mirrors lib/story-render.ts, which draws the real one.
-function Lockup({ logoUrl, website, carded }: { logoUrl: string | null; website: string; carded: boolean }) {
+function Lockup({ logoUrl, website, backing }: { logoUrl: string | null; website: string; backing: LogoBacking }) {
   if (!logoUrl && !website) return null
   return (
     <div className={styles.lockup} data-testid="story-lockup">
-      {logoUrl && <img className={carded ? styles.cardedLogo : styles.logo} src={logoUrl} alt="" />}
+      {logoUrl && (
+        <span
+          className={backing.circle ? styles.circle : styles.badge}
+          style={{ backgroundColor: backing.fill }}
+          data-testid="story-logo-badge"
+        >
+          <img className={styles.logo} src={logoUrl} alt="" />
+        </span>
+      )}
       {website && <span className={styles.website}>{website}</span>}
     </div>
   )
@@ -38,9 +48,9 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
   const { profile } = useProfile()
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
-  // A dark logo needs a white card behind it; a light one sits straight on
-  // the darkened photo.
-  const [carded, setCarded] = useState(false)
+  // The badge behind the logo: a circle for a square logo, white or dark
+  // depending on the logo itself (lib/story-render.ts decides).
+  const [backing, setBacking] = useState<LogoBacking>({ circle: false, fill: LIGHT_FILL })
   const info = PLATFORM_INFO.story
   const colour = profile?.brandColours[0] ?? '#1d4ed8'
   const websiteUrl = profile?.websiteUrl ?? ''
@@ -49,8 +59,8 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
   useEffect(() => {
     if (!logoUrl) return
     let live = true
-    void loadLogoForStory(logoUrl).then((needed) => {
-      if (live) setCarded(needed)
+    void readLogoBacking(logoUrl).then((read) => {
+      if (live) setBacking(read)
     })
     return () => {
       live = false
@@ -73,7 +83,10 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
   return (
     <figure className={styles.tile} data-testid="image-story">
       <figcaption className={styles.caption}>
-        <span className={styles.platform}>{info.label}</span>
+        <span className={styles.platform}>
+          <PlatformIcon platform="story" />
+          {info.label}
+        </span>
         <span className={styles.size}>
           {info.width} × {info.height}
         </span>
@@ -84,7 +97,7 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
           <p className={styles.cta} style={{ backgroundColor: colour }}>
             {words.cta}
           </p>
-          <Lockup logoUrl={logoUrl} website={websiteLabel(websiteUrl)} carded={carded} />
+          <Lockup logoUrl={logoUrl} website={websiteLabel(websiteUrl)} backing={backing} />
         </div>
       </div>
       {failed && <Alert tone="error">The story could not be downloaded. Try again.</Alert>}

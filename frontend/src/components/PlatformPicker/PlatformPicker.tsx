@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react'
 import { PLATFORMS } from '../../lib/platforms'
 import type { Platform } from '../../lib/types'
+import PlatformIcon from '../PlatformIcon/PlatformIcon'
 import styles from './PlatformPicker.module.css'
 
 interface PlatformPickerProps {
@@ -31,6 +32,7 @@ export default function PlatformPicker({ selected, onChange, disabled }: Platfor
               <span className={styles.box} aria-hidden="true">
                 {checked && <Check size={14} />}
               </span>
+              <PlatformIcon platform={p.id} size={22} />
               <span className={styles.text}>
                 <span className={styles.name}>{p.label}</span>
                 <span className={styles.meta}>
