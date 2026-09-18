@@ -80,6 +80,15 @@ const NO_TEXT = "Do not add any words, slogans, prices, phone numbers or other t
 
 export function imagePrompt(profile: Profile, topic: string, platform: Platform): string {
   const spec = PLATFORM_SPECS[platform];
+  if (platform === "story") {
+    return [
+      `Create a full screen vertical 9:16 photograph for an Instagram Story for ${profile.businessName}, a small business.`,
+      ...briefLines(profile, topic),
+      ...REALISM,
+      "Keep the middle of the frame clear of clutter and keep the key subject away from the top quarter and the bottom quarter: words are placed over those afterwards.",
+      NO_TEXT,
+    ].join("\n");
+  }
   const lines = [
     `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic),

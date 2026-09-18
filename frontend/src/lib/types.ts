@@ -1,7 +1,7 @@
 // Shapes the worker sends back. Kept in step with worker/src by hand; the
 // worker tests pin the JSON these mirror.
 
-export type Platform = 'instagram' | 'facebook' | 'nextdoor'
+export type Platform = 'instagram' | 'facebook' | 'nextdoor' | 'story'
 
 export interface Profile {
   businessName: string
@@ -35,6 +35,11 @@ export interface Slide {
   body: string
 }
 
+export interface StoryWords {
+  headline: string
+  cta: string
+}
+
 export type VideoStatus = 'pending' | 'ready' | 'failed'
 
 export interface AdvertVideo {
@@ -53,6 +58,7 @@ export interface Advert {
   updatedAt: string
   images: AdvertImage[]
   slides: Slide[] | null
+  storyWords: StoryWords | null
   background: StoredFile | null
   video: AdvertVideo | null
 }

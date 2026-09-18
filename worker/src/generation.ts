@@ -8,7 +8,7 @@ import {
   makePlatformImage,
 } from "./advert-store";
 import type { AdvertJson, AdvertRow, FileJson, ImageJson } from "./advert-store";
-import { writeAdvert, writeSlides } from "./copywriter";
+import { writeAdvert, writeSlides, writeStoryWords } from "./copywriter";
 import type { AdvertFormat, Platform } from "./db/schema";
 import type { Env } from "./env";
 import type { Lease, UsageJson } from "./limits";
@@ -105,11 +105,13 @@ async function makeBackground(env: Env, req: GenerationRequest, advert: AdvertRo
 }
 
 async function writeCopy(env: Env, req: GenerationRequest): Promise<AdvertRow> {
-  const [body, slides] = await Promise.all([
+  // A Story carries no caption, so its words go on the image itself.
+  const [body, slides, storyWords] = await Promise.all([
     writeAdvert(env, req.profile, req.topic),
     req.format === "carousel" ? writeSlides(env, req.profile, req.topic) : undefined,
+    req.platforms.includes("story") ? writeStoryWords(env, req.profile, req.topic) : undefined,
   ]);
-  return createAdvert(env, req.userId, { topic: req.topic, body, format: req.format, slides });
+  return createAdvert(env, req.userId, { topic: req.topic, body, format: req.format, slides, storyWords });
 }
 
 // Words first (quick, and the advert is saved as soon as it exists), then

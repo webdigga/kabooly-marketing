@@ -79,7 +79,7 @@ export const verification = sqliteTable(
 
 // app tables
 
-export const PLATFORMS = ["instagram", "facebook", "nextdoor"] as const;
+export const PLATFORMS = ["instagram", "facebook", "nextdoor", "story"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 
@@ -138,6 +138,13 @@ export interface Slide {
   body: string;
 }
 
+// The words laid over an Instagram Story, which carries no caption of its
+// own. The browser draws them onto the image.
+export interface StoryWords {
+  headline: string;
+  cta: string;
+}
+
 export const adverts = sqliteTable(
   "adverts",
   {
@@ -152,6 +159,8 @@ export const adverts = sqliteTable(
     // Carousels only: the words of each slide, and the R2 key of the one
     // background image every slide is laid over (in the browser).
     slides: text("slides", { mode: "json" }).$type<Slide[]>(),
+    // Stories only: the words laid over the image.
+    storyWords: text("story_words", { mode: "json" }).$type<StoryWords>(),
     backgroundKey: text("background_key"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
@@ -175,11 +184,9 @@ export const advertImages = sqliteTable(
     generatedAt: integer("generated_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [
+    // No CHECK on platform: adding one to the list would rebuild the table
+    // on every change. The app only ever writes the enum above.
     primaryKey({ columns: [t.advertId, t.platform] }),
-    check(
-      "advert_images_platform_valid",
-      sql`${t.platform} IN ('instagram', 'facebook', 'nextdoor')`
-    ),
   ]
 );
 

@@ -7,6 +7,7 @@ import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
 import CarouselSlides from '../../components/CarouselSlides/CarouselSlides'
 import ImageTile from '../../components/ImageTile/ImageTile'
+import StoryTile from '../../components/StoryTile/StoryTile'
 import LoadError from '../../components/LoadError/LoadError'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import VideoPanel from '../../components/VideoPanel/VideoPanel'
@@ -110,9 +111,13 @@ export default function LibraryItem() {
         <ReadOnlyAdvertText body={advert.body} />
         {advert.images.length > 0 && (
           <div className={styles.images}>
-            {advert.images.map((image) => (
-              <ImageTile key={image.platform} platform={image.platform} image={image} status="ready" />
-            ))}
+            {advert.images.map((image) =>
+              image.platform === 'story' && advert.storyWords ? (
+                <StoryTile key={image.platform} image={image} words={advert.storyWords} />
+              ) : (
+                <ImageTile key={image.platform} platform={image.platform} image={image} status="ready" />
+              ),
+            )}
           </div>
         )}
         {advert.slides && (

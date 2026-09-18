@@ -23,7 +23,7 @@ Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 
 ## What this is
-Standalone tool at marketing.kabooly.com that generates local adverts for small businesses to post by hand: text plus one image per ticked platform (Instagram, Facebook, Nextdoor), posts cut from the customer's own photo, five-slide carousels, and short vertical videos. Own login. Sold as one of three Kabooly products (Managed Website Service, Marketing, CRM), on its own or in the bundle, so linking to the CRM and the other products is allowed. Still technically separate from the CRM: no shared login, no dependency.
+Standalone tool at marketing.kabooly.com that generates local adverts for small businesses to post by hand: text plus one image per ticked platform (Instagram, Facebook, Nextdoor, Instagram Story), posts cut from the customer's own photo, five-slide carousels, and short vertical videos. Own login. Sold as one of three Kabooly products (Managed Website Service, Marketing, CRM), on its own or in the bundle, so linking to the CRM and the other products is allowed. Still technically separate from the CRM: no shared login, no dependency.
 
 ## Stack
 - One Cloudflare Worker (`worker/`) serves the API (Hono, `/api/*`) AND the web app (Workers static assets from `frontend/dist`, SPA fallback). Same origin, so first-party cookies and no CORS.

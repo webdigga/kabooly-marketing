@@ -1,7 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CopyError, describeBusiness, planVideo, readBusinessDetails, suggestTopic, toneGuide, writeAdvert, writeSlides } from "../src/copywriter";
+import {
+  CopyError,
+  describeBusiness,
+  planVideo,
+  readBusinessDetails,
+  suggestTopic,
+  toneGuide,
+  writeAdvert,
+  writeSlides,
+  writeStoryWords,
+} from "../src/copywriter";
 import type { Profile } from "../src/profile";
-import { ANTHROPIC_URL, claudeMessage, claudeToolCall, SLIDES, VIDEO_PLAN } from "./ai-mocks";
+import { ANTHROPIC_URL, claudeMessage, claudeToolCall, SLIDES, STORY_WORDS, VIDEO_PLAN } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
 import { testEnv } from "./helpers";
 
@@ -184,5 +194,16 @@ describe("planVideo", () => {
   it("refuses a plan with the wrong number of shots", async () => {
     toolReply("record_video_plan", { ...VIDEO_PLAN, middle: VIDEO_PLAN.middle.slice(0, 1) });
     await expect(planVideo(testEnv, profile, "x", null)).rejects.toBeInstanceOf(CopyError);
+  });
+});
+
+describe("writeStoryWords", () => {
+  it("writes a headline and a call to action for the image itself", async () => {
+    toolReply("record_story_words", STORY_WORDS);
+    expect(await writeStoryWords(testEnv, profile, "Oven care")).toEqual(STORY_WORDS);
+    const req = lastRequest();
+    expect(req.tool_choice).toMatchObject({ name: "record_story_words" });
+    expect(req.system).toContain("carries no caption");
+    expect(req.messages[0]?.content).toContain("Story topic: Oven care");
   });
 });

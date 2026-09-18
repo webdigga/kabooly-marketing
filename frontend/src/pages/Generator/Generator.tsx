@@ -10,6 +10,7 @@ import { TextArea } from '../../components/Field/Field'
 import ImageTile from '../../components/ImageTile/ImageTile'
 import PhotoPicker from '../../components/PhotoPicker/PhotoPicker'
 import PlatformPicker from '../../components/PlatformPicker/PlatformPicker'
+import StoryTile from '../../components/StoryTile/StoryTile'
 import UsagePanel from '../../components/UsagePanel/UsagePanel'
 import VideoPanel, { MOTION_HINT, MOTION_LABEL } from '../../components/VideoPanel/VideoPanel'
 import { api } from '../../lib/api'
@@ -46,19 +47,33 @@ type Generator = ReturnType<typeof useGenerator>
 
 function GeneratedImages({ generator }: { generator: Generator }) {
   if (!generator.slots.length) return null
+  const { advert } = generator
+  const regenerate = (platform: Platform) =>
+    advert?.format === 'images' ? () => void generator.regenerateImage(platform) : undefined
   return (
     <div className={styles.images}>
-      {generator.slots.map((slot) => (
-        <ImageTile
-          key={slot.platform}
-          platform={slot.platform}
-          image={slot.image}
-          status={slot.status}
-          error={slot.error}
-          onRegenerate={generator.advert?.format === 'images' ? () => void generator.regenerateImage(slot.platform) : undefined}
-          disabled={generator.busy}
-        />
-      ))}
+      {generator.slots.map((slot) =>
+        // A story carries its words drawn over the image, so it has its own tile.
+        slot.platform === 'story' && slot.image && advert?.storyWords ? (
+          <StoryTile
+            key={slot.platform}
+            image={slot.image}
+            words={advert.storyWords}
+            onRegenerate={regenerate(slot.platform)}
+            disabled={generator.busy}
+          />
+        ) : (
+          <ImageTile
+            key={slot.platform}
+            platform={slot.platform}
+            image={slot.image}
+            status={slot.status}
+            error={slot.error}
+            onRegenerate={regenerate(slot.platform)}
+            disabled={generator.busy}
+          />
+        ),
+      )}
     </div>
   )
 }

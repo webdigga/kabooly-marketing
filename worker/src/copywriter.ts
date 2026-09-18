@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import type { Slide } from "./db/schema";
+import type { Slide, StoryWords } from "./db/schema";
 import type { Env } from "./env";
 import type { Profile } from "./profile";
 
@@ -216,6 +216,29 @@ export async function readBusinessDetails(env: Env, websiteUrl: string, pageText
     localArea: orNull(found.localArea, 200),
     tone: found.tone || null,
   };
+}
+
+const STORY_SYSTEM = `You write the words laid over an Instagram Story for a small local business.
+A Story is full screen, disappears after 24 hours and carries no caption, so the words on the image are the whole message.
+- headline: what the Story is about, at most 8 words, in the business's voice.
+- cta: what to do next, at most 5 words (for example "Book at acme.co.uk", "Send us a message").
+Plain words only: no emoji or symbols, no hashtags, no quotation marks. UK English spelling. Never invent prices, offers, discounts, phone numbers, awards or claims the business has not given.`;
+
+const storySchema = z.object({
+  headline: z.string().trim().min(1).max(80),
+  cta: z.string().trim().min(1).max(60),
+});
+
+// The words the browser lays over a Story image.
+export async function writeStoryWords(env: Env, profile: Profile, topic: string): Promise<StoryWords> {
+  const prompt = `${describeBusiness(profile)}\n\nTone of voice: ${toneGuide(profile.tone)}\n\nStory topic: ${topic}`;
+  return structured(env, {
+    system: STORY_SYSTEM,
+    prompt,
+    maxTokens: 300,
+    name: "record_story_words",
+    schema: storySchema,
+  });
 }
 
 export interface VideoShot {

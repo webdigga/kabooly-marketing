@@ -16,6 +16,12 @@ vi.mock('../src/lib/slide-render', async (importOriginal) => ({
   ...slideRender,
 }))
 
+const storyRender = vi.hoisted(() => ({ renderStory: vi.fn(async () => new Blob(['png'], { type: 'image/png' })) }))
+vi.mock('../src/lib/story-render', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...storyRender,
+}))
+
 const DONE = { type: 'done', usage: USAGE }
 
 const SLIDES = [
@@ -70,6 +76,9 @@ class FakeImage {
 
 beforeEach(() => {
   signedIn()
+  slideRender.saveBlob.mockClear()
+  slideRender.renderSlide.mockClear()
+  storyRender.renderStory.mockClear()
   photoSize = { width: 1600, height: 1200 }
   vi.stubGlobal('Image', FakeImage)
   URL.createObjectURL = vi.fn((blob: Blob) => (blob instanceof File && blob.name.includes('broken') ? 'blob:broken' : 'blob:photo'))
@@ -157,6 +166,55 @@ describe('posts from your own photo', () => {
     expect(await screen.findByText('That photo is over 20 MB. Choose a smaller one.')).toBeInTheDocument()
     await userEvent.upload(screen.getByTestId('photo-file'), photoFile())
     expect(await screen.findByText('That photo could not be uploaded. Try again.')).toBeInTheDocument()
+  })
+})
+
+describe('instagram stories', () => {
+  const WORDS = { headline: 'Dreading your oven?', cta: 'Book at acme.co.uk' }
+  const STORY = {
+    platform: 'story' as const,
+    label: 'Instagram Story',
+    width: 1080,
+    height: 1920,
+    url: '/api/files/users/u1/posts/a1/story-1.jpg',
+    downloadUrl: '/api/files/users/u1/posts/a1/story-1.jpg?download=kabooly-story.jpg',
+  }
+
+  it('shows the words and logo over the story, and downloads the finished image', async () => {
+    mockApi(
+      base({
+        'POST /api/generations': () =>
+          ndjson([
+            { type: 'advert', advert: advert({ storyWords: WORDS }) },
+            { type: 'image', advertId: 'a1', image: STORY },
+            DONE,
+          ]),
+      }),
+    )
+    await landed('images')
+    await userEvent.click(screen.getByTestId('platform-story'))
+    await userEvent.click(screen.getByTestId('generate'))
+
+    const tile = await screen.findByTestId('image-story')
+    expect(within(tile).getByText('Dreading your oven?')).toBeInTheDocument()
+    expect(within(tile).getByText('Book at acme.co.uk')).toBeInTheDocument()
+    expect(within(tile).getByText('1080 × 1920')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/generations')[0]?.body).toMatchObject({ platforms: expect.arrayContaining(['story']) })
+
+    await userEvent.click(within(tile).getByTestId('download-story'))
+    await waitFor(() => expect(slideRender.saveBlob).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^kabooly-story-/)))
+    expect(storyRender.renderStory).toHaveBeenCalledWith(
+      { photo: STORY.url, logo: '/api/files/users/u1/logos/logo.png', colour: '#1d4ed8' },
+      WORDS,
+    )
+  })
+
+  it('opens a saved story in the library with its words', async () => {
+    mockApi(base({ 'GET /api/posts/a1': () => json({ advert: advert({ storyWords: WORDS, images: [STORY] }) }) }))
+    renderApp('/library/a1')
+    const tile = await screen.findByTestId('image-story')
+    expect(within(tile).getByText('Dreading your oven?')).toBeInTheDocument()
+    expect(within(tile).queryByTestId('regenerate-story')).not.toBeInTheDocument()
   })
 })
 

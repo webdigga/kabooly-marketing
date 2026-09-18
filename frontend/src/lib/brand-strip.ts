@@ -1,5 +1,5 @@
 import { api } from './api'
-import { PLATFORMS } from './platforms'
+import { PLATFORMS, STRIP_PLATFORMS } from './platforms'
 import type { Platform } from './types'
 
 // The strip of branding stamped along the bottom of every image: the real
@@ -93,7 +93,7 @@ export async function makeBrandStrips(input: BrandStripInput): Promise<Partial<R
   if (!input.logoUrl && !websiteLabel(input.websiteUrl)) return {}
   try {
     const logo = input.logoUrl ? await loadImage(input.logoUrl) : null
-    const strips = await Promise.all(PLATFORMS.map(async (p) => [p.id, await draw(input, p.id, logo)] as const))
+    const strips = await Promise.all(STRIP_PLATFORMS.map(async (p) => [p.id, await draw(input, p.id, logo)] as const))
     return Object.fromEntries(strips.filter(([, blob]) => blob !== null))
   } catch {
     return {}

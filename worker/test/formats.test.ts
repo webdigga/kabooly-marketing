@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AdvertJson, FileJson } from "../src/advert-store";
 import type { GenerationEvent } from "../src/generation";
-import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini, SLIDES } from "./ai-mocks";
+import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini, SLIDES, STORY_WORDS } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
 import {
   apiFetch,
@@ -100,6 +100,29 @@ describe("own-photo posts", () => {
     const missing = await generate(cookie, { format: "photo", platforms: ["instagram"], photoKey: `users/${session.user.id}/uploads/none.jpg` });
     expect(missing.status).toBe(400);
     expect((await generate(cookie, { format: "photo", platforms: [], photoKey })).status).toBe(400);
+  });
+});
+
+describe("instagram stories", () => {
+  it("writes the words for the story and saves them with the advert", async () => {
+    const cookie = await readyUser();
+    const list = await events(await generate(cookie, { platforms: ["story"] }));
+    expect(list.map((e) => e.type)).toEqual(["advert", "image", "done"]);
+    const advert = list[0]?.type === "advert" ? list[0].advert : null;
+    expect(advert?.storyWords).toEqual(STORY_WORDS);
+    const image = list[1]?.type === "image" ? list[1].image : null;
+    expect(image).toMatchObject({ platform: "story", label: "Instagram Story", width: 1080, height: 1920 });
+    expect(callsTo(GEMINI_URL).at(-1)?.body).toContain('"aspect_ratio":"9:16"');
+
+    const saved: { advert: AdvertJson } = await (await apiFetch(cookie, `/api/posts/${advert?.id ?? ""}`)).json();
+    expect(saved.advert.storyWords).toEqual(STORY_WORDS);
+  });
+
+  it("writes no story words when no story is ticked", async () => {
+    const cookie = await readyUser();
+    const list = await events(await generate(cookie, { platforms: ["instagram"] }));
+    const advert = list[0]?.type === "advert" ? list[0].advert : null;
+    expect(advert?.storyWords).toBeNull();
   });
 });
 

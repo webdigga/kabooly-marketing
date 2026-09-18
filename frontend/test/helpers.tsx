@@ -89,6 +89,7 @@ export function advert(overrides: Partial<Advert> = {}): Advert {
     updatedAt: '2026-09-15T10:00:00.000Z',
     images: [],
     slides: null,
+    storyWords: null,
     background: null,
     video: null,
     ...overrides,

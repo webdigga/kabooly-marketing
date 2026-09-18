@@ -1,0 +1,87 @@
+/* Sizes are the 1080 wide story's own pixels as a share of its width, so
+   the preview matches the downloaded image (lib/story-render.ts). */
+.tile {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.platform {
+  font-weight: var(--font-weight-semibold);
+}
+
+.size {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 1080 / 1920;
+  width: 100%;
+  max-width: 18rem;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  background-color: var(--color-gray-100);
+  background-size: cover;
+  background-position: center;
+  container-type: inline-size;
+}
+
+.frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgb(15 23 42 / 0%) 35%, rgb(15 23 42 / 90%) 100%);
+}
+
+.logo {
+  position: absolute;
+  top: 21.3cqw;
+  left: 5.6cqw;
+  max-width: 29.6cqw;
+  max-height: 12cqw;
+  padding: 1.9cqw;
+  border-radius: 1.9cqw;
+  background-color: var(--color-white);
+  object-fit: contain;
+}
+
+.words {
+  position: absolute;
+  inset: auto 7.4cqw 13cqw;
+  display: grid;
+  gap: 3.7cqw;
+  justify-items: center;
+  color: var(--color-white);
+  text-align: center;
+}
+
+.headline {
+  justify-self: start;
+  text-align: left;
+  font-size: 7cqw;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.15;
+}
+
+.cta {
+  padding: 1.9cqw 3.7cqw;
+  border-radius: 999px;
+  font-size: 4.3cqw;
+  font-weight: var(--font-weight-semibold);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

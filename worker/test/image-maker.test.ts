@@ -52,6 +52,15 @@ describe("imagePrompt", () => {
   });
 });
 
+describe("imagePrompt for a story", () => {
+  it("asks for a full screen photograph with room for the words", () => {
+    const prompt = imagePrompt(profile, "Spring ovens", "story");
+    expect(prompt).toContain("full screen vertical 9:16 photograph for an Instagram Story");
+    expect(prompt).toContain("away from the top quarter and the bottom quarter");
+    expect(prompt).toContain("Do not add any words");
+  });
+});
+
 describe("videoStartPrompt and carouselBackgroundPrompt", () => {
   it("asks for a vertical opening frame of the planned scene", () => {
     const prompt = videoStartPrompt(profile, "Spring ovens", "A greasy oven door");

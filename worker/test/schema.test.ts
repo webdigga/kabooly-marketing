@@ -128,14 +128,13 @@ describe("schema", () => {
     ).rejects.toThrow(/CHECK constraint failed/);
   });
 
-  it("rejects an unknown platform", async () => {
-    await expect(
-      testEnv.DB.prepare(
-        "INSERT INTO advert_images (advert_id, platform, r2_key, generated_at) VALUES ('a1', 'tiktok', 'k', ?1)"
-      )
-        .bind(NOW)
-        .run()
-    ).rejects.toThrow(/CHECK constraint failed/);
+  it("accepts every platform the app knows, including stories", async () => {
+    await testEnv.DB.prepare(
+      "INSERT INTO advert_images (advert_id, platform, r2_key, generated_at) VALUES ('a1', 'story', 'k', ?1)"
+    )
+      .bind(NOW)
+      .run();
+    expect(await count("advert_images")).toBe(2);
   });
 
   it("keeps one image per platform per advert", async () => {

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
-import type { AdvertFormat, Platform, Slide } from "./db/schema";
+import type { AdvertFormat, Platform, Slide, StoryWords } from "./db/schema";
 import type { Env } from "./env";
 import { fileUrl, userPrefix } from "./files";
 import {
@@ -42,6 +42,8 @@ export interface AdvertJson {
   images: ImageJson[];
   // Carousels only.
   slides: Slide[] | null;
+  // Stories only: the words the browser lays over the image.
+  storyWords: StoryWords | null;
   background: FileJson | null;
   video: VideoJson | null;
 }
@@ -89,6 +91,7 @@ export function advertJson(row: AdvertRow, images: ImageRow[], video: VideoRow |
     updatedAt: row.updatedAt.toISOString(),
     images: sorted.map(imageJson),
     slides: row.slides,
+    storyWords: row.storyWords,
     background: row.backgroundKey ? fileJson(row.backgroundKey, "background", row.updatedAt) : null,
     video: video ? videoJson(video) : null,
   };
@@ -97,7 +100,7 @@ export function advertJson(row: AdvertRow, images: ImageRow[], video: VideoRow |
 export async function createAdvert(
   env: Env,
   userId: string,
-  fields: { topic: string; body: string; format: AdvertFormat; slides?: Slide[] }
+  fields: { topic: string; body: string; format: AdvertFormat; slides?: Slide[]; storyWords?: StoryWords }
 ): Promise<AdvertRow> {
   const now = new Date();
   const row: AdvertRow = {
@@ -107,6 +110,7 @@ export async function createAdvert(
     body: fields.body,
     format: fields.format,
     slides: fields.slides ?? null,
+    storyWords: fields.storyWords ?? null,
     backgroundKey: null,
     createdAt: now,
     updatedAt: now,
@@ -148,7 +152,7 @@ export async function loadAdvertJson(env: Env, advert: AdvertRow): Promise<Adver
 export async function updateAdvert(
   env: Env,
   advert: AdvertRow,
-  changes: { body?: string; slides?: Slide[]; backgroundKey?: string }
+  changes: { body?: string; slides?: Slide[]; storyWords?: StoryWords; backgroundKey?: string }
 ): Promise<AdvertRow> {
   const set = { ...changes, updatedAt: new Date() };
   await db(env).update(schema.adverts).set(set).where(eq(schema.adverts.id, advert.id));

@@ -43,6 +43,8 @@ export const VIDEO_PLAN = {
   music: "upbeat acoustic guitar",
 };
 
+export const STORY_WORDS = { headline: "Dreading your oven?", cta: "Book at acme.co.uk" };
+
 export const DETAILS = {
   businessName: "Acme Cleaning",
   description: "We clean homes and ovens.",
@@ -66,6 +68,7 @@ export function mockClaude(advert = "Spring is here. Book your oven clean in Twi
     if (tool === "record_slides") return Response.json(claudeToolCall(tool, { slides: SLIDES }));
     if (tool === "record_profile") return Response.json(claudeToolCall(tool, DETAILS));
     if (tool === "record_video_plan") return Response.json(claudeToolCall(tool, VIDEO_PLAN));
+    if (tool === "record_story_words") return Response.json(claudeToolCall(tool, STORY_WORDS));
     return Response.json(claudeMessage(body.system.includes("advert topics") ? topic : advert));
   });
 }
