@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { advert, authMock, callsTo, image, json, mockApi, PROFILE, renderApp, signedIn, USAGE } from './helpers'
+import { advert, authMock, callsTo, image, json, mockApi, ndjson, PROFILE, renderApp, signedIn, USAGE } from './helpers'
 
 vi.mock('../src/lib/auth-client', async () => ({ authClient: (await import('./auth-mock')).authMock }))
 
@@ -32,6 +32,22 @@ describe('navigation', () => {
       await userEvent.click(screen.getAllByRole('link', { name: label })[0]!)
       await screen.findByRole('heading', { name: heading })
     }
+  })
+})
+
+describe('switching between pages', () => {
+  it('starts each page fresh, without the last result', async () => {
+    mockApi({
+      ...base,
+      'POST /api/generations': () => ndjson([{ type: 'advert', advert: advert() }, { type: 'done', usage: USAGE }]),
+    })
+    renderApp('/')
+    await waitFor(() => expect(screen.getByTestId('topic-input')).toHaveValue('Spring ovens'))
+    await userEvent.click(screen.getByTestId('generate'))
+    await screen.findByTestId('result')
+    await userEvent.click(screen.getAllByRole('link', { name: 'Carousel' })[0]!)
+    await screen.findByRole('heading', { name: 'Carousel' })
+    expect(screen.queryByTestId('result')).not.toBeInTheDocument()
   })
 })
 

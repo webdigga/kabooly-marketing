@@ -24,10 +24,12 @@ export function AppRoutes() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<RequireProfile />}>
           <Route element={<AppShell />}>
-            <Route index element={<Generator format="images" />} />
-            <Route path="/photo" element={<Generator format="photo" />} />
-            <Route path="/carousel" element={<Generator format="carousel" />} />
-            <Route path="/video" element={<Generator format="video" />} />
+            {/* Keyed by format: moving between them starts a fresh page
+                rather than keeping the last result on screen. */}
+            <Route index element={<Generator key="images" format="images" />} />
+            <Route path="/photo" element={<Generator key="photo" format="photo" />} />
+            <Route path="/carousel" element={<Generator key="carousel" format="carousel" />} />
+            <Route path="/video" element={<Generator key="video" format="video" />} />
             <Route path="/library" element={<Library />} />
             <Route path="/library/:id" element={<LibraryItem />} />
             <Route path="/settings" element={<Settings />} />
