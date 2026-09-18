@@ -93,6 +93,58 @@ describe('library', () => {
     expect(callsTo('GET', '/api/posts')[1]?.url).toBe('/api/posts?before=cursor-1')
   })
 
+  it('deletes several adverts at once, and escapes out of the dialog', async () => {
+    let left = [advert(), advert({ id: 'a2', topic: 'Autumn ovens' })]
+    mockApi({
+      ...base,
+      'GET /api/posts': () => json({ adverts: left, nextCursor: null }),
+      'POST /api/posts/delete': ({ body }) => {
+        const ids = (body as { ids: string[] }).ids
+        left = left.filter((a) => !ids.includes(a.id))
+        return json({ deleted: ids.length })
+      },
+    })
+    renderApp('/library')
+    await screen.findAllByTestId('library-card')
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('select-a1'))
+    await userEvent.click(screen.getByTestId('select-a2'))
+    expect(within(screen.getByTestId('selection-bar')).getByText('2 adverts selected')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('clear-selection'))
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('select-a2'))
+    await userEvent.click(screen.getByTestId('delete-selected'))
+    expect(await screen.findByText('Delete this advert?')).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('select-a1'))
+    await userEvent.click(screen.getByTestId('delete-selected'))
+    expect(screen.getByText('Delete 2 adverts?')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('confirm-action'))
+
+    await screen.findByText('No adverts yet')
+    expect(callsTo('POST', '/api/posts/delete')[0]?.body).toEqual({ ids: ['a2', 'a1'] })
+  })
+
+  it('reports a failed bulk delete and keeps the adverts', async () => {
+    mockApi({
+      ...base,
+      'GET /api/posts': () => json({ adverts: [advert()], nextCursor: null }),
+      'POST /api/posts/delete': () => json({}, 500),
+    })
+    renderApp('/library')
+    await screen.findByTestId('library-card')
+    await userEvent.click(screen.getByTestId('select-a1'))
+    await userEvent.click(screen.getByTestId('delete-selected'))
+    await userEvent.click(screen.getByTestId('confirm-action'))
+    expect(await screen.findByText('They could not be deleted. Try again.')).toBeInTheDocument()
+    expect(screen.getByTestId('library-card')).toBeInTheDocument()
+  })
+
   it('opens an advert with copy and downloads', async () => {
     mockApi({
       ...base,
@@ -122,9 +174,10 @@ describe('library', () => {
     })
     renderApp('/library/a1')
     await userEvent.click(await screen.findByTestId('delete-post'))
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByTestId('cancel-confirm'))
+    expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('delete-post'))
-    await userEvent.click(screen.getByTestId('confirm-delete'))
+    await userEvent.click(screen.getByTestId('confirm-action'))
     await screen.findByText('No adverts yet')
     expect(callsTo('DELETE', '/api/posts/a1')).toHaveLength(1)
   })
@@ -142,7 +195,7 @@ describe('library', () => {
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await userEvent.click(await screen.findByTestId('delete-post'))
-    await userEvent.click(screen.getByTestId('confirm-delete'))
+    await userEvent.click(screen.getByTestId('confirm-action'))
     expect(await screen.findByText('The advert could not be deleted. Try again.')).toBeInTheDocument()
   })
 

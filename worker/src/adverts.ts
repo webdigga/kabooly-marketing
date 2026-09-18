@@ -191,6 +191,27 @@ advertsApi.delete("/posts/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+// Clearing out the library: one request rather than one per advert. Ids
+// that are not this account's are simply not deleted.
+export const MAX_BULK_DELETE = 50;
+
+const bulkDeleteBody = z.object({
+  ids: z.array(z.string().min(1).max(64)).min(1).max(MAX_BULK_DELETE),
+});
+
+advertsApi.post("/posts/delete", async (c) => {
+  const parsed = await parseJson(c, bulkDeleteBody);
+  if (!parsed.ok) return parsed.response;
+  let deleted = 0;
+  for (const id of new Set(parsed.data.ids)) {
+    const advert = await findAdvert(c.env, c.get("userId"), id);
+    if (!advert) continue;
+    await deleteAdvert(c.env, advert);
+    deleted += 1;
+  }
+  return c.json({ deleted });
+});
+
 const slideBody = z.object({
   heading: z.string().trim().min(1).max(80),
   body: z.string().trim().max(240),

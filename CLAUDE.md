@@ -47,7 +47,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h and 150 per rolling 30 days, 20 videos per rolling 30 days, 5 image generations and 3 videos per minute, one generation in flight (topic suggestions, website reads and videos exempt from the lock), text 200/day and 20/min. A carousel is one image. Regenerations count.
 - Schema changes go through `npm run db:generate` in `worker/` (drizzle-kit); never hand-edit an applied migration.
 - Worker: strict ESLint (TrackShows config) and 100% coverage (`npm run test:coverage`). Frontend: `npm run lint` at 0 warnings, tests with data-testid or role selectors.
-- Use the shared components (`Card`, `Button`/`buttonClass`, `Field`, `Alert`) rather than local recipes.
+- Use the shared components (`Card`, `Button`/`buttonClass`, `Field`, `Alert`, `ConfirmDialog`) rather than local recipes. Anything that cannot be undone asks in `ConfirmDialog`, never inline.
 - Mobile-first CSS: `min-width` media queries only. Palette and font come from the kabooly.com marketing site (`frontend/src/styles/variables.css`).
 - No en or em dashes in any copy.
 - Do not run Playwright on small UI changes.

@@ -2,6 +2,7 @@ import { runInDurableObject } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AdvertJson, ImageJson } from "../src/advert-store";
 import { decodeCursor } from "../src/advert-store";
+import { MAX_BULK_DELETE } from "../src/adverts";
 import type { GenerationEvent } from "../src/generation";
 import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
@@ -313,6 +314,34 @@ describe("deleting", () => {
     const { cookie: other } = await verifiedUser();
     expect((await apiFetch(other, `/api/posts/${advert.id}`, { method: "DELETE" })).status).toBe(404);
     expect((await apiFetch(owner, `/api/posts/${advert.id}`, { method: "DELETE" })).status).toBe(200);
+  });
+
+  it("deletes several adverts at once, skipping ids that are not this account's", async () => {
+    const owner = await readyUser();
+    const first = await generateAdvert(owner, []);
+    const second = await generateAdvert(owner, []);
+    const other = await readyUser();
+    const stranger = await generateAdvert(other, []);
+
+    const res = await apiFetch(owner, "/api/posts/delete", {
+      method: "POST",
+      body: { ids: [first.id, second.id, second.id, stranger.id, "nope"] },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ deleted: 2 });
+    expect((await apiFetch(owner, `/api/posts/${first.id}`)).status).toBe(404);
+    expect((await apiFetch(other, `/api/posts/${stranger.id}`)).status).toBe(200);
+  });
+
+  it("refuses an empty or oversized list of ids", async () => {
+    const cookie = await readyUser();
+    const empty = await apiFetch(cookie, "/api/posts/delete", { method: "POST", body: { ids: [] } });
+    expect(empty.status).toBe(400);
+    const tooMany = await apiFetch(cookie, "/api/posts/delete", {
+      method: "POST",
+      body: { ids: Array.from({ length: MAX_BULK_DELETE + 1 }, (_, i) => `a${String(i)}`) },
+    });
+    expect(tooMany.status).toBe(400);
   });
 });
 

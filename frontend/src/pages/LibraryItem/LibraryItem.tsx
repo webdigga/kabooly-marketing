@@ -5,6 +5,7 @@ import { ReadOnlyAdvertText } from '../../components/AdvertText/AdvertText'
 import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
+import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog'
 import CarouselSlides from '../../components/CarouselSlides/CarouselSlides'
 import ImageTile from '../../components/ImageTile/ImageTile'
 import StoryTile from '../../components/StoryTile/StoryTile'
@@ -18,10 +19,10 @@ import styles from './LibraryItem.module.css'
 
 type LoadState = { status: 'loading' } | { status: 'missing' } | { status: 'error' } | { status: 'ready'; advert: Advert }
 
-// Delete asks once more in place before anything is removed.
+// Delete asks once more in a dialog before anything is removed.
 function DeleteAdvert({ id }: { id: string }) {
   const navigate = useNavigate()
-  const [confirming, setConfirming] = useState(false)
+  const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -37,26 +38,22 @@ function DeleteAdvert({ id }: { id: string }) {
     }
   }
 
-  if (!confirming) {
-    return (
-      <Button variant="danger" size="sm" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirming(true)} data-testid="delete-post">
+  return (
+    <>
+      <Button variant="danger" size="sm" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setAsking(true)} data-testid="delete-post">
         Delete
       </Button>
-    )
-  }
-  return (
-    <div className={styles.confirm} role="group" aria-label="Confirm delete">
-      <span>Delete this advert with its images and video? This cannot be undone.</span>
-      <div className={styles.confirmButtons}>
-        <Button size="sm" className={styles.deleteNow} loading={busy} onClick={() => void remove()} data-testid="confirm-delete">
-          Delete
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => setConfirming(false)} disabled={busy}>
-          Cancel
-        </Button>
-      </div>
-      {failed && <Alert tone="error">The advert could not be deleted. Try again.</Alert>}
-    </div>
+      <ConfirmDialog
+        open={asking}
+        title="Delete this advert?"
+        message="The advert, its images and any video go for good. This cannot be undone."
+        confirmLabel="Delete advert"
+        busy={busy}
+        error={failed ? 'The advert could not be deleted. Try again.' : null}
+        onConfirm={() => void remove()}
+        onCancel={() => setAsking(false)}
+      />
+    </>
   )
 }
 
