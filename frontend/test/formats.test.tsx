@@ -294,7 +294,8 @@ describe('videos', () => {
     await userEvent.type(screen.getByTestId('create-motion'), 'Steam rises')
     await userEvent.click(screen.getByTestId('generate'))
 
-    expect(await screen.findByText(/Making your video/)).toBeInTheDocument()
+    expect(await screen.findByTestId('video-progress')).toBeInTheDocument()
+    expect(screen.getByText(/Planning the shots and captions/)).toBeInTheDocument()
     expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'images', topic: 'Spring ovens', platforms: [] })
     expect(callsTo('POST', '/api/posts/a1/video')[0]?.body).toEqual({ motion: 'Steam rises' })
     expect(screen.getByTestId('usage')).toHaveTextContent('18 leftvideos this month')

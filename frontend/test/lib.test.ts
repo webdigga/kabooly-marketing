@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, errorMessage } from '../src/lib/api'
 import { makeBrandStrips, stripSize, uploadBrandStrips, websiteLabel } from '../src/lib/brand-strip'
+import { clock, stageAt } from '../src/lib/video-progress'
 import { readEvents } from '../src/lib/generation-stream'
 import { limitMessage, localTime, usageRows } from '../src/lib/limits'
 import { loadPlatformChoice, savePlatformChoice } from '../src/lib/platform-choice'
@@ -250,5 +251,19 @@ describe('brand strip', () => {
   it('carries on without strips when the browser cannot draw them', async () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
     expect(await uploadBrandStrips({ logoUrl: null, colour: null, websiteUrl: 'acme.co.uk' })).toEqual({})
+  })
+})
+
+describe('video progress', () => {
+  it('moves through the stages as time passes', () => {
+    expect(stageAt(0)).toContain('Planning the shots')
+    expect(stageAt(25)).toContain('opening frame')
+    expect(stageAt(90)).toBe('Filming your video')
+    expect(stageAt(400)).toContain('Still filming')
+  })
+
+  it('counts the time in minutes and seconds', () => {
+    expect(clock(9)).toBe('0:09')
+    expect(clock(75)).toBe('1:15')
   })
 })

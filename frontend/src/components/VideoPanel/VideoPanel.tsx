@@ -5,6 +5,7 @@ import Alert from '../Alert/Alert'
 import Button from '../Button/Button'
 import { buttonClass } from '../Button/buttonClass'
 import styles from './VideoPanel.module.css'
+import VideoProgress from './VideoProgress'
 import { useVideo } from './useVideo'
 
 export const MOTION_LABEL = 'What should the video show?'
@@ -17,18 +18,6 @@ interface VideoPanelProps {
   // Starts a video straight away with this direction (the Video page).
   // Undefined means wait for the button.
   autoStart?: string
-}
-
-function Pending({ video }: { video: AdvertVideo }) {
-  return (
-    <div className={styles.frame}>
-      <img src={video.start.url} alt="The first frame of your video" className={styles.dim} />
-      <div className={styles.overlay} role="status">
-        <span className={styles.spinner} aria-hidden="true" />
-        <span>Making your video. This takes a few minutes. You can leave this page; it will be in your library.</span>
-      </div>
-    </div>
-  )
 }
 
 function Ready({ video }: { video: AdvertVideo }) {
@@ -47,14 +36,13 @@ function Ready({ video }: { video: AdvertVideo }) {
   )
 }
 
-function StartControls({ hasVideo, starting, onStart }: { hasVideo: boolean; starting: boolean; onStart: () => void }) {
+function StartControls({ hasVideo, onStart }: { hasVideo: boolean; onStart: () => void }) {
   return (
     <div>
       <Button
         variant={hasVideo ? 'secondary' : 'primary'}
         size="sm"
         icon={<Clapperboard size={16} aria-hidden="true" />}
-        loading={starting}
         onClick={onStart}
         data-testid="make-video"
       >
@@ -77,12 +65,10 @@ export default function VideoPanel({ advertId, video: initial, onUsage, autoStar
   }, [autoStart, start])
 
   const pending = video?.status === 'pending'
-  // Started from the create screen, which already asked for the movement.
-  const waiting = autoStart !== undefined && !video
   return (
     <div className={styles.panel} data-testid="video-panel">
       <p className={styles.meta}>A 10 second vertical video with captions: a hook, two shots of your work and an end card with your name. Each one uses one of your videos for the month.</p>
-      {video && pending && <Pending video={video} />}
+      {pending && <VideoProgress startUrl={video?.start.url} />}
       {video?.status === 'ready' && <Ready video={video} />}
       {video?.status === 'failed' && <Alert tone="warning">That video could not be made, so it has not counted. Try again.</Alert>}
       {error && (
@@ -90,14 +76,8 @@ export default function VideoPanel({ advertId, video: initial, onUsage, autoStar
           {error}
         </Alert>
       )}
-      {!pending && !(starting && waiting) && (
-        <StartControls hasVideo={Boolean(video)} starting={starting} onStart={() => void start(autoStart ?? '')} />
-      )}
-      {starting && waiting && (
-        <p className={styles.meta} role="status">
-          Preparing your video...
-        </p>
-      )}
+      {starting && !pending && <VideoProgress />}
+      {!pending && !starting && <StartControls hasVideo={Boolean(video)} onStart={() => void start(autoStart ?? '')} />}
     </div>
   )
 }
