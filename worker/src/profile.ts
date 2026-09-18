@@ -11,6 +11,7 @@ import type { Env } from "./env";
 import { brandPrefix, fileUrl, storeLogo, userPrefix } from "./files";
 import { beginGeneration, deniedResponse, isDenied } from "./limits";
 import { scanWebsite } from "./scan";
+import type { LogoFind } from "./scan/logo";
 import { normaliseWebsiteUrl } from "./scan/url";
 import type { AppEnv } from "./session";
 import { parseJson } from "./validation";
@@ -189,6 +190,27 @@ async function readDetails(env: Env, url: URL, pageText: string): Promise<Busine
   }
 }
 
+interface KeptLogo {
+  logo: { key: string; url: string } | null;
+  // An SVG is sent back for the browser to rasterise, which it does better
+  // than the Worker can.
+  svg: string | null;
+}
+
+// Stores the logo the scan found, falling back to its second choice when
+// the best one is in a format that will not convert.
+async function keepLogo(env: Env, userId: string, find: LogoFind | null): Promise<KeptLogo> {
+  const none: KeptLogo = { logo: null, svg: null };
+  if (!find) return none;
+  for (const found of [find.best, find.safe]) {
+    if (!found) continue;
+    if (found.kind === "svg") return { logo: null, svg: found.svg };
+    const stored = await storeLogo(env, userId, found.bytes);
+    if (stored) return { logo: stored, svg: null };
+  }
+  return none;
+}
+
 const scanBody = z.object({ url: z.string().max(300) });
 
 profileApi.post("/profile/scan", async (c) => {
@@ -202,16 +224,16 @@ profileApi.post("/profile/scan", async (c) => {
   const lease = await beginGeneration(c.env, c.get("userId"), { kind: "text", units: 0, holdLock: false });
   if (isDenied(lease)) return deniedResponse(c, lease);
   const outcome = await scanWebsite(url).finally(() => lease.finish(0));
-  const [logo, details] = await Promise.all([
-    outcome.logo?.kind === "raster" ? storeLogo(c.env, c.get("userId"), outcome.logo.bytes) : null,
+  const [found, details] = await Promise.all([
+    keepLogo(c.env, c.get("userId"), outcome.logo),
     readDetails(c.env, url, outcome.pageText),
   ]);
   return c.json({
     websiteUrl: url.toString(),
     reachable: outcome.reachable,
     colours: outcome.colours,
-    logo,
-    logoSvg: outcome.logo?.kind === "svg" ? outcome.logo.svg : null,
+    logo: found.logo,
+    logoSvg: found.svg,
     details,
   });
 });

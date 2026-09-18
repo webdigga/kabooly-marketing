@@ -80,8 +80,7 @@
 }
 
 /* The badge behind the logo, mirroring drawLogo in lib/story-render.ts. */
-.badge,
-.circle {
+.badge {
   display: grid;
   place-items: center;
   padding: 2.8cqw;
@@ -93,10 +92,23 @@
   border-radius: 50%;
 }
 
+/* A logo that brings its own background is clipped to the badge instead. */
+.clipped {
+  overflow: hidden;
+  padding: 0;
+  width: 25cqw;
+}
+
 .logo {
   max-width: 42.6cqw;
   max-height: 19.4cqw;
   object-fit: contain;
+}
+
+.filled {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .website {

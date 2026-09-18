@@ -28,6 +28,13 @@ function png(): Response {
   return new Response(pngBytes(), { headers: { "Content-Type": "image/png" } });
 }
 
+// A 1x1 GIF: an image format nothing downstream reads, so the Worker
+// converts it to a PNG.
+function gif(): Response {
+  const bytes = Uint8Array.from(atob("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"), (c) => c.charCodeAt(0));
+  return new Response(bytes, { headers: { "Content-Type": "image/gif" } });
+}
+
 describe("normaliseWebsiteUrl", () => {
   it.each([
     ["acme.co.uk", "https://acme.co.uk/"],
@@ -275,11 +282,33 @@ describe("fetchFirstLogo", () => {
     onFetch(`${SITE}/huge.svg`, () => new Response(`${SVG}${" ".repeat(300_001)}`, { headers: { "Content-Type": "image/svg+xml" } }));
 
     const raster = await fetchFirstLogo([`${SITE}/gone.png`, `${SITE}/page.html`, `${SITE}/logo.png`]);
-    expect(raster?.kind).toBe("raster");
-    expect(await fetchFirstLogo([`${SITE}/logo.svg`])).toEqual({ kind: "svg", svg: `<?xml version="1.0"?>\n${SVG}` });
-    expect((await fetchFirstLogo([`${SITE}/typed.svg`]))?.kind).toBe("svg");
+    expect(raster?.best.kind).toBe("raster");
+    expect(await fetchFirstLogo([`${SITE}/logo.svg`])).toEqual({
+      best: { kind: "svg", svg: `<?xml version="1.0"?>\n${SVG}` },
+      safe: null,
+    });
+    expect((await fetchFirstLogo([`${SITE}/typed.svg`]))?.best.kind).toBe("svg");
     expect(await fetchFirstLogo([`${SITE}/huge.svg`])).toBeNull();
     expect(await fetchFirstLogo([])).toBeNull();
+  });
+
+  it("keeps a logo in another format, with the next usable one to fall back on", async () => {
+    onFetch(`${SITE}/logo.avif`, () => new Response("not really avif", { headers: { "Content-Type": "image/avif" } }));
+    onFetch(`${SITE}/icon.png`, png);
+
+    const both = await fetchFirstLogo([`${SITE}/logo.avif`, `${SITE}/icon.png`]);
+    expect(both?.best.kind).toBe("other");
+    expect(both?.safe?.kind).toBe("raster");
+
+    const alone = await fetchFirstLogo([`${SITE}/logo.avif`]);
+    expect(alone?.best.kind).toBe("other");
+    expect(alone?.safe).toBeNull();
+
+    // Two in a row: the first is still the one to try.
+    onFetch(`${SITE}/other.avif`, () => new Response("also avif", { headers: { "Content-Type": "image/avif" } }));
+    const pair = await fetchFirstLogo([`${SITE}/logo.avif`, `${SITE}/other.avif`]);
+    expect(pair?.best.kind).toBe("other");
+    expect(pair?.safe).toBeNull();
   });
 });
 
@@ -298,7 +327,7 @@ describe("scanWebsite", () => {
     const outcome = await scanWebsite(new URL(`${SITE}/`));
     expect(outcome.reachable).toBe(true);
     expect(outcome.colours).toEqual(["#e11d48", "#1d4ed8"]);
-    expect(outcome.logo?.kind).toBe("raster");
+    expect(outcome.logo?.best.kind).toBe("raster");
   });
 
   it("reads the words of the home page and its services and about pages", async () => {
@@ -313,7 +342,7 @@ describe("scanWebsite", () => {
     onFetch(`${SITE}/home`, () => html('<img class="logo" src="logo.svg">', '<base href="/assets/">'));
     onFetch(`${SITE}/assets/logo.svg`, () => new Response(SVG, { headers: { "Content-Type": "image/svg+xml" } }));
     const outcome = await scanWebsite(new URL(`${SITE}/home`));
-    expect(outcome.logo).toEqual({ kind: "svg", svg: SVG });
+    expect(outcome.logo).toEqual({ best: { kind: "svg", svg: SVG }, safe: null });
   });
 
   it("ignores an unusable <base href>", async () => {
@@ -338,6 +367,35 @@ describe("POST /api/profile/scan", () => {
     const body: { websiteUrl: string; reachable: boolean; colours: string[]; logo: { key: string } | null; logoSvg: null } =
       await res.json();
     expect(body).toMatchObject({ websiteUrl: `${SITE}/`, reachable: true, colours: ["#1d4ed8"], logoSvg: null });
+    expect(body.logo && (await testEnv.FILES.head(body.logo.key))).not.toBeNull();
+  });
+
+  it("converts a logo in another format and keeps it as a PNG", async () => {
+    const { cookie } = await verifiedUser();
+    onFetch(`${SITE}/`, () => html('<img id="logo" src="/logo.gif">'));
+    onFetch(`${SITE}/logo.gif`, gif);
+    const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } });
+    const body: { logo: { key: string } | null } = await res.json();
+    expect(body.logo?.key).toMatch(/\.png$/);
+    expect((await testEnv.FILES.head(body.logo?.key ?? ""))?.httpMetadata?.contentType).toBe("image/png");
+  });
+
+  it("keeps no logo when the only one found cannot be converted", async () => {
+    const { cookie } = await verifiedUser();
+    onFetch(`${SITE}/`, () => html('<img id="logo" src="/logo.avif">'));
+    onFetch(`${SITE}/logo.avif`, () => new Response("not really avif", { headers: { "Content-Type": "image/avif" } }));
+    const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } });
+    expect(await res.json()).toMatchObject({ logo: null, logoSvg: null });
+  });
+
+  it("falls back to the next logo when the best one cannot be converted", async () => {
+    const { cookie } = await verifiedUser();
+    onFetch(`${SITE}/`, () => html('<img id="logo" src="/logo.avif"><img class="logo" src="/logo.png">'));
+    onFetch(`${SITE}/logo.avif`, () => new Response("not really avif", { headers: { "Content-Type": "image/avif" } }));
+    onFetch(`${SITE}/logo.png`, png);
+    const res = await apiFetch(cookie, "/api/profile/scan", { method: "POST", body: { url: SITE } });
+    const body: { logo: { key: string } | null } = await res.json();
+    expect(body.logo?.key).toMatch(/\.png$/);
     expect(body.logo && (await testEnv.FILES.head(body.logo.key))).not.toBeNull();
   });
 

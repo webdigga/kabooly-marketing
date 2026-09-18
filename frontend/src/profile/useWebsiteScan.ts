@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { api, ApiError } from '../lib/api'
-import { uploadLogoSvg } from '../lib/logo-upload'
+import { refineLogo, uploadLogoSvg } from '../lib/logo-upload'
 import type { BusinessDetails, ScanResult } from '../lib/types'
 
 export type ScanStatus = 'idle' | 'scanning' | 'found' | 'nothing' | 'failed' | 'limited'
@@ -29,7 +29,7 @@ export function useWebsiteScan() {
     setStatus('scanning')
     try {
       const result = await api<ScanResult>('/api/profile/scan', { body: { url } })
-      let logo = result.logo
+      let logo = result.logo ? await refineLogo(result.logo) : null
       if (!logo && result.logoSvg) logo = await uploadLogoSvg(result.logoSvg).catch(() => null)
       if (run !== latest.current) return null
       const findings = { colours: result.colours, logo, details: result.details }

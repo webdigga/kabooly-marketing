@@ -270,7 +270,7 @@ describe('settings', () => {
     await userEvent.upload(input, new File([new Uint8Array([137, 80, 78, 71])], 'logo.png', { type: 'image/png' }))
     await waitFor(() => expect(screen.getByAltText('Your logo')).toHaveAttribute('src', '/api/files/users/u1/logos/new.png'))
     await userEvent.upload(input, new File(['x'], 'logo.gif', { type: 'image/gif' }), { applyAccept: false })
-    expect(await screen.findByText('Choose a PNG, JPEG, WebP or SVG image.')).toBeInTheDocument()
+    expect(await screen.findByText('Choose a PNG, JPEG, WebP, AVIF or SVG image.')).toBeInTheDocument()
     await userEvent.click(screen.getByTestId('remove-logo'))
     expect(screen.getByLabelText('No logo')).toBeInTheDocument()
   })

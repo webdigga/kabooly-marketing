@@ -40,13 +40,30 @@ export function sniffRaster(bytes: Uint8Array): RasterType | null {
   return null;
 }
 
+// A logo in a format nothing downstream reads (AVIF and the like), turned
+// into a PNG. Null when Cloudflare Images cannot decode it either.
+async function toPng(env: Env, bytes: Uint8Array): Promise<Uint8Array | null> {
+  try {
+    const result = await env.IMAGES.input(streamOf(bytes)).output({ format: "image/png" });
+    return new Uint8Array(await result.response().arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 export async function storeLogo(
   env: Env,
   userId: string,
-  bytes: Uint8Array
+  input: Uint8Array
 ): Promise<{ key: string; url: string } | null> {
-  const type = sniffRaster(bytes);
-  if (!type || bytes.byteLength > MAX_LOGO_BYTES) return null;
+  // A website may serve its logo in a format nothing downstream reads,
+  // which is worth converting rather than passing over for a worse logo
+  // further down the page.
+  const sniffed = sniffRaster(input);
+  const png = sniffed ? null : await toPng(env, input);
+  if (!sniffed && !png) return null;
+  const type: RasterType = sniffed ?? "image/png";
+  const bytes = png ?? input;
   const key = `${userPrefix(userId)}logos/${crypto.randomUUID()}.${EXTENSIONS[type]}`;
   await env.FILES.put(key, bytes, { httpMetadata: { contentType: type } });
   return { key, url: fileUrl(key) };

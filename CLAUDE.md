@@ -66,4 +66,5 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - Test mocks for the better-auth client live in `frontend/test/auth-mock.ts` and must not import the app (a `vi.mock` factory importing `helpers.tsx` deadlocks).
 - On D1, a drizzle-kit table rebuild (DROP TABLE of the old table) cascades to child tables. Only add columns with ALTER TABLE; check every generated migration for `DROP TABLE` before shipping.
 - Gemini background jobs (videos) cannot use `store: false`; the job is deleted from Google after the video is saved.
-- SVG logos are converted to PNG in the browser (`frontend/src/lib/svg-to-png.ts`) because Gemini needs raster input; the Worker only ever stores PNG, JPEG or WebP.
+- SVG logos are converted to PNG in the browser (`frontend/src/lib/svg-to-png.ts`) because Gemini needs raster input; the Worker only ever stores PNG, JPEG or WebP, converting anything else (AVIF, GIF) with Cloudflare Images in `storeLogo`.
+- Every logo is tidied in the browser before it is stored (`frontend/src/lib/logo-clean.ts`): a flat background is dropped to transparency and the empty margins are cut off, so an app icon behaves like a proper logo. Scanned logos are read back and put through the same step.

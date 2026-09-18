@@ -5,7 +5,17 @@ import { resolveUrl } from "./url";
 
 export type FoundLogo =
   | { kind: "raster"; bytes: Uint8Array }
-  | { kind: "svg"; svg: string };
+  | { kind: "svg"; svg: string }
+  // An image in some other format (AVIF, for one), which the Worker tries
+  // to convert before falling back to the next candidate.
+  | { kind: "other"; bytes: Uint8Array };
+
+export interface LogoFind {
+  // The best candidate on the page, whatever its format.
+  best: FoundLogo;
+  // The best candidate that needs no converting, when the best one does.
+  safe: FoundLogo | null;
+}
 
 const MAX_ATTEMPTS = 5;
 const MAX_SVG_BYTES = 300_000;
@@ -61,13 +71,35 @@ function asSvg(contentType: string, bytes: Uint8Array): string | null {
   return looksSvg && text.includes("<svg") ? text : null;
 }
 
-export async function fetchFirstLogo(urls: string[]): Promise<FoundLogo | null> {
+function classify(contentType: string, bytes: Uint8Array): FoundLogo | null {
+  if (sniffRaster(bytes)) return { kind: "raster", bytes };
+  const type = contentType.toLowerCase();
+  // An SVG too large to keep is passed over rather than handed on as
+  // something to convert.
+  if (type.includes("svg")) {
+    const svg = asSvg(contentType, bytes);
+    return svg ? { kind: "svg", svg } : null;
+  }
+  const svg = asSvg(contentType, bytes);
+  if (svg) return { kind: "svg", svg };
+  return type.startsWith("image/") ? { kind: "other", bytes } : null;
+}
+
+// The best logo on the page, plus a second choice to fall back on when the
+// best one is in a format that turns out not to convert.
+export async function fetchFirstLogo(urls: string[]): Promise<LogoFind | null> {
+  let best: FoundLogo | null = null;
   for (const url of urls) {
     const res = await fetchLimited(url, "image/*", MAX_LOGO_BYTES);
     if (!res) continue;
-    if (sniffRaster(res.bytes)) return { kind: "raster", bytes: res.bytes };
-    const svg = asSvg(res.contentType, res.bytes);
-    if (svg) return { kind: "svg", svg };
+    const found = classify(res.contentType, res.bytes);
+    if (!found) continue;
+    if (!best) {
+      if (found.kind !== "other") return { best: found, safe: null };
+      best = found;
+      continue;
+    }
+    if (found.kind !== "other") return { best, safe: found };
   }
-  return null;
+  return best ? { best, safe: null } : null;
 }

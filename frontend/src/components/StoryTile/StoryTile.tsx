@@ -29,11 +29,11 @@ function Lockup({ logoUrl, website, backing }: { logoUrl: string | null; website
     <div className={styles.lockup} data-testid="story-lockup">
       {logoUrl && (
         <span
-          className={backing.circle ? styles.circle : styles.badge}
-          style={{ backgroundColor: backing.fill }}
+          className={[styles.badge, backing.circle && styles.circle, backing.clip && styles.clipped].filter(Boolean).join(' ')}
+          style={backing.clip ? undefined : { backgroundColor: backing.fill }}
           data-testid="story-logo-badge"
         >
-          <img className={styles.logo} src={logoUrl} alt="" />
+          <img className={backing.clip ? styles.filled : styles.logo} src={logoUrl} alt="" />
         </span>
       )}
       {website && <span className={styles.website}>{website}</span>}
@@ -50,7 +50,7 @@ export default function StoryTile({ image, words, onRegenerate, disabled }: Stor
   const [failed, setFailed] = useState(false)
   // The badge behind the logo: a circle for a square logo, white or dark
   // depending on the logo itself (lib/story-render.ts decides).
-  const [backing, setBacking] = useState<LogoBacking>({ circle: false, fill: LIGHT_FILL })
+  const [backing, setBacking] = useState<LogoBacking>({ circle: false, fill: LIGHT_FILL, clip: false })
   const info = PLATFORM_INFO.story
   const colour = profile?.brandColours[0] ?? '#1d4ed8'
   const websiteUrl = profile?.websiteUrl ?? ''

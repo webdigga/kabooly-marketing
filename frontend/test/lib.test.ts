@@ -4,6 +4,7 @@ import { makeBrandStrips, stripSize, uploadBrandStrips, websiteLabel } from '../
 import { clock, stageAt } from '../src/lib/video-progress'
 import { readEvents } from '../src/lib/generation-stream'
 import { limitMessage, localTime, usageRows } from '../src/lib/limits'
+import { cleanPixels } from '../src/lib/logo-clean'
 import { loadPlatformChoice, savePlatformChoice } from '../src/lib/platform-choice'
 import { headingColour, slideKind, wrapLines } from '../src/lib/slide-render'
 import { svgSize } from '../src/lib/svg-to-png'
@@ -265,5 +266,73 @@ describe('video progress', () => {
   it('counts the time in minutes and seconds', () => {
     expect(clock(9)).toBe('0:09')
     expect(clock(75)).toBe('1:15')
+  })
+})
+
+describe('logo cleaning', () => {
+  // A 4x4 logo: a solid white background with a dark 2x2 mark in the middle.
+  function icon(): { data: Uint8ClampedArray; width: number; height: number } {
+    const width = 4
+    const height = 4
+    const data = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < width * height; i += 1) {
+      const x = i % width
+      const y = Math.floor(i / width)
+      const mark = x >= 1 && x <= 2 && y >= 1 && y <= 2
+      data.set(mark ? [20, 30, 40, 255] : [255, 255, 255, 255], i * 4)
+    }
+    return { data, width, height }
+  }
+
+  it('drops a flat background and trims to the mark', () => {
+    const { data, width, height } = icon()
+    expect(cleanPixels(data, width, height)).toEqual({ left: 1, top: 1, right: 2, bottom: 2 })
+    expect(data[3]).toBe(0)
+    expect(data[(1 * width + 1) * 4 + 3]).toBe(255)
+  })
+
+  it('leaves a logo whose corners disagree alone', () => {
+    const { data, width, height } = icon()
+    data.set([10, 200, 10, 255], 0)
+    expect(cleanPixels(data, width, height)).toBeNull()
+    expect(data[3]).toBe(255)
+  })
+
+  it('keeps the background colour where the mark encloses it', () => {
+    // A 5x5 ring of dark pixels around a white centre, on white.
+    const width = 5
+    const height = 5
+    const data = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < width * height; i += 1) {
+      const x = i % width
+      const y = Math.floor(i / width)
+      const ring = x >= 1 && x <= 3 && y >= 1 && y <= 3 && !(x === 2 && y === 2)
+      data.set(ring ? [20, 30, 40, 255] : [255, 255, 255, 255], i * 4)
+    }
+    expect(cleanPixels(data, width, height)).toEqual({ left: 1, top: 1, right: 3, bottom: 3 })
+    // The enclosed centre is kept; the outer white is gone.
+    expect(data[(2 * width + 2) * 4 + 3]).toBe(255)
+    expect(data[3]).toBe(0)
+  })
+
+  it('trims the margins of a logo that already has transparency', () => {
+    const { data, width, height } = icon()
+    for (let i = 0; i < width * height; i += 1) {
+      const x = i % width
+      const y = Math.floor(i / width)
+      if (!(x >= 1 && x <= 2 && y >= 1 && y <= 2)) data[i * 4 + 3] = 0
+    }
+    expect(cleanPixels(data, width, height)).toEqual({ left: 1, top: 1, right: 2, bottom: 2 })
+  })
+
+  it('has nothing to do for a logo that fills its frame', () => {
+    const width = 2
+    const height = 2
+    const data = new Uint8ClampedArray(width * height * 4)
+    data.set([10, 10, 10, 255], 0)
+    data.set([200, 30, 30, 255], 4)
+    data.set([30, 200, 30, 255], 8)
+    data.set([30, 30, 200, 255], 12)
+    expect(cleanPixels(data, width, height)).toBeNull()
   })
 })

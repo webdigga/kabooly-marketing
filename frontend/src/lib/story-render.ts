@@ -40,31 +40,41 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-// How light the visible pixels of a logo are, 0 (black) to 1 (white). A
-// logo that cannot be measured is treated as dark, which is the safe way
-// round: it gets a white card to sit on.
-export function logoBrightness(img: HTMLImageElement): number {
+export interface LogoPixels {
+  // 0 (black) to 1 (white), over the pixels you can actually see. A logo
+  // that cannot be measured is treated as dark, which is the safe way
+  // round: it gets a white badge to sit on.
+  brightness: number
+  // A logo with no transparency at all brings its own background, so it is
+  // clipped to the badge shape rather than laid on top of one.
+  opaque: boolean
+}
+
+export function readLogoPixels(img: HTMLImageElement): LogoPixels {
   const size = 24
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
-  if (!ctx) return 0
+  const dark: LogoPixels = { brightness: 0, opaque: false }
+  if (!ctx) return dark
   ctx.drawImage(img, 0, 0, size, size)
   let light = 0
   let seen = 0
+  let clear = 0
   try {
     const { data } = ctx.getImageData(0, 0, size, size)
     for (let i = 0; i < data.length; i += 4) {
       const alpha = (data[i + 3] ?? 0) / 255
+      if (alpha < 0.9) clear += 1
       if (alpha < 0.3) continue
       seen += 1
       light += (0.2126 * (data[i] ?? 0) + 0.7152 * (data[i + 1] ?? 0) + 0.0722 * (data[i + 2] ?? 0)) / 255
     }
   } catch {
-    return 0
+    return dark
   }
-  return seen ? light / seen : 0
+  return { brightness: seen ? light / seen : 0, opaque: clear === 0 }
 }
 
 export interface LogoBacking {
@@ -74,6 +84,9 @@ export interface LogoBacking {
   // White behind a dark logo, dark behind a light one, so the logo reads
   // whatever the photo is doing underneath.
   fill: string
+  // The logo brings its own background, so it is clipped to the badge
+  // instead of being laid on one.
+  clip: boolean
 }
 
 const SQUARE_MIN = 0.8
@@ -84,9 +97,11 @@ export const DARK_FILL = '#0f172a'
 
 export function logoBacking(img: HTMLImageElement): LogoBacking {
   const aspect = img.naturalWidth / img.naturalHeight
+  const { brightness, opaque } = readLogoPixels(img)
   return {
     circle: aspect >= SQUARE_MIN && aspect <= SQUARE_MAX,
-    fill: logoBrightness(img) < DARK_LOGO ? LIGHT_FILL : DARK_FILL,
+    fill: brightness < DARK_LOGO ? LIGHT_FILL : DARK_FILL,
+    clip: opaque,
   }
 }
 
@@ -96,7 +111,7 @@ export async function readLogoBacking(src: string): Promise<LogoBacking> {
   try {
     return logoBacking(await loadImage(src))
   } catch {
-    return { circle: false, fill: LIGHT_FILL }
+    return { circle: false, fill: LIGHT_FILL, clip: false }
   }
 }
 
@@ -142,7 +157,7 @@ function drawCta(ctx: CanvasRenderingContext2D, cta: string, colour: string, bot
 // The logo on its badge, sitting on top of the given line. Returns the top
 // of the badge.
 function drawLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, bottom: number): number {
-  const { circle, fill } = logoBacking(logo)
+  const { circle, fill, clip } = logoBacking(logo)
   const scale = Math.min(LOGO_MAX_WIDTH / logo.naturalWidth, LOGO_MAX_HEIGHT / logo.naturalHeight)
   const w = logo.naturalWidth * scale
   const h = logo.naturalHeight * scale
@@ -150,9 +165,22 @@ function drawLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, bottom:
   const boxHeight = (circle ? Math.max(w, h) : h) + CARD_PADDING * 2
   const boxLeft = (STORY_WIDTH - boxWidth) / 2
   const boxTop = bottom - boxHeight
+  const radius = circle ? boxHeight / 2 : 28
+  if (clip) {
+    // The logo's own background becomes the badge: it is scaled to fill the
+    // badge and the corners are cut off.
+    const cover = Math.max(boxWidth / w, boxHeight / h)
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(boxLeft, boxTop, boxWidth, boxHeight, radius)
+    ctx.clip()
+    ctx.drawImage(logo, boxLeft + (boxWidth - w * cover) / 2, boxTop + (boxHeight - h * cover) / 2, w * cover, h * cover)
+    ctx.restore()
+    return boxTop
+  }
   ctx.fillStyle = fill
   ctx.beginPath()
-  ctx.roundRect(boxLeft, boxTop, boxWidth, boxHeight, circle ? boxHeight / 2 : 28)
+  ctx.roundRect(boxLeft, boxTop, boxWidth, boxHeight, radius)
   ctx.fill()
   ctx.drawImage(logo, (STORY_WIDTH - w) / 2, boxTop + (boxHeight - h) / 2, w, h)
   return boxTop

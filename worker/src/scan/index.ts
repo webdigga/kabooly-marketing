@@ -1,7 +1,7 @@
 import { detectBrandColours } from "./colours";
 import { decodeText, fetchLimited } from "./fetch-limited";
 import { fetchFirstLogo, rankLogoCandidates } from "./logo";
-import type { FoundLogo } from "./logo";
+import type { LogoFind } from "./logo";
 import { findInfoPages } from "./info-pages";
 import { extractPageFacts } from "./page";
 import { resolveUrl } from "./url";
@@ -9,7 +9,7 @@ import { resolveUrl } from "./url";
 export interface ScanOutcome {
   reachable: boolean;
   colours: string[];
-  logo: FoundLogo | null;
+  logo: LogoFind | null;
   // The readable words of the home page and up to two pages about the
   // business, for filling in the rest of the profile.
   pageText: string;
