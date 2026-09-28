@@ -3,6 +3,15 @@
 
 export type Platform = 'instagram' | 'facebook' | 'nextdoor' | 'story'
 
+// How a generated image looks: a photograph, or a designed graphic.
+export type ImageStyle = 'photo' | 'graphic'
+
+// The look asked for on the create screen, remembered between visits.
+export interface Look {
+  style: ImageStyle
+  logo: boolean
+}
+
 export interface Profile {
   businessName: string
   description: string

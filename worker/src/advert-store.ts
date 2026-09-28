@@ -1,17 +1,19 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema";
-import type { AdvertFormat, Platform, Slide, StoryWords } from "./db/schema";
+import type { AdvertFormat, ImageStyle, Platform, Slide, StoryWords } from "./db/schema";
 import type { Env } from "./env";
-import { fileUrl, userPrefix } from "./files";
+import { fileUrl, sniffRaster, userPrefix } from "./files";
 import {
   brandGenerated,
   brandPhoto,
+  bytesToBase64,
   carouselBackgroundPrompt,
   fitToShape,
   generateImage,
   imagePrompt,
 } from "./image-maker";
+import type { Logo } from "./image-maker";
 import { CAROUSEL_SHAPE, PLATFORM_SPECS } from "./platforms";
 import type { Profile } from "./profile";
 import { videoJson } from "./video-store";
@@ -100,7 +102,15 @@ export function advertJson(row: AdvertRow, images: ImageRow[], video: VideoRow |
 export async function createAdvert(
   env: Env,
   userId: string,
-  fields: { topic: string; body: string; format: AdvertFormat; slides?: Slide[]; storyWords?: StoryWords }
+  fields: {
+    topic: string;
+    body: string;
+    format: AdvertFormat;
+    imageStyle: ImageStyle;
+    logoDrawn: boolean;
+    slides?: Slide[];
+    storyWords?: StoryWords;
+  }
 ): Promise<AdvertRow> {
   const now = new Date();
   const row: AdvertRow = {
@@ -109,6 +119,8 @@ export async function createAdvert(
     topic: fields.topic,
     body: fields.body,
     format: fields.format,
+    imageStyle: fields.imageStyle,
+    logoDrawn: fields.logoDrawn,
     slides: fields.slides ?? null,
     storyWords: fields.storyWords ?? null,
     backgroundKey: null,
@@ -204,6 +216,17 @@ export async function listAdverts(
 
 export type Strips = Partial<Record<Platform, Uint8Array>>;
 
+// The real logo file, ready to send to the model, for the adverts that ask
+// for the logo to be drawn into the picture.
+export async function loadLogo(env: Env, profile: Profile): Promise<Logo | null> {
+  if (!profile.logoKey) return null;
+  const object = await env.FILES.get(profile.logoKey);
+  if (!object) return null;
+  const bytes = new Uint8Array(await object.arrayBuffer());
+  const mimeType = sniffRaster(bytes);
+  return mimeType ? { mimeType, base64: bytesToBase64(bytes) } : null;
+}
+
 // The brand strips stamped onto images, one per platform, as far as their
 // files are still there.
 export async function loadStrips(env: Env, profile: Profile): Promise<Strips> {
@@ -222,6 +245,9 @@ export interface ImageJob {
   profile: Profile;
   // The brand strips stamped along the bottom of each platform's image.
   strips: Strips;
+  // Set only when the advert asked for the logo in the picture: the model
+  // places it, so no strip is stamped on afterwards.
+  logo: Logo | null;
 }
 
 // Stores one platform image, replacing any earlier one for the same
@@ -253,9 +279,11 @@ async function storePlatformImage(
 
 // Generates, crops, brands and stores one platform image.
 export async function makePlatformImage(env: Env, job: ImageJob, platform: Platform): Promise<ImageJson> {
-  const prompt = imagePrompt(job.profile, job.advert.topic, platform);
-  const raw = await generateImage(env, prompt, PLATFORM_SPECS[platform].aspectRatio, null);
-  const branded = await brandGenerated(env, raw, platform, job.strips[platform] ?? null);
+  const look = { style: job.advert.imageStyle, logo: job.logo !== null };
+  const prompt = imagePrompt(job.profile, job.advert.topic, platform, look);
+  const raw = await generateImage(env, prompt, PLATFORM_SPECS[platform].aspectRatio, job.logo);
+  const strip = job.logo ? null : (job.strips[platform] ?? null);
+  const branded = await brandGenerated(env, raw, platform, strip);
   return storePlatformImage(env, job.advert, platform, branded);
 }
 

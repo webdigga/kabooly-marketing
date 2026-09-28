@@ -83,9 +83,26 @@ describe('generation', () => {
     expect(within(instagram).getByRole('link', { name: 'Download' })).toHaveAttribute('href', image('instagram').downloadUrl)
     expect(screen.getByTestId('image-facebook')).toBeInTheDocument()
     expect(screen.queryByTestId('image-nextdoor')).not.toBeInTheDocument()
-    expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'images', topic: 'Spring ovens', platforms: ['instagram', 'facebook'] })
+    expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({
+      format: 'images',
+      topic: 'Spring ovens',
+      platforms: ['instagram', 'facebook'],
+      imageStyle: 'photo',
+      logoDrawn: false,
+    })
     expect(screen.getByTestId('usage')).toHaveTextContent('16 leftimages today')
     expect(localStorage.getItem('kabooly-marketing-platforms')).toBe('["instagram","facebook"]')
+  })
+
+  it('asks for a designed graphic with the logo in it, and remembers the choice', async () => {
+    await landed()
+    await userEvent.click(screen.getByTestId('look-graphic'))
+    await userEvent.click(screen.getByTestId('look-logo'))
+    await userEvent.click(screen.getByTestId('generate'))
+
+    expect(await screen.findByTestId('post-text')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/generations')[0]?.body).toMatchObject({ imageStyle: 'graphic', logoDrawn: true })
+    expect(localStorage.getItem('kabooly-marketing-look')).toBe('{"style":"graphic","logo":true}')
   })
 
   it('makes a text-only advert when nothing is ticked', async () => {

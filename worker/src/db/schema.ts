@@ -133,6 +133,11 @@ export const profileServices = sqliteTable(
 export const ADVERT_FORMATS = ["images", "photo", "carousel"] as const;
 export type AdvertFormat = (typeof ADVERT_FORMATS)[number];
 
+// How a generated image looks: a photograph, or a designed graphic in the
+// business's colours. Own photos and carousels are always photographs.
+export const IMAGE_STYLES = ["photo", "graphic"] as const;
+export type ImageStyle = (typeof IMAGE_STYLES)[number];
+
 export interface Slide {
   heading: string;
   body: string;
@@ -156,6 +161,11 @@ export const adverts = sqliteTable(
     // Advert text as last saved: generated, regenerated or edited in place.
     body: text("body").notNull(),
     format: text("format", { enum: ADVERT_FORMATS }).notNull().default("images"),
+    // How the images were asked for, so regenerating one matches the rest.
+    imageStyle: text("image_style", { enum: IMAGE_STYLES }).notNull().default("photo"),
+    // True when the model drew the logo into the image, which replaces the
+    // brand strip along the bottom.
+    logoDrawn: integer("logo_drawn", { mode: "boolean" }).notNull().default(false),
     // Carousels only: the words of each slide, and the R2 key of the one
     // background image every slide is laid over (in the browser).
     slides: text("slides", { mode: "json" }).$type<Slide[]>(),

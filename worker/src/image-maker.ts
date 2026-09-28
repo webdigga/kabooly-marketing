@@ -1,4 +1,4 @@
-import type { Platform } from "./db/schema";
+import type { ImageStyle, Platform } from "./db/schema";
 import type { Env } from "./env";
 import { sniffRaster } from "./files";
 import { PLATFORM_SPECS, stripSize } from "./platforms";
@@ -76,26 +76,52 @@ const REALISM = [
   "Any people must look natural and anatomically correct: two arms, two hands, five fingers on each hand, natural faces.",
 ];
 
+// The alternative to a photograph: a designed advert, the kind a graphic
+// designer would draw, with no photorealistic people to go wrong.
+const GRAPHIC = [
+  "Style: a clean, modern designed graphic, the kind a graphic designer would make for a small business advert: flat shapes, simple illustration and generous space.",
+  "Build it from the brand colours. It is a design, not a photograph: no photographic textures and no photorealistic people or faces.",
+  "The design fills the whole frame, edge to edge. No borders, frames or drop shadows around the edge.",
+  "Keep it simple and uncluttered: a few clear shapes, not a busy collage. No stock-art clip art, no emoji, no watermarks.",
+];
+
 const NO_TEXT = "Do not add any words, slogans, prices, phone numbers or other text to the image.";
 
-export function imagePrompt(profile: Profile, topic: string, platform: Platform): string {
+// Used only when the customer asks for their logo in the picture. The logo
+// file is sent with the prompt, and the model must copy it, never redraw it.
+const WITH_LOGO = [
+  "The image supplied with this prompt is the business's own logo.",
+  "Place that logo into the design exactly once, reproduced exactly as supplied: same shapes, same colours, same proportions. Never redraw, restyle, recolour, crop, rotate or add to it.",
+  "Put it in a clear, uncluttered area at a size that is easy to read, roughly a fifth of the width, with clear space around it. Nothing may overlap it.",
+];
+
+// The look asked for: a photograph or a designed graphic, and whether the
+// model places the logo itself (which replaces the brand strip).
+export interface Look {
+  style: ImageStyle;
+  logo: boolean;
+}
+
+function lookLines(look: Look): string[] {
+  return [...(look.style === "graphic" ? GRAPHIC : REALISM), NO_TEXT, ...(look.logo ? WITH_LOGO : [])];
+}
+
+export function imagePrompt(profile: Profile, topic: string, platform: Platform, look: Look): string {
   const spec = PLATFORM_SPECS[platform];
+  const subject = look.style === "graphic" ? "designed graphic" : "photograph";
   if (platform === "story") {
     return [
-      `Create a full screen vertical 9:16 photograph for an Instagram Story for ${profile.businessName}, a small business.`,
+      `Create a full screen vertical 9:16 ${subject} for an Instagram Story for ${profile.businessName}, a small business.`,
       ...briefLines(profile, topic),
-      ...REALISM,
+      ...lookLines(look),
       "Keep the middle of the frame clear of clutter and keep the key subject away from the top quarter and the bottom quarter: words are placed over those afterwards.",
-      NO_TEXT,
     ].join("\n");
   }
-  const lines = [
-    `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business.`,
+  return [
+    `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business, as a ${subject}.`,
     ...briefLines(profile, topic),
-    ...REALISM,
-    NO_TEXT,
-  ];
-  return lines.join("\n");
+    ...lookLines(look),
+  ].join("\n");
 }
 
 // The first frame of a vertical video: the planned hook scene, so the video

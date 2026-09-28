@@ -26,13 +26,15 @@ const profile: Profile = {
   brandStrips: null,
 };
 
+const PHOTO = { style: "photo", logo: false } as const;
+
 beforeEach(() => {
   installFetchMock();
 });
 
 describe("imagePrompt", () => {
   it("brings in brand colours and the realism rules", () => {
-    const prompt = imagePrompt(profile, "Spring ovens", "facebook");
+    const prompt = imagePrompt(profile, "Spring ovens", "facebook", PHOTO);
     expect(prompt).toContain("Facebook advert image for Acme Cleaning");
     expect(prompt).toContain("#1d4ed8, #f59e0b");
     expect(prompt).toContain("no colour filters, tints or recolouring");
@@ -45,15 +47,34 @@ describe("imagePrompt", () => {
   });
 
   it("leaves out what does not apply", () => {
-    const prompt = imagePrompt({ ...profile, brandColours: [] }, "Spring ovens", "instagram");
+    const prompt = imagePrompt({ ...profile, brandColours: [] }, "Spring ovens", "instagram", PHOTO);
     expect(prompt).not.toContain("brand colours");
     expect(prompt).not.toContain("cropped");
   });
 });
 
+describe("imagePrompt for a designed graphic", () => {
+  it("swaps the photograph rules for design rules and leaves people out", () => {
+    const prompt = imagePrompt(profile, "Spring ovens", "facebook", { style: "graphic", logo: false });
+    expect(prompt).toContain("as a designed graphic");
+    expect(prompt).toContain("flat shapes, simple illustration");
+    expect(prompt).toContain("no photorealistic people or faces");
+    expect(prompt).toContain("#1d4ed8, #f59e0b");
+    expect(prompt).not.toContain("two arms, two hands");
+    expect(prompt).not.toContain("logo");
+  });
+
+  it("asks for the supplied logo to be copied in, never redrawn", () => {
+    const prompt = imagePrompt(profile, "Spring ovens", "story", { style: "graphic", logo: true });
+    expect(prompt).toContain("full screen vertical 9:16 designed graphic");
+    expect(prompt).toContain("the business's own logo");
+    expect(prompt).toContain("Never redraw, restyle, recolour");
+  });
+});
+
 describe("imagePrompt for a story", () => {
   it("asks for a full screen photograph with room for the words", () => {
-    const prompt = imagePrompt(profile, "Spring ovens", "story");
+    const prompt = imagePrompt(profile, "Spring ovens", "story", PHOTO);
     expect(prompt).toContain("full screen vertical 9:16 photograph for an Instagram Story");
     expect(prompt).toContain("away from the top quarter and the bottom quarter");
     expect(prompt).toContain("Do not add any words");
@@ -98,7 +119,7 @@ describe("bytesToBase64", () => {
 describe("generateImage", () => {
   it("sends the prompt, logo and shape to Gemini without storing the interaction", async () => {
     onFetch(GEMINI_URL, () => Response.json(geminiImage()));
-    const bytes = await generateImage(testEnv, "prompt", "16:9", { mimeType: "image/png", base64: "TE9HTw==" });
+    const bytes = await generateImage(testEnv, "prompt", "4:5", { mimeType: "image/png", base64: "TE9HTw==" });
     expect(bytes).toEqual(pngBytes());
     const call = callsTo(GEMINI_URL)[0];
     const body = JSON.parse(call?.body ?? "{}") as Record<string, unknown>;
@@ -109,7 +130,7 @@ describe("generateImage", () => {
         { type: "text", text: "prompt" },
         { type: "image", mime_type: "image/png", data: "TE9HTw==" },
       ],
-      response_format: { type: "image", aspect_ratio: "16:9", image_size: "2K" },
+      response_format: { type: "image", aspect_ratio: "4:5", image_size: "2K" },
     });
   });
 

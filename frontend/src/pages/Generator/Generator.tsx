@@ -8,14 +8,16 @@ import Card from '../../components/Card/Card'
 import CarouselSlides from '../../components/CarouselSlides/CarouselSlides'
 import { TextArea } from '../../components/Field/Field'
 import ImageTile from '../../components/ImageTile/ImageTile'
+import LookPicker from '../../components/LookPicker/LookPicker'
 import PhotoPicker from '../../components/PhotoPicker/PhotoPicker'
 import PlatformPicker from '../../components/PlatformPicker/PlatformPicker'
 import StoryTile from '../../components/StoryTile/StoryTile'
 import UsagePanel from '../../components/UsagePanel/UsagePanel'
 import VideoPanel, { MOTION_HINT, MOTION_LABEL } from '../../components/VideoPanel/VideoPanel'
 import { api } from '../../lib/api'
+import { loadLook, saveLook } from '../../lib/look-choice'
 import { loadPlatformChoice, savePlatformChoice } from '../../lib/platform-choice'
-import type { Platform, UploadedPhoto, Usage } from '../../lib/types'
+import type { Look, Platform, UploadedPhoto, Usage } from '../../lib/types'
 import styles from './Generator.module.css'
 import { useGenerator } from './useGenerator'
 import { useTopicSuggestion } from './useTopicSuggestion'
@@ -123,16 +125,19 @@ interface OptionsProps {
   onPhoto: (photo: UploadedPhoto | null) => void
   platforms: Platform[]
   onPlatforms: (platforms: Platform[]) => void
+  look: Look
+  onLook: (look: Look) => void
   motion: string
   onMotion: (motion: string) => void
 }
 
 // The choices that belong to the chosen format.
-function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, motion, onMotion }: OptionsProps) {
+function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, look, onLook, motion, onMotion }: OptionsProps) {
   return (
     <>
       {format === 'photo' && <PhotoPicker photo={photo} onChange={onPhoto} disabled={busy} />}
       {(format === 'images' || format === 'photo') && <PlatformPicker selected={platforms} onChange={onPlatforms} disabled={busy} />}
+      {format === 'images' && <LookPicker look={look} onChange={onLook} disabled={busy} />}
       {format === 'video' && (
         <TextArea
           label={MOTION_LABEL}
@@ -152,6 +157,7 @@ function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, m
 export default function Generator({ format }: { format: CreateFormat }) {
   const topic = useTopicSuggestion()
   const [platforms, setPlatforms] = useState<Platform[]>(loadPlatformChoice)
+  const [look, setLook] = useState<Look>(loadLook)
   const [photo, setPhoto] = useState<UploadedPhoto | null>(null)
   const [motion, setMotion] = useState('')
   const [usage, setUsage] = useState<Usage | null>(null)
@@ -167,9 +173,14 @@ export default function Generator({ format }: { format: CreateFormat }) {
     savePlatformChoice(next)
   }
 
+  function chooseLook(next: Look) {
+    setLook(next)
+    saveLook(next)
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
-    void generator.generate({ format, topic: topic.topic.trim(), platforms, photoKey: photo?.key, motion })
+    void generator.generate({ format, topic: topic.topic.trim(), platforms, look, photoKey: photo?.key, motion })
     // An uploaded photo is used up by the post made from it.
     if (format === 'photo') setPhoto(null)
   }
@@ -222,6 +233,8 @@ export default function Generator({ format }: { format: CreateFormat }) {
             onPhoto={setPhoto}
             platforms={platforms}
             onPlatforms={choosePlatforms}
+            look={look}
+            onLook={chooseLook}
             motion={motion}
             onMotion={setMotion}
           />

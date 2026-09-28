@@ -2,6 +2,7 @@ import {
   advertJson,
   createAdvert,
   fileJson,
+  loadLogo,
   loadStrips,
   makeCarouselBackground,
   makePhotoImage,
@@ -9,7 +10,7 @@ import {
 } from "./advert-store";
 import type { AdvertJson, AdvertRow, FileJson, ImageJson } from "./advert-store";
 import { writeAdvert, writeSlides, writeStoryWords } from "./copywriter";
-import type { AdvertFormat, Platform } from "./db/schema";
+import type { AdvertFormat, ImageStyle, Platform } from "./db/schema";
 import type { Env } from "./env";
 import type { Lease, UsageJson } from "./limits";
 import { usageFor, usageJson } from "./limits";
@@ -31,6 +32,10 @@ export interface GenerationRequest {
   topic: string;
   format: AdvertFormat;
   platforms: Platform[];
+  // Generated images only: how they should look, and whether the model
+  // places the real logo itself instead of the brand strip.
+  imageStyle: ImageStyle;
+  logoDrawn: boolean;
   // Own-photo posts only: the uploaded photo, deleted once its platform
   // images are cut.
   photo?: { bytes: Uint8Array; key: string };
@@ -46,7 +51,9 @@ async function imageMaker(env: Env, req: GenerationRequest, advert: AdvertRow): 
     const job = { advert, photo: req.photo.bytes, strips };
     return (platform) => makePhotoImage(env, job, platform);
   }
-  const job = { userId: req.userId, advert, profile: req.profile, strips };
+  // A missing or unreadable logo file just means the strip is used instead.
+  const logo = advert.logoDrawn ? await loadLogo(env, req.profile) : null;
+  const job = { userId: req.userId, advert, profile: req.profile, strips, logo };
   return (platform) => makePlatformImage(env, job, platform);
 }
 
@@ -111,7 +118,15 @@ async function writeCopy(env: Env, req: GenerationRequest): Promise<AdvertRow> {
     req.format === "carousel" ? writeSlides(env, req.profile, req.topic) : undefined,
     req.platforms.includes("story") ? writeStoryWords(env, req.profile, req.topic) : undefined,
   ]);
-  return createAdvert(env, req.userId, { topic: req.topic, body, format: req.format, slides, storyWords });
+  return createAdvert(env, req.userId, {
+    topic: req.topic,
+    body,
+    format: req.format,
+    imageStyle: req.imageStyle,
+    logoDrawn: req.logoDrawn,
+    slides,
+    storyWords,
+  });
 }
 
 // Words first (quick, and the advert is saved as soon as it exists), then

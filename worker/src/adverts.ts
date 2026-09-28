@@ -11,6 +11,7 @@ import {
   imagesFor,
   listAdverts,
   loadAdvertJson,
+  loadLogo,
   loadStrips,
   makeCarouselBackground,
   makePlatformImage,
@@ -19,7 +20,8 @@ import {
 } from "./advert-store";
 import type { AdvertRow } from "./advert-store";
 import { suggestTopic, writeAdvert, writeSlides, SLIDE_COUNT } from "./copywriter";
-import { PLATFORMS } from "./db/schema";
+import { IMAGE_STYLES, PLATFORMS } from "./db/schema";
+import type { ImageStyle } from "./db/schema";
 import type { Platform } from "./db/schema";
 import { uploadsPrefix } from "./files";
 import { streamGeneration, withRetry } from "./generation";
@@ -97,6 +99,9 @@ const generationBody = z.preprocess(defaultFormat, z.discriminatedUnion("format"
     format: z.literal("images"),
     topic: z.string().trim().min(1).max(MAX_TOPIC_LENGTH),
     platforms: z.array(z.enum(PLATFORMS)).max(PLATFORMS.length),
+    // A page loaded before the look could be chosen sends neither.
+    imageStyle: z.enum(IMAGE_STYLES).default("photo"),
+    logoDrawn: z.boolean().default(false),
   }),
   z.object({
     format: z.literal("photo"),
@@ -118,6 +123,14 @@ function limitRequest(body: GenerationBody, platforms: Platform[]): GenerationRe
   if (body.format === "carousel") return { kind: "image", units: 1, holdLock: true };
   if (body.format === "images" && platforms.length) return { kind: "image", units: platforms.length, holdLock: true };
   return { kind: "text", units: 0, holdLock: true };
+}
+
+// How the images should look. Own photos and carousels are never redrawn
+// by the model, so they keep the default.
+function lookOf(body: GenerationBody): { imageStyle: ImageStyle; logoDrawn: boolean } {
+  return body.format === "images"
+    ? { imageStyle: body.imageStyle, logoDrawn: body.logoDrawn }
+    : { imageStyle: "photo", logoDrawn: false };
 }
 
 // The uploaded photo an own-photo post is cut from, if it belongs to this
@@ -148,6 +161,7 @@ advertsApi.post("/generations", async (c) => {
     topic: body.topic,
     format: body.format,
     platforms,
+    ...lookOf(body),
     photo: photo && body.format === "photo" ? { bytes: photo, key: body.photoKey } : undefined,
   };
   return streamGeneration(c.env, c.executionCtx, request, lease);
@@ -292,7 +306,8 @@ advertsApi.post("/posts/:id/images/:platform", async (c) => {
   if (profile instanceof Response) return profile;
   return limited(c, { kind: "image", units: 1, holdLock: true }, async () => {
     const strips = await loadStrips(c.env, profile);
-    const job = { userId: c.get("userId"), advert, profile, strips };
+    const logo = advert.logoDrawn ? await loadLogo(c.env, profile) : null;
+    const job = { userId: c.get("userId"), advert, profile, strips, logo };
     const image = await withRetry(() => makePlatformImage(c.env, job, platform));
     return { response: c.json({ image }), unitsMade: 1 };
   });

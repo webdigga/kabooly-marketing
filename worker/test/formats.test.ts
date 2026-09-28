@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AdvertJson, FileJson } from "../src/advert-store";
+import { loadLogo } from "../src/advert-store";
+import type { Profile } from "../src/profile";
 import type { GenerationEvent } from "../src/generation";
 import { ANTHROPIC_URL, GEMINI_URL, geminiImage, mockClaude, mockGemini, SLIDES, STORY_WORDS } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
@@ -7,6 +9,7 @@ import {
   apiFetch,
   mockEmail,
   photoBytes,
+  PROFILE,
   testEnv,
   uploadLogo,
   uploadPhoto,
@@ -227,5 +230,56 @@ describe("carousels", () => {
     onFetch(GEMINI_URL, () => Response.json(geminiImage()));
     await makeCarousel(cookie);
     expect(callsTo(GEMINI_URL).at(-1)?.body).not.toContain("image/png");
+  });
+});
+
+describe("designed graphics", () => {
+  async function withLogo(): Promise<string> {
+    const { cookie } = await verifiedUser();
+    const { key }: { key: string } = await (await uploadLogo(cookie)).json();
+    await withProfile(cookie, { logoKey: key });
+    return cookie;
+  }
+
+  function graphic(cookie: string, logoDrawn: boolean): Promise<Response> {
+    return generate(cookie, { format: "images", platforms: ["instagram"], imageStyle: "graphic", logoDrawn });
+  }
+
+  it("asks for a design and sends the real logo, then keeps doing so when the image is regenerated", async () => {
+    const cookie = await withLogo();
+    const list = await events(await graphic(cookie, true));
+    const advert = list[0]?.type === "advert" ? list[0].advert : null;
+    const asked = callsTo(GEMINI_URL).at(-1)?.body ?? "";
+    expect(asked).toContain("designed graphic");
+    expect(asked).toContain("the business's own logo");
+    expect(asked).toContain("image/png");
+
+    const res = await apiFetch(cookie, `/api/posts/${advert?.id ?? ""}/images/instagram`, { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(callsTo(GEMINI_URL).at(-1)?.body).toContain("image/png");
+  });
+
+  it("keeps the photograph rules and the strip when the look is not asked for", async () => {
+    const cookie = await withLogo();
+    await events(await graphic(cookie, false));
+    const asked = callsTo(GEMINI_URL).at(-1)?.body ?? "";
+    expect(asked).toContain("designed graphic");
+    expect(asked).not.toContain("image/png");
+  });
+
+  it("falls back to the strip when there is no usable logo file", async () => {
+    const cookie = await readyUser();
+    await events(await graphic(cookie, true));
+    expect(callsTo(GEMINI_URL).at(-1)?.body).not.toContain("image/png");
+  });
+});
+
+describe("loadLogo", () => {
+  const profile = { ...PROFILE, logoKey: "users/u1/logos/gone.png" } as unknown as Profile;
+
+  it("gives nothing when the file has gone or is not an image", async () => {
+    expect(await loadLogo(testEnv, profile)).toBeNull();
+    await testEnv.FILES.put("users/u1/logos/junk.png", new Uint8Array([1, 2, 3]));
+    expect(await loadLogo(testEnv, { ...profile, logoKey: "users/u1/logos/junk.png" })).toBeNull();
   });
 });

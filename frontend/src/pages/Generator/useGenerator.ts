@@ -5,7 +5,7 @@ import type { TileStatus } from '../../components/ImageTile/ImageTile'
 import { api, request } from '../../lib/api'
 import { readEvents } from '../../lib/generation-stream'
 import { limitMessage } from '../../lib/limits'
-import type { Advert, AdvertImage, GenerationEvent, Platform, Slide, StoredFile, Usage } from '../../lib/types'
+import type { Advert, AdvertImage, GenerationEvent, Look, Platform, Slide, StoredFile, Usage } from '../../lib/types'
 
 export interface Slot {
   platform: Platform
@@ -45,6 +45,8 @@ export interface GenerateOptions {
   format: CreateFormat
   topic: string
   platforms: Platform[]
+  // Generated images only: photograph or designed graphic, logo in or out.
+  look: Look
   photoKey?: string
   motion?: string
 }
@@ -103,10 +105,10 @@ function failure(err: unknown, fallback: string): string {
 // The request body for each thing the create screen makes. A video starts
 // as an image-free advert; the video itself is started once it exists.
 function generationBody(options: GenerateOptions) {
-  const { topic, platforms } = options
+  const { topic, platforms, look } = options
   switch (options.format) {
     case 'images':
-      return { format: 'images', topic, platforms }
+      return { format: 'images', topic, platforms, imageStyle: look.style, logoDrawn: look.logo }
     case 'photo':
       return { format: 'photo', topic, platforms, photoKey: options.photoKey }
     case 'carousel':
