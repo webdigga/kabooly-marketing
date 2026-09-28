@@ -132,7 +132,7 @@ describe("videoStartPrompt and carouselBackgroundPrompt", () => {
     const prompt = carouselBackgroundPrompt(profile, "Spring ovens", "photo");
     expect(prompt).toContain("4:5 photograph");
     expect(prompt).toContain("Do not add panels, boxes, borders, fog");
-    expect(prompt).toContain("The lower third of the frame is plain and free of detail");
+    expect(prompt).toContain("The top eighth and the lower third of the frame are plain");
     expect(prompt).not.toMatch(/text will be placed|calm/);
     expect(prompt).toContain("Do not include any logo.");
     expect(prompt).not.toContain("attached image");
@@ -143,7 +143,7 @@ describe("videoStartPrompt and carouselBackgroundPrompt", () => {
     expect(prompt).toContain("4:5 designed graphic");
     expect(prompt).toContain("use only the brand colours");
     expect(prompt).toContain("one or two large shapes and a lot of empty space");
-    expect(prompt).toContain("filling the upper two thirds");
+    expect(prompt).toContain("clear of the top edge as well as the bottom");
     expect(prompt).toContain("Do not include any logo.");
     expect(prompt).not.toContain("two arms, two hands");
   });
