@@ -190,13 +190,13 @@ export function carouselBackgroundPrompt(profile: Profile, topic: string, style:
     ...briefLines(profile, topic),
     ...colourLines(profile, style),
     ...(style === "graphic"
-      ? [
-          ...GRAPHIC,
-          // The app lays the slide's words over this, so a busy design would
-          // fight them.
-          "Keep it quiet and simple: one or two large shapes and a lot of empty space, with the middle of the frame clear.",
-        ]
+      ? [...GRAPHIC, "Keep it quiet and simple: one or two large shapes and a lot of empty space."]
       : REALISM),
+    // The app lays a dark band and white words across the bottom, so the
+    // subject has to sit above it. Described as composition, not as room
+    // for text: asking for space for words makes the model paint panels.
+    "Composition: the subject sits in the middle of the frame, centred and well above the bottom edge, filling the upper two thirds.",
+    "The lower third of the frame is plain and free of detail: bare floor, ground, worktop, wall or sky, nothing important in it.",
     "Full bleed, edge to edge. Do not add panels, boxes, borders, fog or blur effects.",
     NO_TEXT,
     "Do not include any logo.",
