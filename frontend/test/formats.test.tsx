@@ -248,6 +248,7 @@ describe('carousels', () => {
     await userEvent.click(screen.getByTestId('generate'))
     const first = await screen.findByTestId('slide-1')
     expect(first).toHaveTextContent('Is your oven hiding grime?')
+    expect(first).toHaveTextContent('Acme Cleaning')
     expect(first).not.toHaveTextContent('1/5')
     expect(first.querySelector('img')).toHaveAttribute('src', '/api/files/users/u1/logos/logo.png')
     expect(first.getAttribute('style')).toContain(BACKGROUND.url)
@@ -259,7 +260,7 @@ describe('carousels', () => {
     await userEvent.click(screen.getByTestId('download-slide-2'))
     await waitFor(() => expect(slideRender.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'kabooly-slide-2.png'))
     expect(slideRender.renderSlide).toHaveBeenCalledWith(
-      { background: BACKGROUND.url, logo: '/api/files/users/u1/logos/logo.png', colour: '#1d4ed8' },
+      { background: BACKGROUND.url, logo: '/api/files/users/u1/logos/logo.png', colour: '#1d4ed8', name: 'Acme Cleaning' },
       SLIDES,
       1,
     )

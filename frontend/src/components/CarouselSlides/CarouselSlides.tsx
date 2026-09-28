@@ -2,7 +2,8 @@ import { Download, Pencil, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useProfile } from '../../context/ProfileContext'
 import { headingColour, renderSlide, saveBlob, slideKind } from '../../lib/slide-render'
-import type { Slide, StoredFile } from '../../lib/types'
+import type { SlideDesign } from '../../lib/slide-render'
+import type { Profile, Slide, StoredFile } from '../../lib/types'
 import Alert from '../Alert/Alert'
 import Button from '../Button/Button'
 import { TextArea, TextInput } from '../Field/Field'
@@ -23,13 +24,14 @@ interface CarouselSlidesProps {
 }
 
 // The on-screen version of a slide, laid out like renderSlide draws it.
-function SlidePreview({ slide, index, total, background, logo, colour }: {
+function SlidePreview({ slide, index, total, background, logo, colour, name }: {
   slide: Slide
   index: number
   total: number
   background: string | null
   logo: string | null
   colour: string
+  name: string
 }) {
   const kind = slideKind(index, total)
   const heading = kind === 'hook' ? undefined : { color: headingColour(colour) }
@@ -39,13 +41,10 @@ function SlidePreview({ slide, index, total, background, logo, colour }: {
       style={kind === 'hook' ? { backgroundColor: colour, backgroundImage: background ? `url("${background}")` : undefined } : undefined}
       data-testid={`slide-${index + 1}`}
     >
-      {kind === 'hook' && logo && (
-        <span className={styles.mark}>
-          <img src={logo} alt="" />
-        </span>
-      )}
+      {kind === 'hook' && logo && <img className={styles.mark} src={logo} alt="" />}
       <div className={styles.words}>
         {kind === 'close' && logo && <img className={styles.logo} src={logo} alt="" />}
+        {kind === 'hook' && name && <p className={styles.name}>{name}</p>}
         <p className={styles.heading} style={heading}>
           {slide.heading}
         </p>
@@ -146,6 +145,16 @@ function SlideActions(props: SlideActionsProps) {
   )
 }
 
+// Everything the slides are drawn with, from the profile as it stands.
+function designOf(profile: Profile | null, background: string | null): SlideDesign {
+  return {
+    background,
+    logo: profile?.logoUrl ?? null,
+    colour: profile?.brandColours[0] ?? '#1d4ed8',
+    name: profile?.businessName ?? '',
+  }
+}
+
 // A carousel's slides, laid out over its background with the brand colour
 // and the real logo, each downloadable as a finished image.
 export default function CarouselSlides(props: CarouselSlidesProps) {
@@ -154,11 +163,7 @@ export default function CarouselSlides(props: CarouselSlidesProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState<number | 'all' | null>(null)
   const [downloadError, setDownloadError] = useState(false)
-  const design = {
-    background: background?.url ?? null,
-    logo: profile?.logoUrl ?? null,
-    colour: profile?.brandColours[0] ?? '#1d4ed8',
-  }
+  const design = designOf(profile, background?.url ?? null)
 
   async function download(indexes: number[], which: number | 'all') {
     setSaving(which)

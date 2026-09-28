@@ -27,6 +27,9 @@ export interface SlideDesign {
   background: string | null
   logo: string | null
   colour: string
+  // Printed small above the hook, so the first slide says who it is from
+  // even when the logo is a picture mark.
+  name: string
 }
 
 // A brand colour dark enough to read on white, or near-black when it is
@@ -120,22 +123,14 @@ export const SHADE_STOPS: [offset: number, alpha: number][] = [
   [1, 0.92],
 ]
 
-// The badge the logo sits on in the corner of slide one: white, so any
-// logo reads, dark or light.
+// The logo in the corner of slide one, drawn straight onto the picture. The
+// shade leaves the top of the slide alone, which is where it sits.
 const MARK_HEIGHT = 96
 const MARK_MAX_WIDTH = 380
-const MARK_PADDING = 24
-const MARK_RADIUS = 24
 
 function drawMark(ctx: CanvasRenderingContext2D, logo: HTMLImageElement): void {
   const scale = Math.min(MARK_HEIGHT / logo.naturalHeight, MARK_MAX_WIDTH / logo.naturalWidth)
-  const w = logo.naturalWidth * scale
-  const h = logo.naturalHeight * scale
-  ctx.fillStyle = SLIDE_COLOURS.white
-  ctx.beginPath()
-  ctx.roundRect(PADDING, PADDING, w + MARK_PADDING * 2, h + MARK_PADDING * 2, MARK_RADIUS)
-  ctx.fill()
-  ctx.drawImage(logo, PADDING + MARK_PADDING, PADDING + MARK_PADDING, w, h)
+  ctx.drawImage(logo, PADDING, PADDING, logo.naturalWidth * scale, logo.naturalHeight * scale)
 }
 
 // Slide one: the picture, the logo in the top corner, and the hook in large
@@ -156,6 +151,7 @@ function drawHook(
   ctx.fillRect(0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
   if (logo) drawMark(ctx, logo)
   const blocks = [
+    block(ctx, design.name, { size: 36, weight: 600, colour: SLIDE_COLOURS.white, lineHeight: 1.2 }),
     block(ctx, slide.heading, { size: 88, weight: 700, colour: SLIDE_COLOURS.white, lineHeight: 1.12 }),
     block(ctx, slide.body, { size: 44, weight: 400, colour: SLIDE_COLOURS.white, lineHeight: 1.4 }),
   ]
