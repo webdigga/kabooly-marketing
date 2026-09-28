@@ -2,7 +2,7 @@ import type { Platform } from "./db/schema";
 
 // Gemini draws the closest shape it can; the result is then cropped to the
 // exact pixel size.
-export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:5";
+export type AspectRatio = "1:1" | "9:16" | "4:5";
 
 export interface Shape {
   width: number;
@@ -15,8 +15,10 @@ export interface PlatformSpec extends Shape {
 }
 
 export const PLATFORM_SPECS: Record<Platform, PlatformSpec> = {
-  instagram: { label: "Instagram", width: 1080, height: 1080, aspectRatio: "1:1" },
-  facebook: { label: "Facebook", width: 1200, height: 630, aspectRatio: "16:9" },
+  // Meta recommends 4:5 at 1440 x 1800 for both feeds: it is the tallest
+  // shape a feed shows without cropping, so it takes the most of the screen.
+  instagram: { label: "Instagram", width: 1440, height: 1800, aspectRatio: "4:5" },
+  facebook: { label: "Facebook", width: 1440, height: 1800, aspectRatio: "4:5" },
   nextdoor: { label: "Nextdoor", width: 1200, height: 1200, aspectRatio: "1:1" },
   // A Story is full screen, carries no caption, and the browser draws the
   // words and the branding over it (nothing is stamped server-side).

@@ -6,8 +6,8 @@ import type { AppEnv } from "./session";
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 export const MAX_STRIP_BYTES = 1024 * 1024;
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
-// The largest platform image is 1200 pixels wide or tall.
-export const MIN_PHOTO_SIDE = 1200;
+// The largest platform image is 1440 pixels on its shortest side.
+export const MIN_PHOTO_SIDE = 1440;
 
 export type RasterType = "image/png" | "image/jpeg" | "image/webp";
 

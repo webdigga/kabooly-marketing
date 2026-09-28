@@ -4,9 +4,9 @@ import type { UploadedPhoto } from './types'
 // Mirrors the worker's checks (worker/src/files.ts), so most problems are
 // explained before anything is uploaded.
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024
-export const MIN_PHOTO_SIDE = 1200
+export const MIN_PHOTO_SIDE = 1440
 export const PHOTO_ACCEPT = 'image/jpeg,image/png,image/webp'
-export const PHOTO_RULES = 'JPEG, PNG or WebP, at least 1200 pixels on the shortest side, up to 20 MB.'
+export const PHOTO_RULES = 'JPEG, PNG or WebP, at least 1440 pixels on the shortest side, up to 20 MB.'
 
 export class PhotoError extends Error {}
 

@@ -197,7 +197,7 @@ export async function uploadLogo(cookie: string, bytes: Uint8Array = pngBytes())
 }
 
 // A real JPEG photo of the given size (the Images binding draws it).
-export async function photoBytes(width = 1600, height = 1200): Promise<Uint8Array> {
+export async function photoBytes(width = 1600, height = 1500): Promise<Uint8Array> {
   const source = new ReadableStream<Uint8Array>({
     start(c) {
       c.enqueue(pngBytes());

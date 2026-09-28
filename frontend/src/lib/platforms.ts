@@ -10,8 +10,8 @@ export interface PlatformInfo {
 
 // Mirrors worker/src/platforms.ts.
 export const PLATFORM_INFO: Record<Platform, PlatformInfo> = {
-  instagram: { id: 'instagram', label: 'Instagram', shape: 'Square', width: 1080, height: 1080 },
-  facebook: { id: 'facebook', label: 'Facebook', shape: 'Landscape', width: 1200, height: 630 },
+  instagram: { id: 'instagram', label: 'Instagram', shape: 'Portrait', width: 1440, height: 1800 },
+  facebook: { id: 'facebook', label: 'Facebook', shape: 'Portrait', width: 1440, height: 1800 },
   nextdoor: { id: 'nextdoor', label: 'Nextdoor', shape: 'Square', width: 1200, height: 1200 },
   story: { id: 'story', label: 'Instagram Story', shape: 'Full screen', width: 1080, height: 1920 },
 }

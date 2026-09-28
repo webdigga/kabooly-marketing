@@ -79,7 +79,7 @@ describe('generation', () => {
     expect(await screen.findByTestId('post-text')).toHaveValue('Book your spring oven clean in Twickenham.')
     const instagram = await screen.findByTestId('image-instagram')
     expect(within(instagram).getByText('Instagram')).toBeInTheDocument()
-    expect(within(instagram).getByText('1080 × 1080')).toBeInTheDocument()
+    expect(within(instagram).getByText('1440 × 1800')).toBeInTheDocument()
     expect(within(instagram).getByRole('link', { name: 'Download' })).toHaveAttribute('href', image('instagram').downloadUrl)
     expect(screen.getByTestId('image-facebook')).toBeInTheDocument()
     expect(screen.queryByTestId('image-nextdoor')).not.toBeInTheDocument()

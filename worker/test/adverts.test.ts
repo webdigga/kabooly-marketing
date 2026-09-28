@@ -85,7 +85,7 @@ describe("generation", () => {
     const images = list.flatMap((e) => (e.type === "image" ? [e.image] : []));
     expect(images.map((i) => i.platform).sort()).toEqual(["facebook", "instagram"]);
     const facebook = images.find((i) => i.platform === "facebook");
-    expect(facebook).toMatchObject({ label: "Facebook", width: 1200, height: 630 });
+    expect(facebook).toMatchObject({ label: "Facebook", width: 1440, height: 1800 });
     expect(facebook?.downloadUrl).toMatch(/\?download=kabooly-facebook-\d{4}-\d{2}-\d{2}\.jpg$/);
     expect(list.at(-1)).toMatchObject({ type: "done", usage: { imagesToday: { used: 2, limit: 20, nextFreeAt: null } } });
 

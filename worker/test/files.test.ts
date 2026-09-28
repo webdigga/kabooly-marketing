@@ -139,10 +139,10 @@ describe("photo upload", () => {
   it("keeps one photo per account, with its size", async () => {
     const { cookie } = await verifiedUser();
     const first: { key: string } = await (await uploadPhoto(cookie, await photoBytes())).json();
-    const res = await uploadPhoto(cookie, await photoBytes(1200, 1500));
+    const res = await uploadPhoto(cookie, await photoBytes(1500, 1600));
     expect(res.status).toBe(200);
     const body: { key: string; url: string; width: number; height: number } = await res.json();
-    expect(body).toMatchObject({ width: 1200, height: 1500, url: `/api/files/${body.key}` });
+    expect(body).toMatchObject({ width: 1500, height: 1600, url: `/api/files/${body.key}` });
     expect(body.key).toMatch(/^users\/[^/]+\/uploads\/[\w-]+\.jpg$/);
     expect(await testEnv.FILES.head(first.key)).toBeNull();
     expect(await testEnv.FILES.head(body.key)).not.toBeNull();

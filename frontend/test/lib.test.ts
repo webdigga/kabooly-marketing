@@ -207,8 +207,8 @@ describe('brand strip', () => {
   })
 
   it('sizes a strip to each platform width', () => {
-    expect(stripSize('instagram')).toEqual({ width: 1080, height: 97 })
-    expect(stripSize('facebook')).toEqual({ width: 1200, height: 108 })
+    expect(stripSize('instagram')).toEqual({ width: 1440, height: 130 })
+    expect(stripSize('facebook')).toEqual({ width: 1440, height: 130 })
   })
 
   it('draws the logo and website, then stores it', async () => {

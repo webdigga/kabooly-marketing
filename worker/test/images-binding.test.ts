@@ -23,15 +23,15 @@ describe("branding", () => {
   it("crops a generated image to the platform size, with or without the brand strip", async () => {
     const branded = await brandGenerated(testEnv, pngBytes(), "facebook", pngBytes());
     expect(isJpeg(branded)).toBe(true);
-    expect(await sizeOf(branded)).toMatchObject({ width: 1200, height: 630 });
+    expect(await sizeOf(branded)).toMatchObject({ width: 1440, height: 1800 });
     const plain = await brandGenerated(testEnv, pngBytes(), "instagram", null);
-    expect(await sizeOf(plain)).toMatchObject({ width: 1080, height: 1080 });
+    expect(await sizeOf(plain)).toMatchObject({ width: 1440, height: 1800 });
   });
 
   it("crops and brands a customer's own photo", async () => {
     const branded = await brandPhoto(testEnv, pngBytes(), "nextdoor", pngBytes());
     expect(await sizeOf(branded)).toMatchObject({ width: 1200, height: 1200 });
     const plain = await brandPhoto(testEnv, pngBytes(), "instagram", null);
-    expect(await sizeOf(plain)).toMatchObject({ width: 1080, height: 1080 });
+    expect(await sizeOf(plain)).toMatchObject({ width: 1440, height: 1800 });
   });
 });

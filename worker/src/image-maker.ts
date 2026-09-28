@@ -95,9 +95,6 @@ export function imagePrompt(profile: Profile, topic: string, platform: Platform)
     ...REALISM,
     NO_TEXT,
   ];
-  if (spec.aspectRatio === "16:9") {
-    lines.push("Keep the key subject away from the top and bottom edges; the image will be cropped slightly there.");
-  }
   return lines.join("\n");
 }
 

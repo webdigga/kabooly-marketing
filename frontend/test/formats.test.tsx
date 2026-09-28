@@ -55,7 +55,7 @@ function base(overrides: Record<string, (req: { body: unknown }) => Response | P
 
 // happy-dom never loads images from blob URLs, so photos report the size
 // the test gives them.
-let photoSize = { width: 1600, height: 1200 }
+let photoSize = { width: 1600, height: 1500 }
 class FakeImage {
   onload: (() => void) | null = null
   onerror: (() => void) | null = null
@@ -79,7 +79,7 @@ beforeEach(() => {
   slideRender.saveBlob.mockClear()
   slideRender.renderSlide.mockClear()
   storyRender.renderStory.mockClear()
-  photoSize = { width: 1600, height: 1200 }
+  photoSize = { width: 1600, height: 1500 }
   vi.stubGlobal('Image', FakeImage)
   URL.createObjectURL = vi.fn((blob: Blob) => (blob instanceof File && blob.name.includes('broken') ? 'blob:broken' : 'blob:photo'))
   URL.revokeObjectURL = vi.fn()
@@ -113,7 +113,7 @@ describe('usage', () => {
 })
 
 describe('posts from your own photo', () => {
-  const UPLOADED = { key: 'users/u1/uploads/p.jpg', url: '/api/files/users/u1/uploads/p.jpg', width: 1600, height: 1200 }
+  const UPLOADED = { key: 'users/u1/uploads/p.jpg', url: '/api/files/users/u1/uploads/p.jpg', width: 1600, height: 1500 }
 
   it('uploads a photo, then cuts branded images for the ticked platforms', async () => {
     mockApi(
@@ -124,7 +124,7 @@ describe('posts from your own photo', () => {
       }),
     )
     await landed('photo')
-    expect(screen.getByText(/at least 1200 pixels on the shortest side/)).toBeInTheDocument()
+    expect(screen.getByText(/at least 1440 pixels on the shortest side/)).toBeInTheDocument()
     expect(screen.getByTestId('generate')).toBeDisabled()
     await userEvent.upload(screen.getByTestId('photo-file'), photoFile())
     expect(await screen.findByTestId('photo-preview')).toHaveAttribute('src', UPLOADED.url)

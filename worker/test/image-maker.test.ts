@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 
 describe("imagePrompt", () => {
-  it("brings in brand colours, room for the strip and a crop warning for Facebook", () => {
+  it("brings in brand colours and the realism rules", () => {
     const prompt = imagePrompt(profile, "Spring ovens", "facebook");
     expect(prompt).toContain("Facebook advert image for Acme Cleaning");
     expect(prompt).toContain("#1d4ed8, #f59e0b");
@@ -39,7 +39,6 @@ describe("imagePrompt", () => {
     expect(prompt).toContain("Do not add icons, symbols, emoji");
     expect(prompt).toContain("two arms, two hands");
     expect(prompt).toContain("fills the whole frame, edge to edge");
-    expect(prompt).toContain("cropped slightly");
     expect(prompt).toContain("Do not add any words");
     // The logo is stamped on afterwards, never drawn by the model.
     expect(prompt).not.toContain("logo");
