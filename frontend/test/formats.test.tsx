@@ -249,7 +249,7 @@ describe('carousels', () => {
     const first = await screen.findByTestId('slide-1')
     expect(first).toHaveTextContent('Is your oven hiding grime?')
     expect(first).not.toHaveTextContent('1/5')
-    expect(first.querySelector('img')).toBeNull()
+    expect(first.querySelector('img')).toHaveAttribute('src', '/api/files/users/u1/logos/logo.png')
     expect(first.getAttribute('style')).toContain(BACKGROUND.url)
     expect(screen.getByTestId('slide-2').getAttribute('style')).toBeNull()
     expect(screen.getByTestId('slide-5').querySelector('img')).toHaveAttribute('src', '/api/files/users/u1/logos/logo.png')

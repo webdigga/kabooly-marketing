@@ -58,11 +58,35 @@
   background-position: center;
 }
 
+/* The same stops as SHADE_STOPS in lib/slide-render.ts. */
 .hook::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgb(15 23 42 / 0%) 35%, rgb(15 23 42 / 88%) 100%);
+  background: linear-gradient(
+    to bottom,
+    rgb(15 23 42 / 0%) 40%,
+    rgb(15 23 42 / 55%) 60%,
+    rgb(15 23 42 / 92%) 72%,
+    rgb(15 23 42 / 92%) 100%
+  );
+}
+
+/* The logo badge in the corner of slide one (drawMark in slide-render.ts). */
+.mark {
+  position: absolute;
+  top: 8.9cqw;
+  left: 8.9cqw;
+  padding: 2.22cqw;
+  border-radius: 2.22cqw;
+  background-color: var(--color-white);
+  line-height: 0;
+}
+
+.mark img {
+  max-height: 8.89cqw;
+  max-width: 35.2cqw;
+  object-fit: contain;
 }
 
 .hook .words {

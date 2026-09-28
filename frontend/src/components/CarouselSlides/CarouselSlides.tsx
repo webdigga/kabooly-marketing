@@ -39,6 +39,11 @@ function SlidePreview({ slide, index, total, background, logo, colour }: {
       style={kind === 'hook' ? { backgroundColor: colour, backgroundImage: background ? `url("${background}")` : undefined } : undefined}
       data-testid={`slide-${index + 1}`}
     >
+      {kind === 'hook' && logo && (
+        <span className={styles.mark}>
+          <img src={logo} alt="" />
+        </span>
+      )}
       <div className={styles.words}>
         {kind === 'close' && logo && <img className={styles.logo} src={logo} alt="" />}
         <p className={styles.heading} style={heading}>

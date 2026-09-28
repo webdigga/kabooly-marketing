@@ -110,17 +110,51 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement): void {
   ctx.drawImage(img, (SLIDE_WIDTH - w) / 2, (SLIDE_HEIGHT - h) / 2, w, h)
 }
 
-// Slide one: the photograph, darkening towards the bottom where the hook
-// sits in large white type.
-function drawHook(ctx: CanvasRenderingContext2D, slide: Slide, design: SlideDesign, photo: HTMLImageElement | null): void {
+// The shade behind the hook's words. It reaches full strength above where
+// the longest words start, so white type is readable whatever the picture
+// does. The preview (CarouselSlides.module.css) uses the same stops.
+export const SHADE_STOPS: [offset: number, alpha: number][] = [
+  [0.4, 0],
+  [0.6, 0.55],
+  [0.72, 0.92],
+  [1, 0.92],
+]
+
+// The badge the logo sits on in the corner of slide one: white, so any
+// logo reads, dark or light.
+const MARK_HEIGHT = 96
+const MARK_MAX_WIDTH = 380
+const MARK_PADDING = 24
+const MARK_RADIUS = 24
+
+function drawMark(ctx: CanvasRenderingContext2D, logo: HTMLImageElement): void {
+  const scale = Math.min(MARK_HEIGHT / logo.naturalHeight, MARK_MAX_WIDTH / logo.naturalWidth)
+  const w = logo.naturalWidth * scale
+  const h = logo.naturalHeight * scale
+  ctx.fillStyle = SLIDE_COLOURS.white
+  ctx.beginPath()
+  ctx.roundRect(PADDING, PADDING, w + MARK_PADDING * 2, h + MARK_PADDING * 2, MARK_RADIUS)
+  ctx.fill()
+  ctx.drawImage(logo, PADDING + MARK_PADDING, PADDING + MARK_PADDING, w, h)
+}
+
+// Slide one: the picture, the logo in the top corner, and the hook in large
+// white type over a shade at the bottom.
+function drawHook(
+  ctx: CanvasRenderingContext2D,
+  slide: Slide,
+  design: SlideDesign,
+  photo: HTMLImageElement | null,
+  logo: HTMLImageElement | null
+): void {
   ctx.fillStyle = design.colour
   ctx.fillRect(0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
   if (photo) drawCover(ctx, photo)
-  const shade = ctx.createLinearGradient(0, SLIDE_HEIGHT * 0.35, 0, SLIDE_HEIGHT)
-  shade.addColorStop(0, 'rgba(15, 23, 42, 0)')
-  shade.addColorStop(1, 'rgba(15, 23, 42, 0.88)')
+  const shade = ctx.createLinearGradient(0, 0, 0, SLIDE_HEIGHT)
+  for (const [offset, alpha] of SHADE_STOPS) shade.addColorStop(offset, `rgba(15, 23, 42, ${alpha})`)
   ctx.fillStyle = shade
   ctx.fillRect(0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
+  if (logo) drawMark(ctx, logo)
   const blocks = [
     block(ctx, slide.heading, { size: 88, weight: 700, colour: SLIDE_COLOURS.white, lineHeight: 1.12 }),
     block(ctx, slide.body, { size: 44, weight: 400, colour: SLIDE_COLOURS.white, lineHeight: 1.4 }),
@@ -173,7 +207,11 @@ export async function renderSlide(design: SlideDesign, slides: Slide[], index: n
   const slide = slides[index]!
   const kind = slideKind(index, slides.length)
   if (kind === 'hook') {
-    drawHook(ctx, slide, design, design.background ? await loadImage(design.background) : null)
+    const [photo, logo] = await Promise.all([
+      design.background ? loadImage(design.background) : null,
+      design.logo ? loadImage(design.logo).catch(() => null) : null,
+    ])
+    drawHook(ctx, slide, design, photo, logo)
   } else if (kind === 'point') {
     drawPoint(ctx, slide, design)
   } else {
