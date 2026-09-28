@@ -68,16 +68,45 @@ describe("imagePrompt for a designed graphic", () => {
     expect(prompt).toContain("as a designed graphic");
     expect(prompt).toContain("flat shapes, simple illustration");
     expect(prompt).toContain("no photorealistic people or faces");
+    expect(prompt).toContain("no slogans, taglines, prices");
     expect(prompt).toContain("use only the brand colours #1d4ed8, #f59e0b, plus white, black and neutral greys");
     expect(prompt).toContain("no other colour may appear anywhere");
     expect(prompt).not.toContain("two arms, two hands");
     expect(prompt).not.toContain("logo");
   });
 
-  it("asks for the supplied logo to be copied in, never redrawn", () => {
-    const prompt = imagePrompt(profile, "Spring ovens", "story", { style: "graphic", logo: true });
+  it("asks for the supplied logo to be copied in, never redrawn, and signs it with the web address", () => {
+    const prompt = imagePrompt({ ...profile, websiteUrl: "https://www.acme-cleaning.co.uk/prices" }, "Spring ovens", "story", {
+      style: "graphic",
+      logo: true,
+    });
     expect(prompt).toContain("full screen vertical 9:16 designed graphic");
     expect(prompt).toContain("the business's own logo");
+    expect(prompt).toContain("Never redraw, restyle, recolour");
+    expect(prompt).toContain('"Acme Cleaning" and "acme-cleaning.co.uk"');
+    expect(prompt).toContain("do not write the name a second time");
+  });
+
+  it("signs a stripped graphic with the name only, since the strip carries the web address", () => {
+    const prompt = imagePrompt({ ...profile, websiteUrl: "acme-cleaning.co.uk" }, "Spring ovens", "facebook", {
+      style: "graphic",
+      logo: false,
+    });
+    expect(prompt).toContain('The only words anywhere in the image are "Acme Cleaning", spelled exactly');
+    expect(prompt).not.toContain("acme-cleaning.co.uk");
+    expect(prompt).not.toContain("Do not add any words");
+  });
+
+  it("signs with the name alone when the business has no website", () => {
+    const prompt = imagePrompt(profile, "Spring ovens", "facebook", { style: "graphic", logo: true });
+    expect(prompt).toContain('The only words anywhere in the image are "Acme Cleaning"');
+    expect(prompt).toContain("the business's own logo");
+  });
+
+  it("puts the logo into a photograph without asking for any words", () => {
+    const prompt = imagePrompt(profile, "Spring ovens", "facebook", { style: "photo", logo: true });
+    expect(prompt).toContain("two arms, two hands");
+    expect(prompt).toContain("Do not add any words");
     expect(prompt).toContain("Never redraw, restyle, recolour");
   });
 });

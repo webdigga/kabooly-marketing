@@ -100,6 +100,31 @@ const GRAPHIC = [
 
 const NO_TEXT = "Do not add any words, slogans, prices, phone numbers or other text to the image.";
 
+// "https://www.acme.co.uk/about" reads as "acme.co.uk" on an advert.
+// Mirrors websiteLabel in frontend/src/lib/brand-strip.ts.
+export function websiteLabel(url: string | null): string {
+  return (url ?? "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/.*$/, "");
+}
+
+// A design is signed, the way a designer would sign one. The model is given
+// the exact words, because the one thing it must not do is invent or
+// misspell them. The web address comes in only when the logo is drawn in,
+// because otherwise the brand strip carries it already.
+function signature(profile: Profile, withLogo: boolean): string[] {
+  const website = withLogo ? websiteLabel(profile.websiteUrl) : "";
+  const words = website ? `"${profile.businessName}" and "${website}"` : `"${profile.businessName}"`;
+  return [
+    `The only words anywhere in the image are ${words}, spelled exactly like that, letter for letter.`,
+    "Set them in a clean, simple sans-serif, large enough to read on a phone, in a clear area with space around them, as a designer would sign a poster. They are not a headline and must not dominate the design.",
+    "Add no other text of any kind: no slogans, taglines, prices, phone numbers, invented words or made-up letterforms.",
+    ...(withLogo ? ["Where the logo already shows the business name, do not write the name a second time."] : []),
+  ];
+}
+
 // Used only when the customer asks for their logo in the picture. The logo
 // file is sent with the prompt, and the model must copy it, never redraw it.
 const WITH_LOGO = [
@@ -116,12 +141,12 @@ export interface Look {
 }
 
 function lookLines(profile: Profile, look: Look): string[] {
-  return [
-    ...colourLines(profile, look.style),
-    ...(look.style === "graphic" ? GRAPHIC : REALISM),
-    NO_TEXT,
-    ...(look.logo ? WITH_LOGO : []),
-  ];
+  if (look.style === "photo") {
+    return [...colourLines(profile, "photo"), ...REALISM, NO_TEXT, ...(look.logo ? WITH_LOGO : [])];
+  }
+  // A graphic signs itself. Without the drawn logo a brand strip is stamped
+  // along the bottom afterwards, and that already carries the web address.
+  return [...colourLines(profile, "graphic"), ...GRAPHIC, ...signature(profile, look.logo), ...(look.logo ? WITH_LOGO : [])];
 }
 
 export function imagePrompt(profile: Profile, topic: string, platform: Platform, look: Look): string {
