@@ -112,6 +112,7 @@ const generationBody = z.preprocess(defaultFormat, z.discriminatedUnion("format"
   z.object({
     format: z.literal("carousel"),
     topic: z.string().trim().min(1).max(MAX_TOPIC_LENGTH),
+    imageStyle: z.enum(IMAGE_STYLES).default("photo"),
   }),
 ]));
 
@@ -125,12 +126,12 @@ function limitRequest(body: GenerationBody, platforms: Platform[]): GenerationRe
   return { kind: "text", units: 0, holdLock: true };
 }
 
-// How the images should look. Own photos and carousels are never redrawn
-// by the model, so they keep the default.
+// How the images should look. Only image adverts can have the logo drawn
+// in: a carousel's slides are laid out by the app, logo included, and an
+// own-photo post is the customer's own picture.
 function lookOf(body: GenerationBody): { imageStyle: ImageStyle; logoDrawn: boolean } {
-  return body.format === "images"
-    ? { imageStyle: body.imageStyle, logoDrawn: body.logoDrawn }
-    : { imageStyle: "photo", logoDrawn: false };
+  if (body.format === "photo") return { imageStyle: "photo", logoDrawn: false };
+  return { imageStyle: body.imageStyle, logoDrawn: body.format === "images" && body.logoDrawn };
 }
 
 // The uploaded photo an own-photo post is cut from, if it belongs to this

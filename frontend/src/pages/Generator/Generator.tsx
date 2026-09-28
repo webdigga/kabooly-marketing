@@ -138,6 +138,7 @@ function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, l
       {format === 'photo' && <PhotoPicker photo={photo} onChange={onPhoto} disabled={busy} />}
       {(format === 'images' || format === 'photo') && <PlatformPicker selected={platforms} onChange={onPlatforms} disabled={busy} />}
       {format === 'images' && <LookPicker look={look} onChange={onLook} disabled={busy} />}
+      {format === 'carousel' && <LookPicker look={look} onChange={onLook} disabled={busy} allowLogo={false} />}
       {format === 'video' && (
         <TextArea
           label={MOTION_LABEL}

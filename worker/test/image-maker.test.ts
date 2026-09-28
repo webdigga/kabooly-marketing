@@ -129,12 +129,21 @@ describe("videoStartPrompt and carouselBackgroundPrompt", () => {
   });
 
   it("asks for a plain, logo-free photograph for the first slide", () => {
-    const prompt = carouselBackgroundPrompt(profile, "Spring ovens");
+    const prompt = carouselBackgroundPrompt(profile, "Spring ovens", "photo");
     expect(prompt).toContain("4:5 photograph");
     expect(prompt).toContain("Do not add panels, boxes, borders, fog");
     expect(prompt).not.toMatch(/text will be placed|calm/);
     expect(prompt).toContain("Do not include any logo.");
     expect(prompt).not.toContain("attached image");
+  });
+
+  it("asks for a quiet design when the carousel is a graphic, with room for the words", () => {
+    const prompt = carouselBackgroundPrompt(profile, "Spring ovens", "graphic");
+    expect(prompt).toContain("4:5 designed graphic");
+    expect(prompt).toContain("use only the brand colours");
+    expect(prompt).toContain("one or two large shapes and a lot of empty space");
+    expect(prompt).toContain("Do not include any logo.");
+    expect(prompt).not.toContain("two arms, two hands");
   });
 });
 

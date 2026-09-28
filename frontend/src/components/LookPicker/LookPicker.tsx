@@ -18,9 +18,11 @@ interface LookPickerProps {
   look: Look
   onChange: (look: Look) => void
   disabled?: boolean
+  // Carousels lay out their own branding, so the logo choice is not offered.
+  allowLogo?: boolean
 }
 
-export default function LookPicker({ look, onChange, disabled }: LookPickerProps) {
+export default function LookPicker({ look, onChange, disabled, allowLogo = true }: LookPickerProps) {
   return (
     <fieldset className={styles.fieldset} disabled={disabled}>
       <legend className={styles.legend}>Look</legend>
@@ -50,25 +52,27 @@ export default function LookPicker({ look, onChange, disabled }: LookPickerProps
           )
         })}
       </div>
-      <label className={[styles.option, look.logo && styles.checked].filter(Boolean).join(' ')}>
-        <input
-          type="checkbox"
-          className="visually-hidden"
-          checked={look.logo}
-          onChange={() => onChange({ ...look, logo: !look.logo })}
-          data-testid="look-logo"
-        />
-        <span className={styles.box} aria-hidden="true">
-          {look.logo && <Check size={14} />}
-        </span>
-        <span className={styles.text}>
-          <span className={styles.name}>Put my logo inside the picture</span>
-          <span className={styles.meta}>
-            The design is built around your logo instead of the band along the bottom. Worth trying, and worth checking: the
-            logo is copied into a drawing, so look before you post.
+      {allowLogo && (
+        <label className={[styles.option, look.logo && styles.checked].filter(Boolean).join(' ')}>
+          <input
+            type="checkbox"
+            className="visually-hidden"
+            checked={look.logo}
+            onChange={() => onChange({ ...look, logo: !look.logo })}
+            data-testid="look-logo"
+          />
+          <span className={styles.box} aria-hidden="true">
+            {look.logo && <Check size={14} />}
           </span>
-        </span>
-      </label>
+          <span className={styles.text}>
+            <span className={styles.name}>Put my logo inside the picture</span>
+            <span className={styles.meta}>
+              The design is built around your logo instead of the band along the bottom. Worth trying, and worth checking: the
+              logo is copied into a drawing, so look before you post.
+            </span>
+          </span>
+        </label>
+      )}
     </fieldset>
   )
 }

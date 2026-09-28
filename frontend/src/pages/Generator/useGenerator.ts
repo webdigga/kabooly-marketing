@@ -112,7 +112,7 @@ function generationBody(options: GenerateOptions) {
     case 'photo':
       return { format: 'photo', topic, platforms, photoKey: options.photoKey }
     case 'carousel':
-      return { format: 'carousel', topic }
+      return { format: 'carousel', topic, imageStyle: look.style }
     case 'video':
       return { format: 'images', topic, platforms: [] }
   }

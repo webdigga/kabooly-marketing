@@ -306,7 +306,7 @@ export async function makeCarouselBackground(
   advert: AdvertRow,
   profile: Profile
 ): Promise<AdvertRow> {
-  const raw = await generateImage(env, carouselBackgroundPrompt(profile, advert.topic), CAROUSEL_SHAPE.aspectRatio, null);
+  const raw = await generateImage(env, carouselBackgroundPrompt(profile, advert.topic, advert.imageStyle), CAROUSEL_SHAPE.aspectRatio, null);
   const key = `${advertPrefix(advert.userId, advert.id)}background-${crypto.randomUUID()}.jpg`;
   await env.FILES.put(key, await fitToShape(env, raw, CAROUSEL_SHAPE), { httpMetadata: { contentType: "image/jpeg" } });
   const updated = await updateAdvert(env, advert, { backgroundKey: key });

@@ -220,6 +220,15 @@ describe('instagram stories', () => {
 })
 
 describe('carousels', () => {
+  it('asks for a designed graphic background when that look is chosen', async () => {
+    mockApi(carouselRoutes())
+    await landed('carousel')
+    await userEvent.click(screen.getByTestId('look-graphic'))
+    await userEvent.click(screen.getByTestId('generate'))
+    await screen.findByTestId('slide-1')
+    expect(callsTo('POST', '/api/generations')[0]?.body).toMatchObject({ format: 'carousel', imageStyle: 'graphic' })
+  })
+
   function carouselRoutes(overrides: Record<string, (req: { body: unknown }) => Response | Promise<Response>> = {}) {
     return base({
       'POST /api/generations': () =>
@@ -235,6 +244,7 @@ describe('carousels', () => {
   it('shows five slides over the background with the logo, and downloads them', async () => {
     mockApi(carouselRoutes())
     await landed('carousel')
+    expect(screen.queryByTestId('look-logo')).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('generate'))
     const first = await screen.findByTestId('slide-1')
     expect(first).toHaveTextContent('Is your oven hiding grime?')
@@ -243,7 +253,7 @@ describe('carousels', () => {
     expect(first.getAttribute('style')).toContain(BACKGROUND.url)
     expect(screen.getByTestId('slide-2').getAttribute('style')).toBeNull()
     expect(screen.getByTestId('slide-5').querySelector('img')).toHaveAttribute('src', '/api/files/users/u1/logos/logo.png')
-    expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'carousel', topic: 'Spring ovens' })
+    expect(callsTo('POST', '/api/generations')[0]?.body).toEqual({ format: 'carousel', topic: 'Spring ovens', imageStyle: 'photo' })
     await waitFor(() => expect(screen.getByTestId('download-slide-2')).toBeEnabled())
 
     await userEvent.click(screen.getByTestId('download-slide-2'))

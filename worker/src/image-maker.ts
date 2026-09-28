@@ -183,12 +183,20 @@ export function videoStartPrompt(profile: Profile, topic: string, scene: string)
 // The photograph on a carousel's first slide. The app lays the words over
 // its lower part and adds the real logo elsewhere, so it must be a plain
 // photograph: asking it to leave room for text makes it paint hazy panels.
-export function carouselBackgroundPrompt(profile: Profile, topic: string): string {
+export function carouselBackgroundPrompt(profile: Profile, topic: string, style: ImageStyle): string {
+  const subject = style === "graphic" ? "designed graphic" : "photograph";
   return [
-    `Create a 4:5 photograph for the first slide of a social media carousel for ${profile.businessName}, a small business.`,
+    `Create a 4:5 ${subject} for the first slide of a social media carousel for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic),
-    ...colourLines(profile, "photo"),
-    ...REALISM,
+    ...colourLines(profile, style),
+    ...(style === "graphic"
+      ? [
+          ...GRAPHIC,
+          // The app lays the slide's words over this, so a busy design would
+          // fight them.
+          "Keep it quiet and simple: one or two large shapes and a lot of empty space, with the middle of the frame clear.",
+        ]
+      : REALISM),
     "Full bleed, edge to edge. Do not add panels, boxes, borders, fog or blur effects.",
     NO_TEXT,
     "Do not include any logo.",
