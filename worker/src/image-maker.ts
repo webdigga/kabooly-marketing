@@ -49,22 +49,35 @@ export function streamOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
   });
 }
 
-// The lines every image prompt shares: the business, the brief and the
-// brand colours. The logo is never drawn by the model: the app stamps the
+// How the brand colours are used. A photograph can only echo them, since
+// the scene has to stay realistic; a design is invented outright, so the
+// palette is closed, or the model reaches for its own favourite colours.
+function colourLines(profile: Profile, style: ImageStyle): string[] {
+  const colours = profile.brandColours.join(", ");
+  if (style === "photo") {
+    return profile.brandColours.length
+      ? [
+          `Where it looks natural, echo the brand colours ${colours} in props, clothing or surroundings. Keep all colours realistic: no colour filters, tints or recolouring of the scene.`,
+        ]
+      : [];
+  }
+  return profile.brandColours.length
+    ? [
+        `Palette: use only the brand colours ${colours}, plus white, black and neutral greys. Shades and tints of those brand colours are fine. Every shape, background and accent must come from that palette, and no other colour may appear anywhere in the image.`,
+      ]
+    : ["Palette: use one main colour with white, black and neutral greys. Keep to that one colour, in shades and tints of it."];
+}
+
+// The lines every image prompt shares: the business and the brief. The logo
+// is never drawn by the model unless it was asked for: the app stamps the
 // real file on afterwards (brandImage).
 function briefLines(profile: Profile, topic: string): string[] {
-  const lines = [
+  return [
     `What the business does: ${profile.description}`,
     `Area served: ${profile.localArea}`,
     `The advert is about: ${topic}`,
     `Audience: ${profile.targetAudience}`,
   ];
-  if (profile.brandColours.length) {
-    lines.push(
-      `Where it looks natural, echo the brand colours ${profile.brandColours.join(", ")} in props, clothing or surroundings. Keep all colours realistic: no colour filters, tints or recolouring of the scene.`
-    );
-  }
-  return lines;
 }
 
 // Guards against what spoils a realistic advert photo: graphic add-ons and
@@ -80,7 +93,7 @@ const REALISM = [
 // designer would draw, with no photorealistic people to go wrong.
 const GRAPHIC = [
   "Style: a clean, modern designed graphic, the kind a graphic designer would make for a small business advert: flat shapes, simple illustration and generous space.",
-  "Build it from the brand colours. It is a design, not a photograph: no photographic textures and no photorealistic people or faces.",
+  "It is a design, not a photograph: no photographic textures and no photorealistic people or faces.",
   "The design fills the whole frame, edge to edge. No borders, frames or drop shadows around the edge.",
   "Keep it simple and uncluttered: a few clear shapes, not a busy collage. No stock-art clip art, no emoji, no watermarks.",
 ];
@@ -102,8 +115,13 @@ export interface Look {
   logo: boolean;
 }
 
-function lookLines(look: Look): string[] {
-  return [...(look.style === "graphic" ? GRAPHIC : REALISM), NO_TEXT, ...(look.logo ? WITH_LOGO : [])];
+function lookLines(profile: Profile, look: Look): string[] {
+  return [
+    ...colourLines(profile, look.style),
+    ...(look.style === "graphic" ? GRAPHIC : REALISM),
+    NO_TEXT,
+    ...(look.logo ? WITH_LOGO : []),
+  ];
 }
 
 export function imagePrompt(profile: Profile, topic: string, platform: Platform, look: Look): string {
@@ -113,14 +131,14 @@ export function imagePrompt(profile: Profile, topic: string, platform: Platform,
     return [
       `Create a full screen vertical 9:16 ${subject} for an Instagram Story for ${profile.businessName}, a small business.`,
       ...briefLines(profile, topic),
-      ...lookLines(look),
+      ...lookLines(profile, look),
       "Keep the middle of the frame clear of clutter and keep the key subject away from the top quarter and the bottom quarter: words are placed over those afterwards.",
     ].join("\n");
   }
   return [
     `Create an eye-catching ${spec.label} advert image for ${profile.businessName}, a small business, as a ${subject}.`,
     ...briefLines(profile, topic),
-    ...lookLines(look),
+    ...lookLines(profile, look),
   ].join("\n");
 }
 
@@ -131,6 +149,7 @@ export function videoStartPrompt(profile: Profile, topic: string, scene: string)
     `Create a vertical 9:16 opening frame for a short social media video advert for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic),
     `The scene: ${scene}`,
+    ...colourLines(profile, "photo"),
     ...REALISM,
     NO_TEXT,
   ].join("\n");
@@ -143,6 +162,7 @@ export function carouselBackgroundPrompt(profile: Profile, topic: string): strin
   return [
     `Create a 4:5 photograph for the first slide of a social media carousel for ${profile.businessName}, a small business.`,
     ...briefLines(profile, topic),
+    ...colourLines(profile, "photo"),
     ...REALISM,
     "Full bleed, edge to edge. Do not add panels, boxes, borders, fog or blur effects.",
     NO_TEXT,

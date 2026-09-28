@@ -54,12 +54,22 @@ describe("imagePrompt", () => {
 });
 
 describe("imagePrompt for a designed graphic", () => {
+  it("closes the palette when the business has no brand colours", () => {
+    const prompt = imagePrompt({ ...profile, brandColours: [] }, "Spring ovens", "instagram", {
+      style: "graphic",
+      logo: false,
+    });
+    expect(prompt).toContain("use one main colour with white, black and neutral greys");
+    expect(prompt).not.toContain("brand colours");
+  });
+
   it("swaps the photograph rules for design rules and leaves people out", () => {
     const prompt = imagePrompt(profile, "Spring ovens", "facebook", { style: "graphic", logo: false });
     expect(prompt).toContain("as a designed graphic");
     expect(prompt).toContain("flat shapes, simple illustration");
     expect(prompt).toContain("no photorealistic people or faces");
-    expect(prompt).toContain("#1d4ed8, #f59e0b");
+    expect(prompt).toContain("use only the brand colours #1d4ed8, #f59e0b, plus white, black and neutral greys");
+    expect(prompt).toContain("no other colour may appear anywhere");
     expect(prompt).not.toContain("two arms, two hands");
     expect(prompt).not.toContain("logo");
   });
