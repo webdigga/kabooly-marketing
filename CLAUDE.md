@@ -28,8 +28,9 @@ Doing:  Google block (docs/GOOGLE-PLAN.md). Built, not deployed: the Home
         at /reviews/ask (short link plus QR code), and Google reviews with
         drafted replies at /reviews. The reviews half needs Google to
         approve Business Profile API access before it can run at all, and
-        has never been exercised against the real API. Left in the block:
-        Google posts as a fourth platform.
+        has never been exercised against the real API. Google posts are built too, as a
+        fourth platform tick box needing no API. Everything in the block is
+        built; only the reviews half waits on Google.
 Next:   Google block agreed 2026-10-06, nothing built: docs/GOOGLE-PLAN.md.
         Search Console connect, Business Profile reviews, review requests,
         Google posts, keyword ideas. Nothing is ever posted for the
@@ -38,7 +39,7 @@ Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 
 ## What this is
-Standalone tool at marketing.kabooly.com that generates local adverts for small businesses to post by hand: text plus one image per ticked platform (Instagram, Facebook, Nextdoor, Instagram Story), posts cut from the customer's own photo, five-slide carousels, and short vertical videos. Own login. Sold as one of three Kabooly products (Managed Website Service, Marketing, CRM), on its own or in the bundle, so linking to the CRM and the other products is allowed. Still technically separate from the CRM: no shared login, no dependency.
+Standalone tool at marketing.kabooly.com that generates local adverts for small businesses to post by hand: text plus one image per ticked platform (Instagram, Facebook, Nextdoor, Google Business Profile, Instagram Story), posts cut from the customer's own photo, five-slide carousels, and short vertical videos. Own login. Sold as one of three Kabooly products (Managed Website Service, Marketing, CRM), on its own or in the bundle, so linking to the CRM and the other products is allowed. Still technically separate from the CRM: no shared login, no dependency.
 
 ## Stack
 - One Cloudflare Worker (`worker/`) serves the API (Hono, `/api/*`) AND the web app (Workers static assets from `frontend/dist`, SPA fallback). Same origin, so first-party cookies and no CORS.

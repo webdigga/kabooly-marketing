@@ -96,9 +96,15 @@ than as empty sections.
    rather than the SPA. The target must be an https Google address, checked
    on save, or the short link would be an open redirect on Kabooly's own
    domain.
-5. Google posts. A Business Profile post as a fourth platform tick box in the
-   existing advert flow: image at Google's size plus the words, downloaded and
-   posted by hand like the other three.
+5. DONE 2026-10-06, not deployed, and it needs nothing from Google.
+   Because posts are pasted by hand, no API is involved: Google is simply a
+   fourth platform in the existing advert flow, square at 1200x1200 (Google
+   asks for 720x720 or larger and no particular shape, checked 2026-10-06).
+   It is unticked by default, like a Story, so nobody's image allowance is
+   quietly spent on a listing they may not have. A profile saved before
+   Google existed has no brand strip for it, so `makePlatformImage` falls
+   back to another platform's strip, which is the same artwork at the same
+   share of the width; the right one is written on the next profile save.
 6. Keyword ideas. What to write and post about next, built from the Search
    Console terms rather than guessed. Deliberately last: without stage 2 it is
    Haiku inventing keywords, which is what everyone else's free tool does.
@@ -123,9 +129,10 @@ than as empty sections.
   not a switch. Weeks, and they can refuse. Reviews and replies are only in
   the older v4 endpoints, which have no read-only scope, so the ask is
   `business.manage` even though we never write.
-- Stages 1, 2, 4 and 6 do not depend on the Business Profile application.
-  Stages 3 and 5 do. Stage 3 is written but cannot be exercised until the
-  application is approved, so its first real run is also its first test
+- Stages 1, 2, 4, 5 and 6 do not depend on the Business Profile
+  application, stage 5 included: a Google post is copied and pasted like
+  every other platform, so it needs no API. Only stage 3 depends on it. Stage 3 is written but cannot be exercised until
+  the application is approved, so its first real run is also its first test
   against Google.
 
 ## Decisions taken

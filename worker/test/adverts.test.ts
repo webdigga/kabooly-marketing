@@ -107,6 +107,17 @@ describe("generation", () => {
     await served.arrayBuffer();
   });
 
+  it("brands a platform the account has no strip for yet with the strip it does have", async () => {
+    const { cookie } = await verifiedUser();
+    const { key }: { key: string } = await (await uploadStrip(cookie)).json();
+    // A profile saved before Google was a platform: no google strip.
+    await withProfile(cookie, { brandStrips: { nextdoor: key } });
+    const list = await events(await generate(cookie, "Spring", ["google"]));
+    expect(list.map((e) => e.type)).toEqual(["advert", "image", "done"]);
+    const image = list.flatMap((e) => (e.type === "image" ? [e.image] : []))[0];
+    expect(image).toMatchObject({ platform: "google", label: "Google", width: 1200, height: 1200 });
+  });
+
   it("carries on when an account has no brand strips", async () => {
     const { cookie } = await verifiedUser();
     const { brandStrips: _strips, ...withoutStrips } = PROFILE;

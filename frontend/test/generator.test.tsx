@@ -94,6 +94,19 @@ describe('generation', () => {
     expect(localStorage.getItem('kabooly-marketing-platforms')).toBe('["instagram","facebook"]')
   })
 
+  it('offers Google as a fourth platform, unticked until it is asked for', async () => {
+    await landed()
+    expect(screen.getByTestId('platform-google')).not.toBeChecked()
+    expect(screen.getByTestId('platform-instagram')).toBeChecked()
+    await userEvent.click(screen.getByTestId('platform-google'))
+    await userEvent.click(screen.getByTestId('generate'))
+    expect(await screen.findByTestId('post-text')).toBeInTheDocument()
+    expect(callsTo('POST', '/api/generations')[0]?.body).toMatchObject({
+      platforms: ['instagram', 'facebook', 'nextdoor', 'google'],
+    })
+    expect(localStorage.getItem('kabooly-marketing-platforms')).toBe('["instagram","facebook","nextdoor","google"]')
+  })
+
   it('asks for a designed graphic with the logo in it, and remembers the choice', async () => {
     await landed()
     await userEvent.click(screen.getByTestId('look-graphic'))

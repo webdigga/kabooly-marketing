@@ -282,7 +282,11 @@ export async function makePlatformImage(env: Env, job: ImageJob, platform: Platf
   const look = { style: job.advert.imageStyle, logo: job.logo !== null };
   const prompt = imagePrompt(job.profile, job.advert.topic, platform, look);
   const raw = await generateImage(env, prompt, PLATFORM_SPECS[platform].aspectRatio, job.logo);
-  const strip = job.logo ? null : (job.strips[platform] ?? null);
+  // A platform added after an account last saved its profile has no strip
+  // of its own yet. Every strip is the same artwork at the same share of
+  // the width, so another platform's squeezes onto this one cleanly, and
+  // the right one appears the next time the profile is saved.
+  const strip = job.logo ? null : (job.strips[platform] ?? Object.values(job.strips)[0] ?? null);
   const branded = await brandGenerated(env, raw, platform, strip);
   return storePlatformImage(env, job.advert, platform, branded);
 }

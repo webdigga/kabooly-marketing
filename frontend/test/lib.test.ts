@@ -243,7 +243,12 @@ describe('brand strip', () => {
     )
 
     const keys = await uploadBrandStrips({ logoUrl: '/api/files/users/u1/logos/l.png', colour: '#1d4ed8', websiteUrl: 'https://acme.co.uk/' })
-    expect(keys).toEqual({ instagram: 'users/u1/brand/strip.png', facebook: 'users/u1/brand/strip.png', nextdoor: 'users/u1/brand/strip.png' })
+    expect(keys).toEqual({
+      instagram: 'users/u1/brand/strip.png',
+      facebook: 'users/u1/brand/strip.png',
+      nextdoor: 'users/u1/brand/strip.png',
+      google: 'users/u1/brand/strip.png',
+    })
     expect(fillText).toHaveBeenCalledWith('acme.co.uk', expect.any(Number), expect.any(Number))
     expect(drawImage).toHaveBeenCalled()
     vi.unstubAllGlobals()

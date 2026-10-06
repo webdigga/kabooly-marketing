@@ -1,7 +1,7 @@
 // Shapes the worker sends back. Kept in step with worker/src by hand; the
 // worker tests pin the JSON these mirror.
 
-export type Platform = 'instagram' | 'facebook' | 'nextdoor' | 'story'
+export type Platform = 'instagram' | 'facebook' | 'nextdoor' | 'google' | 'story'
 
 // How a generated image looks: a photograph, or a designed graphic.
 export type ImageStyle = 'photo' | 'graphic'

@@ -79,7 +79,7 @@ export const verification = sqliteTable(
 
 // app tables
 
-export const PLATFORMS = ["instagram", "facebook", "nextdoor", "story"] as const;
+export const PLATFORMS = ["instagram", "facebook", "nextdoor", "google", "story"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 
