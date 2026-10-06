@@ -33,7 +33,7 @@ describe('get found', () => {
     expect(figures).toHaveTextContent('30 better')
     // Impressions held steady, and a lower average position is an improvement.
     expect(figures).toHaveTextContent('no change')
-    expect(figures).toHaveTextContent('2.7 better')
+    expect(figures).toHaveTextContent('2.7 places better')
 
     expect(within(screen.getByTestId('search-nearly')).getByText('end of tenancy clean')).toBeInTheDocument()
     expect(within(screen.getByTestId('search-queries')).getByText('oven cleaning twickenham')).toBeInTheDocument()

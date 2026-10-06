@@ -58,25 +58,35 @@ function dateLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-// Clicks and impressions go up to improve; an average position goes down.
-function Change({ now, before, lowerIsBetter = false }: { now: number; before: number; lowerIsBetter?: boolean }) {
+// Clicks and impressions go up to improve; an average position goes down,
+// since place 3 beats place 12. The arrow follows the news rather than the
+// number, so up always means good and a drop to a better place does not
+// point downwards.
+function Change({ now, before, lowerIsBetter = false, unit = '' }: { now: number; before: number; lowerIsBetter?: boolean; unit?: string }) {
   const difference = Number((now - before).toFixed(1))
   if (difference === 0 || before === 0) return <span className={styles.flat}>no change</span>
   const better = lowerIsBetter ? difference < 0 : difference > 0
-  const Icon = difference > 0 ? ArrowUpRight : ArrowDownRight
+  const Icon = better ? ArrowUpRight : ArrowDownRight
   return (
     <span className={better ? styles.better : styles.worse}>
       <Icon size={14} aria-hidden="true" />
-      {Math.abs(difference).toLocaleString('en-GB')} {better ? 'better' : 'worse'}
+      {Math.abs(difference).toLocaleString('en-GB')}
+      {unit ? ` ${unit}` : ''} {better ? 'better' : 'worse'}
     </span>
   )
 }
 
 function Figures({ data }: { data: Overview }) {
   const stats = [
-    { label: 'Visits from Google', now: data.totals.clicks, before: data.before.clicks, lowerIsBetter: false },
-    { label: 'Times you appeared', now: data.totals.impressions, before: data.before.impressions, lowerIsBetter: false },
-    { label: 'Average place in the results', now: data.totals.position, before: data.before.position, lowerIsBetter: true },
+    { label: 'Visits from Google', now: data.totals.clicks, before: data.before.clicks, lowerIsBetter: false, unit: '' },
+    { label: 'Times you appeared', now: data.totals.impressions, before: data.before.impressions, lowerIsBetter: false, unit: '' },
+    {
+      label: 'Average place in the results',
+      now: data.totals.position,
+      before: data.before.position,
+      lowerIsBetter: true,
+      unit: 'places',
+    },
   ]
   return (
     <div className={styles.stats} data-testid="search-figures">
@@ -84,7 +94,7 @@ function Figures({ data }: { data: Overview }) {
         <div key={stat.label} className={styles.stat}>
           <p className={styles.number}>{stat.now.toLocaleString('en-GB')}</p>
           <p className={styles.statLabel}>{stat.label}</p>
-          <Change now={stat.now} before={stat.before} lowerIsBetter={stat.lowerIsBetter} />
+          <Change now={stat.now} before={stat.before} lowerIsBetter={stat.lowerIsBetter} unit={stat.unit} />
         </div>
       ))}
     </div>
