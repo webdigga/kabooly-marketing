@@ -119,7 +119,7 @@ export default function Library() {
             <Images size={48} aria-hidden="true" />
             <h2>No adverts yet</h2>
             <p>Adverts appear here as soon as you create them.</p>
-            <Link to="/" className={buttonClass()}>
+            <Link to="/create" className={buttonClass()}>
               Create your first advert
             </Link>
           </div>

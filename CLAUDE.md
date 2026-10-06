@@ -19,6 +19,16 @@ Built:  2026-09-17 and 18, not deployed: monthly caps, captioned videos
         strip, and a sidebar navigation with a page per format. Live checks
         in docs/PLAN.md "Built 2026-09-17".
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
+Doing:  Google block (docs/GOOGLE-PLAN.md). Built, not deployed: the Home
+        page and /create grouping, and the Search Console connection
+        (Settings card, OAuth, encrypted refresh tokens). Before it works
+        live: the callback redirect URI on the OAuth client, the
+        webmasters.readonly scope verified, and the GOOGLE_TOKEN_KEY secret.
+        Next in the block: the Search Console panel.
+Next:   Google block agreed 2026-10-06, nothing built: docs/GOOGLE-PLAN.md.
+        Search Console connect, Business Profile reviews, review requests,
+        Google posts, keyword ideas. Nothing is ever posted for the
+        customer, in any format: we make it, they post it.
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 
@@ -34,8 +44,9 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - Claude Haiku 4.5 (`claude-haiku-4-5`) for text, topic suggestions, carousel slides and reading websites (the last two as forced tool calls); Gemini Interactions API for images (`GEMINI_IMAGE_MODEL`) and videos (`GEMINI_VIDEO_MODEL`, background mode).
 
 ## Map
+- `worker/src/google.ts` the Google connect, callback, list and disconnect routes, with `google/oauth.ts` (consent URL, signed state, code exchange, token refresh, revoke, encryption) and `google/store.ts` (the `google_connections` rows, and `connectionToken` for work that needs an access token).
 - `worker/src/index.ts` routes; `auth.ts`; `session.ts` (verified-user gate); `profile.ts` (profile + website scan route); `scan/` (colour + logo detection); `files.ts` (logo upload, owner-only file serving); `files.ts` also takes photo uploads; `adverts.ts` (topics, generations for every format, library, regeneration, video routes, usage); `advert-store.ts` (rows and files); `generation.ts` (NDJSON stream, runs under waitUntil); `copywriter.ts` (Haiku); `image-maker.ts` (Gemini, crop, photo branding); `video-maker.ts` (Omni jobs) and `video-store.ts` (pending video rows); `scan/info-pages.ts` (about and services pages); `limiter.ts` (Durable Object) and `limits.ts` (429 responses).
-- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook, `website-fill.ts`); `components/` shared UI (AppShell with the sidebar and phone menu, Button, Card, Field, Alert, ImageTile, AdvertText, PhotoPicker, CarouselSlides, VideoPanel, UsagePanel...); `lib/slide-render.ts` draws carousel slides on a canvas and `lib/brand-strip.ts` draws the brand strip. Each thing you can make is its own page: `/`, `/photo`, `/carousel`, `/video`.
+- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook, `website-fill.ts`); `components/` shared UI (AppShell with the sidebar and phone menu, Button, Card, Field, Alert, ImageTile, AdvertText, PhotoPicker, CarouselSlides, VideoPanel, UsagePanel...); `lib/slide-render.ts` draws carousel slides on a canvas and `lib/brand-strip.ts` draws the brand strip. `/` is the Home page (allowance, what to make, the last few adverts); each thing you can make is its own page under `/create`: `/create`, `/create/photo`, `/create/carousel`, `/create/video`. The old top-level `/photo`, `/carousel` and `/video` redirect there.
 
 ## Hard rules
 - Follow the TrackShows auth pattern. Do not invent a new auth approach.
@@ -43,6 +54,7 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - Paid accounts only (added 2026-09-16). Nobody can register: email sign-up, sign-in codes and Google are all set to `disableSignUp`. Accounts are created only by `POST /api/internal/provision`, called by the kabooly.com checkout after payment, which emails a 7 day set-password link (`/set-password?token=`). Checkout never sends a password.
 - Access = a `subscriptions` row with `active = true`, checked in `session.ts` (402 `SUBSCRIPTION_INACTIVE`). The founder's account (`FOUNDER_LOGIN_EMAIL`, webdigga42@gmail.com) works without one. `source = marketing` rows follow this worker's Stripe webhook (`/api/stripe/webhook`, metadata `plan=marketing`); `source = bundle` rows are switched by the CRM webhook through `POST /api/internal/bundle-access`.
 - `/api/internal/*` is server-to-server only: `Authorization: Bearer INTERNAL_API_SECRET`.
+- Nothing is ever posted or changed on a customer's behalf, on any platform. Google connections are read-only (`webmasters.readonly`), and Google refresh tokens are encrypted with `GOOGLE_TOKEN_KEY` before they reach D1; no route returns one.
 - The logo is never drawn by an AI model. The browser draws the brand strip (logo plus website) when the profile is saved, and Cloudflare Images stamps it onto every image (`brandImage` in `worker/src/image-maker.ts`). The one exception is an image advert asked for with "logo in the picture": the real logo file is sent to the model as an input, the prompt forbids redrawing it, and that image gets no strip.
 - Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h and 150 per rolling 30 days, 20 videos per rolling 30 days, 5 image generations and 3 videos per minute, one generation in flight (topic suggestions, website reads and videos exempt from the lock), text 200/day and 20/min. A carousel is one image. Regenerations count.
 - Schema changes go through `npm run db:generate` in `worker/` (drizzle-kit); never hand-edit an applied migration.

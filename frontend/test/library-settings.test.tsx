@@ -9,24 +9,52 @@ const base = {
   'GET /api/profile': () => json({ profile: PROFILE }),
   'GET /api/usage': () => json(USAGE),
   'POST /api/topics/suggest': () => json({ topic: 'Spring ovens' }),
+  'GET /api/google/connections': () => json({ connections: [] }),
 }
+
+const CONNECTED = { service: 'search_console', account: 'david@kabooly.com', connectedAt: '2026-10-06T09:00:00.000Z' }
 
 beforeEach(() => {
   signedIn()
 })
 
-describe('navigation', () => {
-  it('moves between the four things you can make, the library and settings', async () => {
+describe('home', () => {
+  it('opens on the business, its allowance, what to make and the last few adverts', async () => {
+    mockApi({ ...base, 'GET /api/posts': () => json({ adverts: [advert()], nextCursor: null }) })
+    renderApp('/')
+    await screen.findByRole('heading', { name: 'Acme Cleaning' })
+    expect(await screen.findByTestId('usage')).toHaveTextContent('18 leftimages today')
+    expect(screen.getByTestId('make-create')).toBeInTheDocument()
+    expect(screen.getByTestId('make-video')).toBeInTheDocument()
+    const recent = await screen.findByTestId('recent')
+    expect(within(recent).getByTestId('library-card')).toBeInTheDocument()
+    // Nothing is picked on the home page, so no tick boxes.
+    expect(within(recent).queryByTestId('select-a1')).not.toBeInTheDocument()
+    await userEvent.click(within(recent).getByRole('link', { name: 'All of your adverts' }))
+    await screen.findByRole('heading', { name: 'Library' })
+  })
+
+  it('leaves out the recent adverts when there are none', async () => {
     mockApi({ ...base, 'GET /api/posts': () => json({ adverts: [], nextCursor: null }) })
     renderApp('/')
-    await screen.findByRole('heading', { name: 'Image advert' })
+    await screen.findByRole('heading', { name: 'Acme Cleaning' })
+    expect(screen.queryByTestId('recent')).not.toBeInTheDocument()
+  })
+})
+
+describe('navigation', () => {
+  it('moves from home through the four things you can make, the library and settings', async () => {
+    mockApi({ ...base, 'GET /api/posts': () => json({ adverts: [], nextCursor: null }) })
+    renderApp('/')
+    await screen.findByRole('heading', { name: 'Acme Cleaning' })
     for (const [label, heading] of [
+      ['Image advert', 'Image advert'],
       ['Photo post', 'Photo post'],
       ['Carousel', 'Carousel'],
       ['Video', 'Video'],
       ['Library', 'Library'],
       ['Settings', 'Settings'],
-      ['Image advert', 'Image advert'],
+      ['Home', 'Acme Cleaning'],
     ]) {
       // The same links appear in the sidebar and in the phone tab row.
       await userEvent.click(screen.getAllByRole('link', { name: label })[0]!)
@@ -41,7 +69,7 @@ describe('switching between pages', () => {
       ...base,
       'POST /api/generations': () => ndjson([{ type: 'advert', advert: advert() }, { type: 'done', usage: USAGE }]),
     })
-    renderApp('/')
+    renderApp('/create')
     await waitFor(() => expect(screen.getByTestId('topic-input')).toHaveValue('Spring ovens'))
     await userEvent.click(screen.getByTestId('generate'))
     await screen.findByTestId('result')
@@ -54,7 +82,7 @@ describe('switching between pages', () => {
 describe('the phone menu', () => {
   it('opens behind the menu button and closes when a page is chosen', async () => {
     mockApi(base)
-    renderApp('/')
+    renderApp('/create')
     await screen.findByRole('heading', { name: 'Image advert' })
     expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByTestId('menu-button'))
@@ -360,6 +388,36 @@ describe('loading the account', () => {
     await screen.findByText(/Could not load your account/)
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('heading', { name: 'Image advert' })
+    await screen.findByRole('heading', { name: 'Acme Cleaning' })
+  })
+})
+
+describe('google connections', () => {
+  it('offers a link to connect Search Console when nothing is connected', async () => {
+    mockApi(base)
+    renderApp('/settings')
+    const card = await screen.findByTestId('google-connections')
+    expect(within(card).getByTestId('connect-search-console')).toHaveAttribute('href', '/api/google/search_console/connect')
+    expect(within(card).queryByTestId('disconnect-search-console')).not.toBeInTheDocument()
+  })
+
+  it('shows the connected account and disconnects it', async () => {
+    mockApi({ ...base, 'GET /api/google/connections': () => json({ connections: [CONNECTED] }), 'DELETE /api/google/search_console': () => json({ removed: true }) })
+    renderApp('/settings?google=connected')
+    expect(await screen.findByText('Google Search Console is connected.')).toBeInTheDocument()
+    expect(await screen.findByTestId('search-console-account')).toHaveTextContent('david@kabooly.com')
+    await userEvent.click(screen.getByTestId('disconnect-search-console'))
+    expect(await screen.findByTestId('connect-search-console')).toBeInTheDocument()
+    expect(screen.queryByText('Google Search Console is connected.')).not.toBeInTheDocument()
+    expect(callsTo('DELETE', '/api/google/search_console')).toHaveLength(1)
+  })
+
+  it('says so when Google sent them back without connecting, and when disconnecting fails', async () => {
+    mockApi({ ...base, 'GET /api/google/connections': () => json({ connections: [CONNECTED] }), 'DELETE /api/google/search_console': () => json({}, 500) })
+    renderApp('/settings?google=refused')
+    expect(await screen.findByText(/Nothing was connected/)).toBeInTheDocument()
+    await userEvent.click(await screen.findByTestId('disconnect-search-console'))
+    expect(await screen.findByText(/could not be disconnected/)).toBeInTheDocument()
+    expect(screen.getByTestId('search-console-account')).toBeInTheDocument()
   })
 })

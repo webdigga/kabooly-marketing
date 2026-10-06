@@ -23,6 +23,10 @@ Agreed with David 2026-09-17 and built the same day. Not yet deployed or tested 
 4. Carousel: slides render with background, logo and colour; "Download all slides" saves five 1080x1350 PNGs.
 5. Video: made from the create screen and from a library advert; plays on an iPhone (needs the byte-range support added to `/api/files`); download works; the job disappears from Google AI Studio logs once saved.
 
+## Next: Google (Search Console, reviews, keyword ideas)
+
+Agreed 2026-10-06, nothing built. Plan in `docs/GOOGLE-PLAN.md`.
+
 ## Decisions
 
 - Monthly caps (2026-09-17): 150 images per rolling 30 days on top of 20 per 24 hours, and 20 videos per rolling 30 days, all in the `LIMITER` Durable Object, which now keeps 30 days of events. At about 10.5p an image and about 75p a video, the worst case is about £31 a month per account. A carousel counts as one image; own-photo posts and website reads count only as text. Regenerations count; failures are refunded.

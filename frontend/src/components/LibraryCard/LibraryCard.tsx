@@ -22,30 +22,34 @@ function kindsOf(advert: Advert): string[] {
 
 interface LibraryCardProps {
   advert: Advert
-  selected: boolean
-  onSelect: (id: string, selected: boolean) => void
+  selected?: boolean
+  // Left out where the card is only shown, as on the home page, which has
+  // no tick box because there is nothing to do with a selection there.
+  onSelect?: (id: string, selected: boolean) => void
 }
 
 // One advert in the library grid: a thumbnail, the topic and the date.
 // The whole card opens the advert; the tick box picks it for deleting.
-export default function LibraryCard({ advert, selected, onSelect }: LibraryCardProps) {
+export default function LibraryCard({ advert, selected = false, onSelect }: LibraryCardProps) {
   const thumbnail = thumbnailOf(advert)
   const kinds = kindsOf(advert)
   return (
     <div className={[styles.wrap, selected && styles.selectedWrap].filter(Boolean).join(' ')}>
-      <label className={styles.pick}>
-        <input
-          type="checkbox"
-          className="visually-hidden"
-          checked={selected}
-          onChange={(e) => onSelect(advert.id, e.target.checked)}
-          data-testid={`select-${advert.id}`}
-        />
-        <span className={styles.box} aria-hidden="true">
-          {selected && <Check size={14} />}
-        </span>
-        <span className="visually-hidden">Select this advert</span>
-      </label>
+      {onSelect && (
+        <label className={styles.pick}>
+          <input
+            type="checkbox"
+            className="visually-hidden"
+            checked={selected}
+            onChange={(e) => onSelect(advert.id, e.target.checked)}
+            data-testid={`select-${advert.id}`}
+          />
+          <span className={styles.box} aria-hidden="true">
+            {selected && <Check size={14} />}
+          </span>
+          <span className="visually-hidden">Select this advert</span>
+        </label>
+      )}
       <Link to={`/library/${advert.id}`} className={styles.card} data-testid="library-card">
         <div className={styles.thumb}>
           {thumbnail ? (

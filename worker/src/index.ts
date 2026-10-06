@@ -3,6 +3,7 @@ import { advertsApi } from "./adverts";
 import { createAuth } from "./auth";
 import type { Env } from "./env";
 import { filesApi } from "./files";
+import { googleApi } from "./google";
 import { profileApi } from "./profile";
 import { internalApi } from "./provision";
 import { stripeWebhookApi } from "./stripe-webhook";
@@ -28,6 +29,7 @@ api.use("*", requireVerifiedUser);
 api.route("/", profileApi);
 api.route("/", filesApi);
 api.route("/", advertsApi);
+api.route("/", googleApi);
 api.onError((err, c) => {
   console.error(err);
   return c.json({ error: "Internal error" }, 500);

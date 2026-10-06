@@ -1,0 +1,15 @@
+.row {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.account {
+  font-weight: var(--font-weight-medium);
+}
+
+.note {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  max-width: 34rem;
+}

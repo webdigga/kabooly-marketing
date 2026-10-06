@@ -1,4 +1,4 @@
-import { Camera, Clapperboard, GalleryHorizontal, Images, Menu, Settings, Sparkles, X } from 'lucide-react'
+import { Camera, Clapperboard, GalleryHorizontal, House, Images, Menu, Settings, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import Logo from '../Logo/Logo'
@@ -11,17 +11,17 @@ interface NavItem {
   end?: boolean
 }
 
+const HOME: NavItem = { to: '/', label: 'Home', icon: House, end: true }
+
 const CREATE: NavItem[] = [
-  { to: '/', label: 'Image advert', icon: Sparkles, end: true },
-  { to: '/photo', label: 'Photo post', icon: Camera },
-  { to: '/carousel', label: 'Carousel', icon: GalleryHorizontal },
-  { to: '/video', label: 'Video', icon: Clapperboard },
+  { to: '/create', label: 'Image advert', icon: Sparkles, end: true },
+  { to: '/create/photo', label: 'Photo post', icon: Camera },
+  { to: '/create/carousel', label: 'Carousel', icon: GalleryHorizontal },
+  { to: '/create/video', label: 'Video', icon: Clapperboard },
+  { to: '/library', label: 'Library', icon: Images },
 ]
 
-const ACCOUNT: NavItem[] = [
-  { to: '/library', label: 'Library', icon: Images },
-  { to: '/settings', label: 'Settings', icon: Settings },
-]
+const ACCOUNT: NavItem[] = [{ to: '/settings', label: 'Settings', icon: Settings }]
 
 function linkClass({ isActive }: { isActive: boolean }): string {
   return [styles.link, isActive && styles.active].filter(Boolean).join(' ')
@@ -40,6 +40,7 @@ function Item({ item, onChoose }: { item: NavItem; onChoose?: () => void }) {
 function Sections({ onChoose }: { onChoose?: () => void }) {
   return (
     <>
+      <Item item={HOME} onChoose={onChoose} />
       <p className={styles.group}>Create</p>
       {CREATE.map((item) => (
         <Item key={item.to} item={item} onChoose={onChoose} />

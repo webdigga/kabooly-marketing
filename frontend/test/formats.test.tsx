@@ -89,7 +89,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const PATHS = { images: '/', photo: '/photo', carousel: '/carousel', video: '/video' }
+const PATHS = { images: '/create', photo: '/create/photo', carousel: '/create/carousel', video: '/create/video' }
 
 async function landed(format: keyof typeof PATHS) {
   renderApp(PATHS[format])
@@ -103,7 +103,7 @@ function photoFile(name = 'garden.jpg', type = 'image/jpeg') {
 describe('usage', () => {
   it('shows images today and this month, and videos this month', async () => {
     mockApi(base())
-    renderApp('/')
+    renderApp('/create')
     const usage = await screen.findByTestId('usage')
     expect(usage).toHaveTextContent('18 leftimages today of 20')
     expect(usage).toHaveTextContent('138 leftimages this month of 150')

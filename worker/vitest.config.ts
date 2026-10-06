@@ -14,6 +14,8 @@ export default defineConfig({
           BETTER_AUTH_URL: "http://localhost",
           GOOGLE_CLIENT_ID: "test-google-client-id",
           GOOGLE_CLIENT_SECRET: "test-google-client-secret",
+          // 32 bytes, base64url, for the Google refresh token encryption.
+          GOOGLE_TOKEN_KEY: "dGVzdC1nb29nbGUtdG9rZW4ta2V5LTAxMjM0NTY3ODk",
           EMAIL_FROM: "test@example.com",
           FOUNDER_LOGIN_EMAIL: "founder@example.com",
           INTERNAL_API_SECRET: "test-internal-secret",
@@ -27,6 +29,10 @@ export default defineConfig({
   ],
   test: {
     setupFiles: ["./test/apply-migrations.ts"],
+    // The tests that cut platform images run the Images binding over real
+    // pixels, and the platform sizes grew to 1440x1800, so a few of them pass
+    // 5 seconds once istanbul is instrumenting the worker.
+    testTimeout: 20_000,
     coverage: {
       provider: "istanbul",
       include: ["src/**"],

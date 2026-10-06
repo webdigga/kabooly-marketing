@@ -128,6 +128,31 @@ export const profileServices = sqliteTable(
   (t) => [index("profile_services_user_id_idx").on(t.userId, t.position)]
 );
 
+// A customer's own Google accounts, one row per service they connect.
+// Business Profile joins this list when that stage is built; Google has to
+// approve access to it first.
+export const GOOGLE_SERVICES = ["search_console"] as const;
+export type GoogleService = (typeof GOOGLE_SERVICES)[number];
+
+export const googleConnections = sqliteTable(
+  "google_connections",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    service: text("service", { enum: GOOGLE_SERVICES }).notNull(),
+    // The refresh token, encrypted with GOOGLE_TOKEN_KEY. Never leaves the
+    // Worker: no route returns it, decrypted or not.
+    refreshToken: text("refresh_token").notNull(),
+    // The Google account it belongs to, so Settings can show which one is
+    // connected.
+    account: text("account").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.service] })]
+);
+
 // What an advert is made of: generated platform images, platform images
 // cut from the customer's own photo, or a carousel of slides.
 export const ADVERT_FORMATS = ["images", "photo", "carousel"] as const;

@@ -3,6 +3,7 @@ import AppShell from './components/AppShell/AppShell'
 import { GuestOnly, RequireProfile, RequireVerified } from './components/Guards/Guards'
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword'
 import Generator from './pages/Generator/Generator'
+import Home from './pages/Home/Home'
 import Library from './pages/Library/Library'
 import LibraryItem from './pages/LibraryItem/LibraryItem'
 import Onboarding from './pages/Onboarding/Onboarding'
@@ -24,12 +25,18 @@ export function AppRoutes() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<RequireProfile />}>
           <Route element={<AppShell />}>
+            <Route index element={<Home />} />
             {/* Keyed by format: moving between them starts a fresh page
                 rather than keeping the last result on screen. */}
-            <Route index element={<Generator key="images" format="images" />} />
-            <Route path="/photo" element={<Generator key="photo" format="photo" />} />
-            <Route path="/carousel" element={<Generator key="carousel" format="carousel" />} />
-            <Route path="/video" element={<Generator key="video" format="video" />} />
+            <Route path="/create" element={<Generator key="images" format="images" />} />
+            <Route path="/create/photo" element={<Generator key="photo" format="photo" />} />
+            <Route path="/create/carousel" element={<Generator key="carousel" format="carousel" />} />
+            <Route path="/create/video" element={<Generator key="video" format="video" />} />
+            {/* The create screens were at the top level until the tool grew
+                past adverts, so old links keep working. */}
+            <Route path="/photo" element={<Navigate to="/create/photo" replace />} />
+            <Route path="/carousel" element={<Navigate to="/create/carousel" replace />} />
+            <Route path="/video" element={<Navigate to="/create/video" replace />} />
             <Route path="/library" element={<Library />} />
             <Route path="/library/:id" element={<LibraryItem />} />
             <Route path="/settings" element={<Settings />} />

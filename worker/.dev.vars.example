@@ -6,6 +6,10 @@ BETTER_AUTH_URL=http://localhost:5173
 # as a redirect URI for local sign-in.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+# Encrypts the Google refresh tokens stored in D1. Generate with
+# `openssl rand -base64 32 | tr '+/' '-_' | tr -d '='`. Changing it makes
+# every existing Google connection unreadable, so customers reconnect.
+GOOGLE_TOKEN_KEY=
 # Sender address on the Cloudflare Email Sending domain. Locally, emails are
 # not sent; wrangler dev prints where it saved each one.
 EMAIL_FROM=noreply@marketing.kabooly.com

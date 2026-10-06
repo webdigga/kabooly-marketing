@@ -9,6 +9,8 @@ export interface Env {
   BETTER_AUTH_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  // 32 random bytes, base64url, encrypting the Google refresh tokens in D1.
+  GOOGLE_TOKEN_KEY: string;
   EMAIL: SendEmail;
   // Bare address on the onboarded sending domain; the display name is set
   // in email.ts.

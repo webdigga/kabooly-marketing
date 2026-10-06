@@ -38,7 +38,7 @@ beforeEach(() => {
 })
 
 async function landed() {
-  renderApp('/')
+  renderApp('/create')
   await waitFor(() => expect(screen.getByTestId('topic-input')).toHaveValue('Spring ovens'))
 }
 
@@ -62,7 +62,7 @@ describe('topic', () => {
 
   it('still works by hand when suggestions fail', async () => {
     mockApi(routes({ 'POST /api/topics/suggest': () => json({}, 502) }))
-    renderApp('/')
+    renderApp('/create')
     expect(await screen.findByText(/Could not suggest a topic/)).toBeInTheDocument()
     expect(screen.getByTestId('generate')).toBeDisabled()
     await userEvent.type(screen.getByTestId('topic-input'), 'Oven cleaning')

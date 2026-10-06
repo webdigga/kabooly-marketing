@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
+import GoogleConnections from '../../components/GoogleConnections/GoogleConnections'
 import { useProfile } from '../../context/ProfileContext'
 import { authClient } from '../../lib/auth-client'
 import { draftFromProfile, validate } from '../../profile/draft'
@@ -112,6 +113,7 @@ export default function Settings() {
           Save changes
         </Button>
       </div>
+      <GoogleConnections />
       <Card title="Account">
         <div>
           <Button variant="secondary" icon={<LogOut size={18} aria-hidden="true" />} onClick={() => void signOut()} data-testid="sign-out">

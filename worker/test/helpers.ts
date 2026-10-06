@@ -43,7 +43,7 @@ export function postJson(path: string, body: unknown, cookie?: string): Promise<
 export function apiFetch(
   cookie: string,
   path: string,
-  init?: { method?: string; body?: unknown }
+  init?: { method?: string; body?: unknown; manualRedirect?: boolean }
 ): Promise<Response> {
   return appFetch(path, {
     method: init?.method ?? "GET",
@@ -51,6 +51,8 @@ export function apiFetch(
       Cookie: cookie,
       ...(init?.body === undefined ? {} : { "Content-Type": "application/json" }),
     },
+    // Keeps a 302 as a 302, for the routes that redirect a browser.
+    redirect: init?.manualRedirect ? "manual" : "follow",
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
   });
 }
