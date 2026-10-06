@@ -27,8 +27,7 @@ import { uploadsPrefix } from "./files";
 import { streamGeneration, withRetry } from "./generation";
 import { beginGeneration, deniedResponse, isDenied, usageFor, usageJson } from "./limits";
 import type { GenerationRequest } from "./limits";
-import { loadProfile } from "./profile";
-import type { Profile } from "./profile";
+import { requireProfile } from "./profile";
 import type { AppEnv } from "./session";
 import { parseJson } from "./validation";
 import { findVideo, refreshVideo, requestVideo, videoJson } from "./video-store";
@@ -42,11 +41,6 @@ const PAGE_SIZE = 12;
 export const advertsApi = new Hono<AppEnv>();
 
 type AppContext = Context<AppEnv>;
-
-async function requireProfile(c: AppContext): Promise<Profile | Response> {
-  const profile = await loadProfile(c.env, c.get("userId"));
-  return profile ?? c.json({ error: "Complete your business profile first", code: "no_profile" }, 409);
-}
 
 function failed(c: AppContext): Response {
   return c.json({ error: "Generation failed. Try again." }, 502);

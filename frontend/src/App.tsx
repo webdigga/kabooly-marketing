@@ -3,6 +3,7 @@ import AppShell from './components/AppShell/AppShell'
 import { GuestOnly, RequireProfile, RequireVerified } from './components/Guards/Guards'
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword'
 import Generator from './pages/Generator/Generator'
+import GetFound from './pages/GetFound/GetFound'
 import Home from './pages/Home/Home'
 import Library from './pages/Library/Library'
 import LibraryItem from './pages/LibraryItem/LibraryItem'
@@ -37,6 +38,7 @@ export function AppRoutes() {
             <Route path="/photo" element={<Navigate to="/create/photo" replace />} />
             <Route path="/carousel" element={<Navigate to="/create/carousel" replace />} />
             <Route path="/video" element={<Navigate to="/create/video" replace />} />
+            <Route path="/get-found" element={<GetFound />} />
             <Route path="/library" element={<Library />} />
             <Route path="/library/:id" element={<LibraryItem />} />
             <Route path="/settings" element={<Settings />} />

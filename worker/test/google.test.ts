@@ -24,6 +24,17 @@ function mockGoogleGrant(refresh: string | null = "refresh-token-1"): void {
   onFetch(REVOKE_URL, () => new Response("{}"));
 }
 
+interface ConnectionJson {
+  service: string;
+  account: string;
+  connectedAt: string;
+}
+
+async function connections(cookie: string): Promise<ConnectionJson[]> {
+  const body: { connections: ConnectionJson[] } = await (await apiFetch(cookie, CONNECTIONS)).json();
+  return body.connections;
+}
+
 async function connect(cookie: string): Promise<Response> {
   const start = await apiFetch(cookie, CONNECT, { manualRedirect: true });
   const state = new URL(start.headers.get("Location") ?? "").searchParams.get("state");
@@ -44,10 +55,10 @@ describe("connecting Search Console", () => {
 
     const back = await apiFetch(cookie, `/api/google/callback?code=code-1&state=${sent.searchParams.get("state") ?? ""}`, { manualRedirect: true });
     expect(back.headers.get("Location")).toBe("/settings?google=connected");
-    const body = await (await apiFetch(cookie, CONNECTIONS)).json();
-    expect(body).toMatchObject({ connections: [{ service: "search_console", account: "david@kabooly.com" }] });
+    const list = await connections(cookie);
+    expect(list).toMatchObject([{ service: "search_console", account: "david@kabooly.com" }]);
     // The refresh token never leaves the Worker.
-    expect(JSON.stringify(body)).not.toContain("refresh-token-1");
+    expect(JSON.stringify(list)).not.toContain("refresh-token-1");
   });
 
   it("swaps the refresh token for a fresh access token when work needs one", async () => {
@@ -82,9 +93,9 @@ describe("connecting Search Console", () => {
     await connect(cookie);
     onFetch(USERINFO_URL, () => Response.json({ email: "someone-else@kabooly.com" }));
     await connect(cookie);
-    const body: { connections: { account: string }[] } = await (await apiFetch(cookie, CONNECTIONS)).json();
-    expect(body.connections).toHaveLength(1);
-    expect(body.connections[0]?.account).toBe("someone-else@kabooly.com");
+    const list = await connections(cookie);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.account).toBe("someone-else@kabooly.com");
   });
 });
 
@@ -99,7 +110,7 @@ describe("the callback", () => {
     mockGoogleGrant(null);
     const failed = await connect(cookie);
     expect(failed.headers.get("Location")).toBe("/settings?google=failed");
-    expect((await (await apiFetch(cookie, CONNECTIONS)).json()).connections).toEqual([]);
+    expect(await connections(cookie)).toEqual([]);
   });
 
   it("says so when Google will not exchange the code, name the account, or answer at all", async () => {
@@ -118,7 +129,7 @@ describe("the callback", () => {
       throw new Error("network down");
     });
     expect((await connect(cookie)).headers.get("Location")).toBe("/settings?google=failed");
-    expect((await (await apiFetch(cookie, CONNECTIONS)).json()).connections).toEqual([]);
+    expect(await connections(cookie)).toEqual([]);
   });
 
   it("refuses a state signed for a different account", async () => {
@@ -137,7 +148,7 @@ describe("disconnecting", () => {
     const res = await apiFetch(cookie, "/api/google/search_console", { method: "DELETE" });
     expect(await res.json()).toEqual({ removed: true });
     expect(callsTo(REVOKE_URL)).toHaveLength(1);
-    expect((await (await apiFetch(cookie, CONNECTIONS)).json()).connections).toEqual([]);
+    expect(await connections(cookie)).toEqual([]);
   });
 
   it("disconnects even when Google will not take the revoke", async () => {
@@ -148,7 +159,7 @@ describe("disconnecting", () => {
       throw new Error("network down");
     });
     expect(await (await apiFetch(cookie, "/api/google/search_console", { method: "DELETE" })).json()).toEqual({ removed: true });
-    expect((await (await apiFetch(cookie, CONNECTIONS)).json()).connections).toEqual([]);
+    expect(await connections(cookie)).toEqual([]);
   });
 
   it("says nothing was removed when there was no connection", async () => {
@@ -164,7 +175,7 @@ describe("disconnecting", () => {
     await testEnv.DB.prepare("UPDATE google_connections SET refresh_token = 'nonsense'").run();
     const res = await apiFetch(cookie, "/api/google/search_console", { method: "DELETE" });
     expect(await res.json()).toEqual({ removed: true });
-    expect((await (await apiFetch(cookie, CONNECTIONS)).json()).connections).toEqual([]);
+    expect(await connections(cookie)).toEqual([]);
   });
 });
 

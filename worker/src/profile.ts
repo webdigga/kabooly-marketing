@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { z } from "zod";
 import { readBusinessDetails } from "./copywriter";
 import type { BusinessDetails } from "./copywriter";
@@ -31,6 +32,12 @@ export interface Profile {
 
 export const MAX_SERVICES = 20;
 export const MAX_BRAND_COLOURS = 5;
+
+// Every route that writes from the business profile needs one to exist.
+export async function requireProfile(c: Context<AppEnv>): Promise<Profile | Response> {
+  const profile = await loadProfile(c.env, c.get("userId"));
+  return profile ?? c.json({ error: "Complete your business profile first", code: "no_profile" }, 409);
+}
 
 export async function loadProfile(env: Env, userId: string): Promise<Profile | null> {
   const db = drizzle(env.DB, { schema });

@@ -5,6 +5,7 @@ import type { Env } from "./env";
 import { filesApi } from "./files";
 import { googleApi } from "./google";
 import { profileApi } from "./profile";
+import { searchConsoleApi } from "./search-console";
 import { internalApi } from "./provision";
 import { stripeWebhookApi } from "./stripe-webhook";
 import type { AppEnv } from "./session";
@@ -30,6 +31,7 @@ api.route("/", profileApi);
 api.route("/", filesApi);
 api.route("/", advertsApi);
 api.route("/", googleApi);
+api.route("/", searchConsoleApi);
 api.onError((err, c) => {
   console.error(err);
   return c.json({ error: "Internal error" }, 500);

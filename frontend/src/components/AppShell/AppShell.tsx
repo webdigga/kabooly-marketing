@@ -1,4 +1,4 @@
-import { Camera, Clapperboard, GalleryHorizontal, House, Images, Menu, Settings, Sparkles, X } from 'lucide-react'
+import { Camera, Clapperboard, GalleryHorizontal, House, Images, Menu, Search, Settings, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import Logo from '../Logo/Logo'
@@ -20,6 +20,8 @@ const CREATE: NavItem[] = [
   { to: '/create/video', label: 'Video', icon: Clapperboard },
   { to: '/library', label: 'Library', icon: Images },
 ]
+
+const FOUND: NavItem[] = [{ to: '/get-found', label: 'Search Console', icon: Search }]
 
 const ACCOUNT: NavItem[] = [{ to: '/settings', label: 'Settings', icon: Settings }]
 
@@ -43,6 +45,10 @@ function Sections({ onChoose }: { onChoose?: () => void }) {
       <Item item={HOME} onChoose={onChoose} />
       <p className={styles.group}>Create</p>
       {CREATE.map((item) => (
+        <Item key={item.to} item={item} onChoose={onChoose} />
+      ))}
+      <p className={styles.group}>Get found</p>
+      {FOUND.map((item) => (
         <Item key={item.to} item={item} onChoose={onChoose} />
       ))}
       <p className={styles.group}>Your account</p>

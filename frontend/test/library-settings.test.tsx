@@ -397,7 +397,8 @@ describe('google connections', () => {
     mockApi(base)
     renderApp('/settings')
     const card = await screen.findByTestId('google-connections')
-    expect(within(card).getByTestId('connect-search-console')).toHaveAttribute('href', '/api/google/search_console/connect')
+    // The card is on screen before the connection state arrives.
+    expect(await within(card).findByTestId('connect-search-console')).toHaveAttribute('href', '/api/google/search_console/connect')
     expect(within(card).queryByTestId('disconnect-search-console')).not.toBeInTheDocument()
   })
 

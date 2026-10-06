@@ -61,9 +61,18 @@ than as empty sections.
    /api/google/:service` removes it and tells Google to forget the token.
    Settings has the card. `connectionToken` in `worker/src/google/store.ts`
    is what stage 2 asks for an access token.
-2. Search Console panel. The customer's real search terms, clicks,
-   impressions and average position, the queries they nearly rank for, and
-   the pages that slipped since last month, in plain English.
+2. DONE 2026-10-06, not deployed. Search Console panel at `/get-found`,
+   from one route, `GET /api/search-console/overview`. It matches the
+   customer's profile website against the properties their Google account
+   can see (a domain property wins), then reads five windows: the totals for
+   the last 28 whole days and the 28 before, the top queries, and the pages
+   for both windows. It returns the figures with their change, the searches
+   sitting between places 8 and 20 ("nearly there", the actionable bit), and
+   the pages that dropped three places or more. Google finishes counting a
+   day two or three days late, so the window ends three days ago. Blocked
+   states (`not_connected`, `no_website`, `no_property`, `no_profile`) come
+   back as 409s with a code, and the page turns each into one plain
+   sentence.
 3. Reviews and replies. Their Business Profile reviews pulled in, each with a
    reply drafted in their tone of voice, copied out and pasted into Google by
    them.
