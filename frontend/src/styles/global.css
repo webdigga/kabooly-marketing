@@ -83,3 +83,10 @@ a:hover {
     font-size: var(--text-3xl);
   }
 }
+
+/* Every app page is a single column of cards with the same gap, so pages do
+   not each invent their own spacing. */
+.page-stack {
+  display: grid;
+  gap: var(--space-6);
+}

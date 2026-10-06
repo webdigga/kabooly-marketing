@@ -6,6 +6,7 @@ import Button from '../../components/Button/Button'
 import { buttonClass } from '../../components/Button/buttonClass'
 import Card from '../../components/Card/Card'
 import LoadError from '../../components/LoadError/LoadError'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import { ApiError, api } from '../../lib/api'
 import { limitMessage } from '../../lib/limits'
@@ -247,11 +248,8 @@ export default function GetFound() {
   }, [load])
 
   return (
-    <div className={styles.page}>
-      <div>
-        <h1>Get found</h1>
-        <p className={styles.lead}>What people searched for on Google before they landed on your website.</p>
-      </div>
+    <div className="page-stack">
+      <PageHeader title="Get found" lead="What people searched for on Google before they landed on your website." />
 
       {status === 'loading' && <PageLoader label="Reading your Search Console figures..." />}
       {status === 'error' && <LoadError message="Your search figures could not be loaded." onRetry={() => void load()} />}

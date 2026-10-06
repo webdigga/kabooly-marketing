@@ -8,6 +8,7 @@ import Card from '../../components/Card/Card'
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog'
 import LibraryCard from '../../components/LibraryCard/LibraryCard'
 import LoadError from '../../components/LoadError/LoadError'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import { api } from '../../lib/api'
 import type { Advert } from '../../lib/types'
@@ -103,13 +104,11 @@ export default function Library() {
   if (status === 'error') return <LoadError message="Could not load your adverts." onRetry={() => void loadFirst()} />
 
   return (
-    <div className={styles.page}>
-      <div>
-        <h1>Library</h1>
-        <p className={styles.lead}>
-          Every advert you have made, newest first. Open one to copy or download it, or tick several to delete them together.
-        </p>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="Library"
+        lead="Every advert you have made, newest first. Open one to copy or download it, or tick several to delete them together."
+      />
       {selected.length > 0 && (
         <SelectionBar count={selected.length} onClear={() => setSelected([])} onDelete={() => setAsking(true)} />
       )}

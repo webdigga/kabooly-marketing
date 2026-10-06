@@ -4,24 +4,38 @@
 
 export const LOGO_MAX_EDGE = 1024
 
-export function svgSize(svg: Element, maxEdge = LOGO_MAX_EDGE): { width: number; height: number } {
-  const [, , boxWidth = 0, boxHeight = 0] = (svg.getAttribute('viewBox') ?? '')
+interface Size {
+  width: number
+  height: number
+}
+
+function usable(size: Size): boolean {
+  return size.width > 0 && size.height > 0
+}
+
+// The width and height attributes, unless they are percentages, which say
+// nothing about the real shape.
+function attributeSize(svg: Element): Size {
+  const width = svg.getAttribute('width') ?? ''
+  if (/%/.test(width)) return { width: 0, height: 0 }
+  return { width: parseFloat(width), height: parseFloat(svg.getAttribute('height') ?? '') }
+}
+
+function viewBoxSize(svg: Element): Size {
+  const [, , width = 0, height = 0] = (svg.getAttribute('viewBox') ?? '')
     .trim()
     .split(/[\s,]+/)
     .map(Number)
-  let width = parseFloat(svg.getAttribute('width') ?? '')
-  let height = parseFloat(svg.getAttribute('height') ?? '')
-  // Percentages and missing sizes are not usable; the viewBox then decides.
-  if (!(width > 0 && height > 0) || /%/.test(svg.getAttribute('width') ?? '')) {
-    width = boxWidth
-    height = boxHeight
-  }
-  if (!(width > 0 && height > 0)) {
-    width = maxEdge
-    height = maxEdge
-  }
-  const scale = maxEdge / Math.max(width, height)
-  return { width: Math.round(width * scale), height: Math.round(height * scale) }
+  return { width, height }
+}
+
+// The attributes first, then the viewBox, then a square: an SVG that says
+// nothing about its size still has to be drawn at some size.
+export function svgSize(svg: Element, maxEdge = LOGO_MAX_EDGE): Size {
+  const square = { width: maxEdge, height: maxEdge }
+  const found = [attributeSize(svg), viewBoxSize(svg), square].find(usable) ?? square
+  const scale = maxEdge / Math.max(found.width, found.height)
+  return { width: Math.round(found.width * scale), height: Math.round(found.height * scale) }
 }
 
 export async function svgToPng(svgText: string): Promise<Blob> {

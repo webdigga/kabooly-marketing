@@ -51,10 +51,11 @@ Before it works live (David, not code):
           verified. Until then only test users can connect.
         - wrangler secret put GOOGLE_TOKEN_KEY, 32 random bytes base64url:
           openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
-        - Apply for Google Business Profile API access and add
-          business.manage to the consent screen. The reviews page cannot run
-          at all until that is approved, and has never been exercised
-          against the real API.
+        - Google Business Profile API access: applied 2026-10-06, support
+          case 4-8222000041226, 7 to 10 business days, so chase from about
+          20 October 2026. Until approved the quota is 0 a minute and the
+          account list answers 429, so /reviews cannot run. Search Console
+          is connected and working live.
 Next:   Nothing agreed. Everything above is waiting on a deploy, so the
         sensible next step is David pushing it and the Google setup above,
         then looking at real figures before building anything else.
@@ -90,8 +91,10 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - The logo is never drawn by an AI model. The browser draws the brand strip (logo plus website) when the profile is saved, and Cloudflare Images stamps it onto every image (`brandImage` in `worker/src/image-maker.ts`). The one exception is an image advert asked for with "logo in the picture": the real logo file is sent to the model as an input, the prompt forbids redrawing it, and that image gets no strip.
 - Limits live only in `worker/src/limiter.ts` (`LIMITS`): 20 images per rolling 24h and 150 per rolling 30 days, 20 videos per rolling 30 days, 5 image generations and 3 videos per minute, one generation in flight (topic suggestions, website reads and videos exempt from the lock), text 200/day and 20/min. A carousel is one image. Regenerations count.
 - Schema changes go through `npm run db:generate` in `worker/` (drizzle-kit); never hand-edit an applied migration.
-- Worker: strict ESLint (TrackShows config) and 100% coverage (`npm run test:coverage`). Frontend: `npm run lint` at 0 warnings, tests with data-testid or role selectors.
-- Use the shared components (`Card`, `Button`/`buttonClass`, `Field`, `Alert`, `ConfirmDialog`) rather than local recipes. Anything that cannot be undone asks in `ConfirmDialog`, never inline.
+- Worker: strict ESLint (TrackShows config) and 100% coverage (`npm run test:coverage`). Frontend: the same strict rules (type-checked, complexity 10, max 4 parameters, no nested ternaries), `npm run lint` at 0 warnings, tests with data-testid or role selectors.
+- Use the shared components (`Card`, `Button`/`buttonClass`, `Field`, `Alert`, `ConfirmDialog`, `CopyButton`, `PageHeader`, `Picker`) rather than local recipes. Anything that cannot be undone asks in `ConfirmDialog`, never inline.
+- Every app page is `<div className="page-stack">` (global.css) opening with `PageHeader`. A page-level message (saved, connected, could not be saved) goes in that header's `status` slot, which is the one place it ever appears; errors about a single field stay beside the field.
+- Colours and spacing come from `styles/variables.css`. No hex and no raw rem in a stylesheet, except the container-query units that keep a preview matching what the canvas draws.
 - Mobile-first CSS: `min-width` media queries only. Palette and font come from the kabooly.com marketing site (`frontend/src/styles/variables.css`).
 - No en or em dashes in any copy.
 - Do not run Playwright on small UI changes.

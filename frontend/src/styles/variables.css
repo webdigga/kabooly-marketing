@@ -29,6 +29,8 @@
   --color-warning-light: #fef3c7;
   --color-warning-text: #92400e;
   --color-danger: #ef4444;
+  /* Review stars, which are always Google's amber. */
+  --color-star: #f59e0b;
   --color-danger-light: #fee2e2;
   --color-danger-text: #991b1b;
 

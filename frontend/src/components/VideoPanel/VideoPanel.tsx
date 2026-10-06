@@ -52,6 +52,16 @@ function StartControls({ hasVideo, onStart }: { hasVideo: boolean; onStart: () =
   )
 }
 
+// Where the video has got to: being made, ready to play, or failed.
+function VideoState({ video }: { video: AdvertVideo | null }) {
+  if (video?.status === 'pending') return <VideoProgress startUrl={video.start.url} />
+  if (video?.status === 'ready') return <Ready video={video} />
+  if (video?.status === 'failed') {
+    return <Alert tone="warning">That video could not be made, so it has not counted. Try again.</Alert>
+  }
+  return null
+}
+
 // A vertical video made from an advert, for Reels, Shorts, TikTok and
 // Stories: start it, watch it being made, then play and download it.
 export default function VideoPanel({ advertId, video: initial, onUsage, autoStart }: VideoPanelProps) {
@@ -68,9 +78,7 @@ export default function VideoPanel({ advertId, video: initial, onUsage, autoStar
   return (
     <div className={styles.panel} data-testid="video-panel">
       <p className={styles.meta}>A 10 second vertical video with captions: a hook, two shots of your work and an end card with your name. Each one uses one of your videos for the month.</p>
-      {pending && <VideoProgress startUrl={video?.start.url} />}
-      {video?.status === 'ready' && <Ready video={video} />}
-      {video?.status === 'failed' && <Alert tone="warning">That video could not be made, so it has not counted. Try again.</Alert>}
+      <VideoState video={video} />
       {error && (
         <Alert tone="error" testId="video-error">
           {error}

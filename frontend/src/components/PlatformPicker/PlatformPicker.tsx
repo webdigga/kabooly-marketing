@@ -1,8 +1,7 @@
-import { Check } from 'lucide-react'
+import { Picker, PickerOption, PickerOptions } from '../Picker/Picker'
 import { PLATFORMS } from '../../lib/platforms'
 import type { Platform } from '../../lib/types'
 import PlatformIcon from '../PlatformIcon/PlatformIcon'
-import styles from './PlatformPicker.module.css'
 
 interface PlatformPickerProps {
   selected: Platform[]
@@ -15,34 +14,21 @@ export default function PlatformPicker({ selected, onChange, disabled }: Platfor
     onChange(selected.includes(platform) ? selected.filter((p) => p !== platform) : [...selected, platform])
   }
   return (
-    <fieldset className={styles.fieldset} disabled={disabled}>
-      <legend className={styles.legend}>Images for</legend>
-      <div className={styles.options}>
-        {PLATFORMS.map((p) => {
-          const checked = selected.includes(p.id)
-          return (
-            <label key={p.id} className={[styles.option, checked && styles.checked].filter(Boolean).join(' ')}>
-              <input
-                type="checkbox"
-                className="visually-hidden"
-                checked={checked}
-                onChange={() => toggle(p.id)}
-                data-testid={`platform-${p.id}`}
-              />
-              <span className={styles.box} aria-hidden="true">
-                {checked && <Check size={14} />}
-              </span>
-              <PlatformIcon platform={p.id} size={22} />
-              <span className={styles.text}>
-                <span className={styles.name}>{p.label}</span>
-                <span className={styles.meta}>
-                  {p.shape}, {p.width} × {p.height}
-                </span>
-              </span>
-            </label>
-          )
-        })}
-      </div>
-    </fieldset>
+    <Picker legend="Images for" disabled={disabled}>
+      <PickerOptions columns={3}>
+        {PLATFORMS.map((p) => (
+          <PickerOption
+            key={p.id}
+            type="checkbox"
+            checked={selected.includes(p.id)}
+            onChange={() => toggle(p.id)}
+            testId={`platform-${p.id}`}
+            label={p.label}
+            meta={`${p.shape}, ${p.width} × ${p.height}`}
+            icon={<PlatformIcon platform={p.id} size={22} />}
+          />
+        ))}
+      </PickerOptions>
+    </Picker>
   )
 }

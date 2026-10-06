@@ -87,7 +87,7 @@ export default function LibraryItem() {
   if (state.status === 'error') return <LoadError message="Could not load this advert." onRetry={() => void load()} />
   if (state.status === 'missing') {
     return (
-      <div className={styles.page}>
+      <div className="page-stack">
         {back}
         <Alert tone="info">This advert is no longer in your library.</Alert>
       </div>
@@ -102,7 +102,7 @@ export default function LibraryItem() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className="page-stack">
       {back}
       <Card title={advert.topic} description={formatDate(advert.createdAt)} actions={<DeleteAdvert id={advert.id} />} testId="library-post">
         <ReadOnlyAdvertText body={advert.body} />

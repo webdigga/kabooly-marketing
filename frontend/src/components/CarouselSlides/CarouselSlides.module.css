@@ -50,7 +50,7 @@
 .body {
   font-size: 4.26cqw;
   line-height: 1.45;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .hook {
@@ -106,7 +106,7 @@
 }
 
 .point {
-  background-color: #f8fafc;
+  background-color: var(--color-gray-50);
 }
 
 .close {

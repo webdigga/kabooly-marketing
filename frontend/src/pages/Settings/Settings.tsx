@@ -6,6 +6,7 @@ import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
 import GoogleConnections from '../../components/GoogleConnections/GoogleConnections'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import { useProfile } from '../../context/ProfileContext'
 import { authClient } from '../../lib/auth-client'
 import { draftFromProfile, validate } from '../../profile/draft'
@@ -17,6 +18,14 @@ import { applyFindings, changedSummary } from '../../profile/website-fill'
 import styles from './Settings.module.css'
 
 const ALL_FIELDS: DraftField[] = ['businessName', 'description', 'websiteUrl', 'targetAudience', 'localArea', 'services']
+
+// How the last save went, shown in the page's one status slot rather than
+// beside the button.
+function SaveResult({ result }: { result: 'saved' | 'failed' | null }) {
+  if (result === 'saved') return <Alert tone="success">Profile saved.</Alert>
+  if (result === 'failed') return <Alert tone="error">Your profile could not be saved. Check the fields above and try again.</Alert>
+  return null
+}
 
 export default function Settings() {
   const navigate = useNavigate()
@@ -66,11 +75,8 @@ export default function Settings() {
 
   const fields = { ...form, changed: new Set(changed) }
   return (
-    <form className={styles.page} onSubmit={(e) => void save(e)} noValidate>
-      <div>
-        <h1>Settings</h1>
-        <p className={styles.lead}>Your business profile. Every advert is written from this.</p>
-      </div>
+    <form className="page-stack" onSubmit={(e) => void save(e)} noValidate>
+      <PageHeader title="Settings" lead="Your business profile. Every advert is written from this." status={<SaveResult result={result} />} />
       <Card
         title="Your website"
         actions={
@@ -107,8 +113,6 @@ export default function Settings() {
         <BrandFields {...fields} />
       </Card>
       <div className={styles.saveBar}>
-        {result === 'saved' && <Alert tone="success">Profile saved.</Alert>}
-        {result === 'failed' && <Alert tone="error">Your profile could not be saved. Check the fields above and try again.</Alert>}
         <Button type="submit" loading={form.saving} data-testid="save-profile">
           Save changes
         </Button>

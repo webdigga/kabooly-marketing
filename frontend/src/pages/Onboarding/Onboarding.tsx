@@ -56,6 +56,12 @@ const STEPS: Step[] = [
   },
 ]
 
+// The submit button says what the step does.
+function nextLabel(step: number, last: boolean): string {
+  if (step === 0) return 'Fill in from my website'
+  return last ? 'Finish' : 'Next'
+}
+
 export default function Onboarding() {
   const navigate = useNavigate()
   const { profile, setProfile } = useProfile()
@@ -150,7 +156,7 @@ export default function Onboarding() {
             </Button>
           )}
           <Button type="submit" loading={form.saving || scanning} data-testid="next-step">
-            {step === 0 ? 'Fill in from my website' : last ? 'Finish' : 'Next'}
+            {nextLabel(step, last)}
           </Button>
         </div>
         {step === 0 && (

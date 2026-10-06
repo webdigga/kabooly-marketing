@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { buttonClass } from '../../components/Button/buttonClass'
 import Card from '../../components/Card/Card'
 import LibraryCard from '../../components/LibraryCard/LibraryCard'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import UsagePanel from '../../components/UsagePanel/UsagePanel'
 import { useProfile } from '../../context/ProfileContext'
 import { api } from '../../lib/api'
@@ -39,11 +40,11 @@ export default function Home() {
   }, [])
 
   return (
-    <div className={styles.page}>
-      <div>
-        <h1>{profile ? profile.businessName : 'Your marketing'}</h1>
-        <p className={styles.lead}>Make an advert, then post it yourself. Everything you make is saved to your library.</p>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title={profile ? profile.businessName : 'Your marketing'}
+        lead="Make an advert, then post it yourself. Everything you make is saved to your library."
+      />
       <UsagePanel usage={usage} />
 
       <Card title="Make something" description="Pick what you need today.">

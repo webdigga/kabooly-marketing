@@ -50,31 +50,43 @@ export interface LogoPixels {
   opaque: boolean
 }
 
-export function readLogoPixels(img: HTMLImageElement): LogoPixels {
-  const size = 24
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')
-  const dark: LogoPixels = { brightness: 0, opaque: false }
-  if (!ctx) return dark
-  ctx.drawImage(img, 0, 0, size, size)
+const SAMPLE = 24
+// Below this the pixel counts as see-through; below SOLID it counts as not
+// fully solid, which is what decides whether a logo brings its own
+// background.
+const SHOWING = 0.3
+const SOLID = 0.9
+
+// Averages the brightness of the pixels that are actually there, and counts
+// the ones that are not fully solid.
+function weighPixels(data: Uint8ClampedArray): LogoPixels {
   let light = 0
   let seen = 0
   let clear = 0
-  try {
-    const { data } = ctx.getImageData(0, 0, size, size)
-    for (let i = 0; i < data.length; i += 4) {
-      const alpha = (data[i + 3] ?? 0) / 255
-      if (alpha < 0.9) clear += 1
-      if (alpha < 0.3) continue
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = (data[i + 3] ?? 0) / 255
+    if (alpha < SOLID) clear += 1
+    if (alpha >= SHOWING) {
       seen += 1
       light += (0.2126 * (data[i] ?? 0) + 0.7152 * (data[i + 1] ?? 0) + 0.0722 * (data[i + 2] ?? 0)) / 255
     }
+  }
+  return { brightness: seen ? light / seen : 0, opaque: clear === 0 }
+}
+
+export function readLogoPixels(img: HTMLImageElement): LogoPixels {
+  const canvas = document.createElement('canvas')
+  canvas.width = SAMPLE
+  canvas.height = SAMPLE
+  const ctx = canvas.getContext('2d')
+  const dark: LogoPixels = { brightness: 0, opaque: false }
+  if (!ctx) return dark
+  ctx.drawImage(img, 0, 0, SAMPLE, SAMPLE)
+  try {
+    return weighPixels(ctx.getImageData(0, 0, SAMPLE, SAMPLE).data)
   } catch {
     return dark
   }
-  return { brightness: seen ? light / seen : 0, opaque: clear === 0 }
 }
 
 export interface LogoBacking {
@@ -169,12 +181,12 @@ function drawLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, bottom:
   if (clip) {
     // The logo's own background becomes the badge: it is scaled to fill the
     // badge and the corners are cut off.
-    const cover = Math.max(boxWidth / w, boxHeight / h)
+    const spread = Math.max(boxWidth / w, boxHeight / h)
     ctx.save()
     ctx.beginPath()
     ctx.roundRect(boxLeft, boxTop, boxWidth, boxHeight, radius)
     ctx.clip()
-    ctx.drawImage(logo, boxLeft + (boxWidth - w * cover) / 2, boxTop + (boxHeight - h * cover) / 2, w * cover, h * cover)
+    ctx.drawImage(logo, boxLeft + (boxWidth - w * spread) / 2, boxTop + (boxHeight - h * spread) / 2, w * spread, h * spread)
     ctx.restore()
     return boxTop
   }

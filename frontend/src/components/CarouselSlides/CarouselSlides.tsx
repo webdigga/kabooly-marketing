@@ -1,8 +1,9 @@
 import { Download, Pencil, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useProfile } from '../../context/ProfileContext'
 import { headingColour, renderSlide, saveBlob, slideKind } from '../../lib/slide-render'
-import type { SlideDesign } from '../../lib/slide-render'
+import type { SlideDesign, SlideKind } from '../../lib/slide-render'
 import type { Profile, Slide, StoredFile } from '../../lib/types'
 import Alert from '../Alert/Alert'
 import Button from '../Button/Button'
@@ -23,29 +24,26 @@ interface CarouselSlidesProps {
   disabled?: boolean
 }
 
+// Only slide one carries the picture behind it.
+function slideStyle(kind: SlideKind, design: SlideDesign): CSSProperties | undefined {
+  if (kind !== 'hook') return undefined
+  return {
+    backgroundColor: design.colour,
+    backgroundImage: design.background ? `url("${design.background}")` : undefined,
+  }
+}
+
 // The on-screen version of a slide, laid out like renderSlide draws it.
-function SlidePreview({ slide, index, total, background, logo, colour, name }: {
-  slide: Slide
-  index: number
-  total: number
-  background: string | null
-  logo: string | null
-  colour: string
-  name: string
-}) {
+function SlidePreview({ slide, index, total, design }: { slide: Slide; index: number; total: number; design: SlideDesign }) {
   const kind = slideKind(index, total)
-  const heading = kind === 'hook' ? undefined : { color: headingColour(colour) }
+  const hook = kind === 'hook'
   return (
-    <div
-      className={`${styles.slide} ${styles[kind]}`}
-      style={kind === 'hook' ? { backgroundColor: colour, backgroundImage: background ? `url("${background}")` : undefined } : undefined}
-      data-testid={`slide-${index + 1}`}
-    >
-      {kind === 'hook' && logo && <img className={styles.mark} src={logo} alt="" />}
+    <div className={`${styles.slide} ${styles[kind]}`} style={slideStyle(kind, design)} data-testid={`slide-${index + 1}`}>
+      {hook && design.logo && <img className={styles.mark} src={design.logo} alt="" />}
       <div className={styles.words}>
-        {kind === 'close' && logo && <img className={styles.logo} src={logo} alt="" />}
-        {kind === 'hook' && name && <p className={styles.name}>{name}</p>}
-        <p className={styles.heading} style={heading}>
+        {kind === 'close' && design.logo && <img className={styles.logo} src={design.logo} alt="" />}
+        {hook && design.name && <p className={styles.name}>{design.name}</p>}
+        <p className={styles.heading} style={hook ? undefined : { color: headingColour(design.colour) }}>
           {slide.heading}
         </p>
         {slide.body && <p className={styles.body}>{slide.body}</p>}
@@ -155,56 +153,99 @@ function designOf(profile: Profile | null, background: string | null): SlideDesi
   }
 }
 
+interface GridProps {
+  slides: Slide[]
+  design: SlideDesign
+  saving: number | 'all' | null
+  disabled: boolean
+  onDownload: (index: number) => void
+}
+
+// Every slide with its own download button.
+function SlideGrid({ slides, design, saving, disabled, onDownload }: GridProps) {
+  return (
+    <div className={styles.slides}>
+      {slides.map((slide, i) => (
+        <figure key={i} className={styles.tile}>
+          <SlidePreview slide={slide} index={i} total={slides.length} design={design} />
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Download size={16} aria-hidden="true" />}
+            loading={saving === i}
+            disabled={disabled}
+            onClick={() => onDownload(i)}
+            data-testid={`download-slide-${i + 1}`}
+          >
+            Download
+          </Button>
+        </figure>
+      ))}
+    </div>
+  )
+}
+
 // A carousel's slides, laid out over its background with the brand colour
 // and the real logo, each downloadable as a finished image.
-export default function CarouselSlides(props: CarouselSlidesProps) {
-  const { slides, background, backgroundStatus, onSave, regenerating } = props
-  const { profile } = useProfile()
-  const [editing, setEditing] = useState(false)
+// Drawing and saving the slides, which happens in the browser.
+function useSlideDownload(design: SlideDesign, slides: Slide[]) {
   const [saving, setSaving] = useState<number | 'all' | null>(null)
-  const [downloadError, setDownloadError] = useState(false)
-  const design = designOf(profile, background?.url ?? null)
+  const [failed, setFailed] = useState(false)
 
   async function download(indexes: number[], which: number | 'all') {
     setSaving(which)
-    setDownloadError(false)
+    setFailed(false)
     try {
       for (const i of indexes) saveBlob(await renderSlide(design, slides, i), `kabooly-slide-${i + 1}.png`)
     } catch {
-      setDownloadError(true)
+      setFailed(true)
     } finally {
       setSaving(null)
     }
   }
 
+  return { saving, failed, download }
+}
+
+// How the first slide's picture is getting on, while it is being made.
+function BackgroundNotice({ status }: { status: BackgroundStatus }) {
+  if (status === 'pending') {
+    return (
+      <p className={styles.status} role="status">
+        Making the photo for your first slide...
+      </p>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <Alert tone="warning">
+        The photo for the first slide could not be made. Make a new one, or download the slides with your brand colour behind the
+        first.
+      </Alert>
+    )
+  }
+  return null
+}
+
+export default function CarouselSlides(props: CarouselSlidesProps) {
+  const { slides, background, backgroundStatus, onSave, regenerating } = props
+  const { profile } = useProfile()
+  const [editing, setEditing] = useState(false)
+  const design = designOf(profile, background?.url ?? null)
+  const { saving, failed, download } = useSlideDownload(design, slides)
   const busy = backgroundStatus === 'pending' || regenerating
+
   return (
     <div className={styles.carousel}>
-      {backgroundStatus === 'pending' && (
-        <p className={styles.status} role="status">
-          Making the photo for your first slide...
-        </p>
-      )}
-      {backgroundStatus === 'error' && <Alert tone="warning">The photo for the first slide could not be made. Make a new one, or download the slides with your brand colour behind the first.</Alert>}
-      <div className={styles.slides}>
-        {slides.map((slide, i) => (
-          <figure key={i} className={styles.tile}>
-            <SlidePreview slide={slide} index={i} total={slides.length} {...design} />
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Download size={16} aria-hidden="true" />}
-              loading={saving === i}
-              disabled={busy || saving !== null}
-              onClick={() => void download([i], i)}
-              data-testid={`download-slide-${i + 1}`}
-            >
-              Download
-            </Button>
-          </figure>
-        ))}
-      </div>
-      {downloadError && <Alert tone="error">The slides could not be downloaded. Try again.</Alert>}
+      <BackgroundNotice status={backgroundStatus} />
+      <SlideGrid
+        slides={slides}
+        design={design}
+        saving={saving}
+        disabled={busy || saving !== null}
+        onDownload={(i) => void download([i], i)}
+      />
+      {failed && <Alert tone="error">The slides could not be downloaded. Try again.</Alert>}
       <SlideActions
         {...props}
         downloading={saving === 'all'}

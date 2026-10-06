@@ -9,8 +9,10 @@ export const SLIDE_HEIGHT = 1350
 const PADDING = 96
 const FONT = 'Inter, system-ui, sans-serif'
 
+// The same values as the design tokens the preview uses
+// (styles/variables.css), so a slide on screen matches the slide saved.
 export const SLIDE_COLOURS = {
-  offWhite: '#f8fafc',
+  offWhite: '#f9fafb',
   white: '#ffffff',
   ink: '#111827',
   body: '#374151',
@@ -133,15 +135,16 @@ function drawMark(ctx: CanvasRenderingContext2D, logo: HTMLImageElement): void {
   ctx.drawImage(logo, PADDING, PADDING, logo.naturalWidth * scale, logo.naturalHeight * scale)
 }
 
+// The two pictures slide one is drawn from, either of which may be missing.
+interface HookArt {
+  photo: HTMLImageElement | null
+  logo: HTMLImageElement | null
+}
+
 // Slide one: the picture, the logo in the top corner, and the hook in large
 // white type over a shade at the bottom.
-function drawHook(
-  ctx: CanvasRenderingContext2D,
-  slide: Slide,
-  design: SlideDesign,
-  photo: HTMLImageElement | null,
-  logo: HTMLImageElement | null
-): void {
+function drawHook(ctx: CanvasRenderingContext2D, slide: Slide, design: SlideDesign, art: HookArt): void {
+  const { photo, logo } = art
   ctx.fillStyle = design.colour
   ctx.fillRect(0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
   if (photo) drawCover(ctx, photo)
@@ -207,7 +210,7 @@ export async function renderSlide(design: SlideDesign, slides: Slide[], index: n
       design.background ? loadImage(design.background) : null,
       design.logo ? loadImage(design.logo).catch(() => null) : null,
     ])
-    drawHook(ctx, slide, design, photo, logo)
+    drawHook(ctx, slide, design, { photo, logo })
   } else if (kind === 'point') {
     drawPoint(ctx, slide, design)
   } else {

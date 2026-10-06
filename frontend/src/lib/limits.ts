@@ -30,8 +30,11 @@ interface LimitBody {
   limit?: number
 }
 
+// What the limiter sends when it does not name a limit.
+const DEFAULT_LIMIT = 20
+
 function imageLimit(window: 'today' | 'this month', body: LimitBody, now: Date): string {
-  const { nextFreeAt = '', remaining = 0, limit = 20 } = body
+  const { nextFreeAt = '', remaining = 0, limit = DEFAULT_LIMIT } = body
   const when = localTime(nextFreeAt, now)
   if (remaining > 0) {
     return `You have ${plural(remaining, 'image')} left ${window}. Tick fewer platforms, or wait until ${when} for more.`
@@ -40,27 +43,24 @@ function imageLimit(window: 'today' | 'this month', body: LimitBody, now: Date):
   return `You have made all ${limit} images allowed in ${period}. Your next image is available at ${when}.`
 }
 
+// One sentence per reason the limiter refuses work.
+const REFUSALS: Record<string, (body: LimitBody, now: Date) => string> = {
+  busy: () => 'Another advert is still being made. Wait for it to finish, then try again.',
+  rate_limit: (body, now) => `That is a lot of adverts in one minute. Try again at ${localTime(body.retryAt ?? '', now)}.`,
+  daily_image_limit: (body, now) => imageLimit('today', body, now),
+  monthly_image_limit: (body, now) => imageLimit('this month', body, now),
+  monthly_video_limit: (body, now) =>
+    `You have made all ${body.limit ?? DEFAULT_LIMIT} videos allowed in 30 days. Your next video is available at ${localTime(body.nextFreeAt ?? '', now)}.`,
+  daily_text_limit: (body, now) =>
+    `You have reached today's limit for text. More is available at ${localTime(body.nextFreeAt ?? '', now)}.`,
+}
+
 // Explains a 429 from any generation endpoint, or returns null for other
 // errors so the caller can show its own message.
 export function limitMessage(err: unknown, now: Date = new Date()): string | null {
   if (!(err instanceof ApiError) || err.status !== 429) return null
-  const { code, retryAt = '', nextFreeAt = '', limit = 20 } = err.body
-  switch (code) {
-    case 'busy':
-      return 'Another advert is still being made. Wait for it to finish, then try again.'
-    case 'rate_limit':
-      return `That is a lot of adverts in one minute. Try again at ${localTime(retryAt, now)}.`
-    case 'daily_image_limit':
-      return imageLimit('today', err.body, now)
-    case 'monthly_image_limit':
-      return imageLimit('this month', err.body, now)
-    case 'monthly_video_limit':
-      return `You have made all ${limit} videos allowed in 30 days. Your next video is available at ${localTime(nextFreeAt, now)}.`
-    case 'daily_text_limit':
-      return `You have reached today's limit for text. More is available at ${localTime(nextFreeAt, now)}.`
-    default:
-      return 'Too many requests. Try again shortly.'
-  }
+  const say = REFUSALS[err.body.code ?? '']
+  return say ? say(err.body, now) : 'Too many requests. Try again shortly.'
 }
 
 export interface UsageRow {

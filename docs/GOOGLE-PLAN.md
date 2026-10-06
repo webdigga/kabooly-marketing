@@ -133,7 +133,10 @@ than as empty sections.
   sensitive scope, so the OAuth consent screen has to be verified before
   customers can use it. Days to weeks.
 - Reviews need Business Profile API access, which is an application to Google,
-  not a switch. Weeks, and they can refuse. Reviews and replies are only in
+  not a switch. Applied 2026-10-06, support case 4-8222000041226, Google say
+  7 to 10 business days (so chase from about 20 October 2026). Until it is
+  approved the project's quota is 0 queries a minute and the account list
+  answers 429; the three APIs themselves are enabled. Weeks, and they can refuse. Reviews and replies are only in
   the older v4 endpoints, which have no read-only scope, so the ask is
   `business.manage` even though we never write.
 - Stages 1, 2, 4, 5 and 6 do not depend on the Business Profile

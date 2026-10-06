@@ -84,7 +84,9 @@ describe('errorMessage', () => {
 
 describe('readEvents', () => {
   it('yields events as lines complete, across chunk boundaries', async () => {
-    const text = '{"type":"advert","advert":{"id":"a"}}\n{"type":"do' + 'ne","usage":{}}\n\n{"type":"error","error":"x"}'
+    // Split mid-event on purpose: the reader has to join the chunks.
+    const head = '{"type":"advert","advert":{"id":"a"}}\n{"type":"do'
+    const text = `${head}ne","usage":{}}\n\n{"type":"error","error":"x"}`
     const bytes = new TextEncoder().encode(text)
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
@@ -293,7 +295,7 @@ describe('logo cleaning', () => {
     const { data, width, height } = icon()
     expect(cleanPixels(data, width, height)).toEqual({ left: 1, top: 1, right: 2, bottom: 2 })
     expect(data[3]).toBe(0)
-    expect(data[(1 * width + 1) * 4 + 3]).toBe(255)
+    expect(data[(width + 1) * 4 + 3]).toBe(255)
   })
 
   it('leaves a logo whose corners disagree alone', () => {

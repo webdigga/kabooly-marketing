@@ -20,6 +20,12 @@ function foundAnything(findings: ScanFindings): boolean {
 // Reads a website for the business's details, brand colours and logo. Never
 // throws: any failure is a status the UI explains while the user carries on
 // by hand.
+// Found something, read the site but found nothing, or could not read it.
+function outcome(findings: ScanFindings, reachable: boolean): ScanStatus {
+  if (foundAnything(findings)) return 'found'
+  return reachable ? 'nothing' : 'failed'
+}
+
 export function useWebsiteScan() {
   const [status, setStatus] = useState<ScanStatus>('idle')
   const latest = useRef(0)
@@ -33,7 +39,7 @@ export function useWebsiteScan() {
       if (!logo && result.logoSvg) logo = await uploadLogoSvg(result.logoSvg).catch(() => null)
       if (run !== latest.current) return null
       const findings = { colours: result.colours, logo, details: result.details }
-      setStatus(foundAnything(findings) ? 'found' : result.reachable ? 'nothing' : 'failed')
+      setStatus(outcome(findings, result.reachable))
       return findings
     } catch (err) {
       const limited = err instanceof ApiError && err.status === 429

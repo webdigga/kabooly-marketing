@@ -1,12 +1,14 @@
-import { Check, Copy, MessageSquare, Star } from 'lucide-react'
+import { MessageSquare, Star } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import { buttonClass } from '../../components/Button/buttonClass'
 import Card from '../../components/Card/Card'
+import CopyButton from '../../components/CopyButton/CopyButton'
 import { TextArea } from '../../components/Field/Field'
 import LoadError from '../../components/LoadError/LoadError'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import { ApiError, api } from '../../lib/api'
 import { limitMessage } from '../../lib/limits'
@@ -27,6 +29,8 @@ const BLOCKED: Record<string, string> = {
 }
 
 const STARS = 5
+// The same ceiling the worker puts on a drafted reply.
+const MAX_REPLY = 400
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -43,11 +47,53 @@ function when(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// The reply the customer already sent, shown as it appears on Google.
+function Sent({ reply }: { reply: string }) {
+  return (
+    <div className={styles.replied}>
+      <p className={styles.repliedLabel}>You replied</p>
+      <p className={styles.comment}>{reply}</p>
+    </div>
+  )
+}
+
+interface DraftProps {
+  review: Review
+  draft: string
+  writing: boolean
+  onChange: (reply: string) => void
+  onRewrite: () => void
+}
+
+// A written reply, editable, with the copy button that gets it into Google.
+function Draft({ review, draft, writing, onChange, onRewrite }: DraftProps) {
+  return (
+    <div className={styles.draft}>
+      <TextArea
+        label="Your reply"
+        value={draft}
+        rows={4}
+        maxLength={MAX_REPLY}
+        onChange={(e) => onChange(e.target.value)}
+        data-testid={`reply-${review.id}`}
+      />
+      <div className={styles.actions}>
+        <CopyButton text={draft} label="Copy the reply" testId={`copy-${review.id}`} />
+        <Button variant="ghost" size="sm" loading={writing} onClick={onRewrite} data-testid={`rewrite-${review.id}`}>
+          Write another
+        </Button>
+      </div>
+      <p className={styles.quiet}>Paste it into Google under the review. Nothing is posted for you.</p>
+    </div>
+  )
+}
+
+// One review: what they said, and either the reply already sent, the button
+// that writes one, or the draft waiting to be copied.
 function ReviewCard({ review }: { review: Review }) {
   const [draft, setDraft] = useState<string | null>(null)
   const [writing, setWriting] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   async function write() {
     setWriting(true)
@@ -65,16 +111,6 @@ function ReviewCard({ review }: { review: Review }) {
     }
   }
 
-  async function copy() {
-    if (!draft) return
-    try {
-      await navigator.clipboard.writeText(draft)
-      setCopied(true)
-    } catch {
-      setCopied(false)
-    }
-  }
-
   return (
     <li className={styles.review} data-testid={`review-${review.id}`}>
       <div className={styles.head}>
@@ -86,12 +122,8 @@ function ReviewCard({ review }: { review: Review }) {
       </div>
       {review.comment ? <p className={styles.comment}>{review.comment}</p> : <p className={styles.quiet}>A rating with no words.</p>}
 
-      {review.reply ? (
-        <div className={styles.replied}>
-          <p className={styles.repliedLabel}>You replied</p>
-          <p className={styles.comment}>{review.reply}</p>
-        </div>
-      ) : draft === null ? (
+      {review.reply && <Sent reply={review.reply} />}
+      {!review.reply && draft === null && (
         <div>
           <Button
             variant="secondary"
@@ -105,35 +137,9 @@ function ReviewCard({ review }: { review: Review }) {
           </Button>
           {problem && <Alert tone="warning">{problem}</Alert>}
         </div>
-      ) : (
-        <div className={styles.draft}>
-          <TextArea
-            label="Your reply"
-            value={draft}
-            rows={4}
-            maxLength={400}
-            onChange={(e) => {
-              setDraft(e.target.value)
-              setCopied(false)
-            }}
-            data-testid={`reply-${review.id}`}
-          />
-          <div className={styles.actions}>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-              onClick={() => void copy()}
-              data-testid={`copy-${review.id}`}
-            >
-              {copied ? 'Copied' : 'Copy the reply'}
-            </Button>
-            <Button variant="ghost" size="sm" loading={writing} onClick={() => void write()} data-testid={`rewrite-${review.id}`}>
-              Write another
-            </Button>
-          </div>
-          <p className={styles.quiet}>Paste it into Google under the review. Nothing is posted for you.</p>
-        </div>
+      )}
+      {!review.reply && draft !== null && (
+        <Draft review={review} draft={draft} writing={writing} onChange={setDraft} onRewrite={() => void write()} />
       )}
     </li>
   )
@@ -172,13 +178,11 @@ export default function ReviewReplies() {
   const waiting = (reviews ?? []).filter((r) => !r.reply).length
 
   return (
-    <div className={styles.page}>
-      <div>
-        <h1>Your reviews</h1>
-        <p className={styles.lead}>
-          Google counts replies, and people read them. Draft one here, then paste it into Google under the review.
-        </p>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="Your reviews"
+        lead="Google counts replies, and people read them. Draft one here, then paste it into Google under the review."
+      />
 
       {status === 'loading' && <PageLoader label="Reading your Google reviews..." />}
       {status === 'error' && <LoadError message="Your reviews could not be loaded." onRetry={() => void load()} />}

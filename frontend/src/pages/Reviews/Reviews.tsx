@@ -1,10 +1,12 @@
-import { Check, Copy, Download, QrCode } from 'lucide-react'
+import { Download, QrCode } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Alert from '../../components/Alert/Alert'
 import Button from '../../components/Button/Button'
 import Card from '../../components/Card/Card'
+import CopyButton from '../../components/CopyButton/CopyButton'
 import { TextArea, TextInput } from '../../components/Field/Field'
 import LoadError from '../../components/LoadError/LoadError'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import { ApiError, api } from '../../lib/api'
 import { drawQrCode, saveQrCode } from '../../lib/qr'
@@ -14,36 +16,6 @@ interface Request {
   link: { slug: string; target: string } | null
   url: string | null
   message: string | null
-}
-
-// Long enough to read on a phone screen, small enough to copy quickly.
-const COPIED_MS = 2000
-
-function Copyable({ value, label, testId }: { value: string; label: string; testId: string }) {
-  const [copied, setCopied] = useState(false)
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), COPIED_MS)
-    } catch {
-      // A browser that refuses the clipboard still shows the text to select.
-      setCopied(false)
-    }
-  }
-
-  return (
-    <Button
-      variant="secondary"
-      size="sm"
-      icon={copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-      onClick={() => void copy()}
-      data-testid={testId}
-    >
-      {copied ? 'Copied' : label}
-    </Button>
-  )
 }
 
 function QrPanel({ url, filename }: { url: string; filename: string }) {
@@ -110,14 +82,11 @@ export default function Reviews() {
   }
 
   return (
-    <div className={styles.page}>
-      <div>
-        <h1>Ask for reviews</h1>
-        <p className={styles.lead}>
-          Google reviews are the strongest thing a local business has. Share one link, or print the QR code, and customers land
-          straight on your review box.
-        </p>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="Ask for reviews"
+        lead="Google reviews are the strongest thing a local business has. Share one link, or print the QR code, and customers land straight on your review box."
+      />
 
       {status === 'loading' && <PageLoader label="Loading your review link..." />}
       {status === 'error' && <LoadError message="Your review link could not be loaded." onRetry={() => void load()} />}
@@ -152,7 +121,7 @@ export default function Reviews() {
                   {request.url}
                 </p>
                 <div className={styles.actions}>
-                  <Copyable value={request.url} label="Copy the link" testId="copy-url" />
+                  <CopyButton text={request.url} label="Copy the link" testId="copy-url" />
                 </div>
               </Card>
 
@@ -170,7 +139,7 @@ export default function Reviews() {
                   data-testid="review-message-text"
                 />
                 <div className={styles.actions}>
-                  <Copyable value={request.message} label="Copy the message" testId="copy-message" />
+                  <CopyButton text={request.message} label="Copy the message" testId="copy-message" />
                 </div>
               </Card>
             </>

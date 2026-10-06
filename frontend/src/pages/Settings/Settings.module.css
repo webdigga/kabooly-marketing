@@ -5,11 +5,6 @@
   margin: 0 auto;
 }
 
-.lead {
-  margin-top: var(--space-2);
-  color: var(--color-text-secondary);
-}
-
 .saveBar {
   display: grid;
   gap: var(--space-3);

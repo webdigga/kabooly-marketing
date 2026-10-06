@@ -18,7 +18,7 @@ export function json(body: unknown, status = 200): Response {
 }
 
 export function ndjson(events: unknown[]): Response {
-  return new Response(events.map((e) => JSON.stringify(e)).join('\n') + '\n', {
+  return new Response(`${events.map((e) => JSON.stringify(e)).join('\n')}\n`, {
     headers: { 'Content-Type': 'application/x-ndjson' },
   })
 }

@@ -10,6 +10,7 @@ import { TextArea } from '../../components/Field/Field'
 import ImageTile from '../../components/ImageTile/ImageTile'
 import LookPicker from '../../components/LookPicker/LookPicker'
 import PhotoPicker from '../../components/PhotoPicker/PhotoPicker'
+import PageHeader from '../../components/PageHeader/PageHeader'
 import PlatformPicker from '../../components/PlatformPicker/PlatformPicker'
 import StoryTile from '../../components/StoryTile/StoryTile'
 import UsagePanel from '../../components/UsagePanel/UsagePanel'
@@ -155,19 +156,11 @@ function FormatOptions({ format, busy, photo, onPhoto, platforms, onPlatforms, l
   )
 }
 
-export default function Generator({ format }: { format: CreateFormat }) {
-  const topic = useTopicSuggestion()
+// The platform and look choices, remembered per browser so the next advert
+// starts where the last one left off.
+function useChoices() {
   const [platforms, setPlatforms] = useState<Platform[]>(loadPlatformChoice)
   const [look, setLook] = useState<Look>(loadLook)
-  const [photo, setPhoto] = useState<UploadedPhoto | null>(null)
-  const [motion, setMotion] = useState('')
-  const [usage, setUsage] = useState<Usage | null>(null)
-  const onUsage = useCallback((u: Usage) => setUsage(u), [])
-  const generator = useGenerator(onUsage)
-
-  useEffect(() => {
-    api<Usage>('/api/usage').then(setUsage, () => undefined)
-  }, [])
 
   function choosePlatforms(next: Platform[]) {
     setPlatforms(next)
@@ -179,6 +172,29 @@ export default function Generator({ format }: { format: CreateFormat }) {
     saveLook(next)
   }
 
+  return { platforms, choosePlatforms, look, chooseLook }
+}
+
+// An own-photo post needs the photo and somewhere to put it; everything
+// else needs only a topic.
+function enoughChosen(format: CreateFormat, photo: UploadedPhoto | null, platforms: Platform[]): boolean {
+  if (format !== 'photo') return true
+  return photo !== null && platforms.length > 0
+}
+
+export default function Generator({ format }: { format: CreateFormat }) {
+  const topic = useTopicSuggestion()
+  const { platforms, choosePlatforms, look, chooseLook } = useChoices()
+  const [photo, setPhoto] = useState<UploadedPhoto | null>(null)
+  const [motion, setMotion] = useState('')
+  const [usage, setUsage] = useState<Usage | null>(null)
+  const onUsage = useCallback((u: Usage) => setUsage(u), [])
+  const generator = useGenerator(onUsage)
+
+  useEffect(() => {
+    api<Usage>('/api/usage').then(setUsage, () => undefined)
+  }, [])
+
   function submit(event: FormEvent) {
     event.preventDefault()
     void generator.generate({ format, topic: topic.topic.trim(), platforms, look, photoKey: photo?.key, motion })
@@ -186,17 +202,14 @@ export default function Generator({ format }: { format: CreateFormat }) {
     if (format === 'photo') setPhoto(null)
   }
 
-  const ready = format !== 'photo' || (photo !== null && platforms.length > 0)
-  const canGenerate = topic.topic.trim().length > 0 && !generator.busy && !topic.suggesting && ready
+  const canGenerate =
+    topic.topic.trim().length > 0 && !generator.busy && !topic.suggesting && enoughChosen(format, photo, platforms)
   const hasResult = Boolean(generator.advert) || generator.running
   const [idleLabel, runningLabel] = BUTTONS[format]
 
   return (
-    <div className={styles.page}>
-      <div>
-        <h1>{TITLES[format]}</h1>
-        <p className={styles.lead}>{LEADS[format]}</p>
-      </div>
+    <div className="page-stack">
+      <PageHeader title={TITLES[format]} lead={LEADS[format]} />
       <UsagePanel usage={usage} />
 
       <form onSubmit={submit}>
