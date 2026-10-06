@@ -24,9 +24,10 @@ Doing:  Google block (docs/GOOGLE-PLAN.md). Built, not deployed: the Home
         (Settings card, OAuth, encrypted refresh tokens). Before it works
         live: the callback redirect URI on the OAuth client, the
         webmasters.readonly scope verified, and the GOOGLE_TOKEN_KEY secret.
-        Also built: the Search Console panel at /get-found. Next in the
-        block: review requests (needs no Google approval), then reviews and
-        Google posts once Google approves Business Profile access.
+        Also built: the Search Console panel at /get-found, and review
+        requests at /reviews (short link plus QR code). Left in the block:
+        reviews and replies, and Google posts, both waiting on Google
+        approving Business Profile access.
 Next:   Google block agreed 2026-10-06, nothing built: docs/GOOGLE-PLAN.md.
         Search Console connect, Business Profile reviews, review requests,
         Google posts, keyword ideas. Nothing is ever posted for the
@@ -46,10 +47,11 @@ Standalone tool at marketing.kabooly.com that generates local adverts for small 
 - Claude Haiku 4.5 (`claude-haiku-4-5`) for text, topic suggestions, carousel slides and reading websites (the last two as forced tool calls); Gemini Interactions API for images (`GEMINI_IMAGE_MODEL`) and videos (`GEMINI_VIDEO_MODEL`, background mode).
 
 ## Map
+- `worker/src/reviews.ts` the review request link: the `review_links` row, the Google-only check on what it may point at, and the public `/r/:slug` redirect (outside `/api`, so `run_worker_first` lists `/r/*`).
 - `worker/src/search-console.ts` the one route behind the Get found page: property matching, the five searchAnalytics windows, "nearly there" and slipped pages.
 - `worker/src/google.ts` the Google connect, callback, list and disconnect routes, with `google/oauth.ts` (consent URL, signed state, code exchange, token refresh, revoke, encryption) and `google/store.ts` (the `google_connections` rows, and `connectionToken` for work that needs an access token).
 - `worker/src/index.ts` routes; `auth.ts`; `session.ts` (verified-user gate); `profile.ts` (profile + website scan route); `scan/` (colour + logo detection); `files.ts` (logo upload, owner-only file serving); `files.ts` also takes photo uploads; `adverts.ts` (topics, generations for every format, library, regeneration, video routes, usage); `advert-store.ts` (rows and files); `generation.ts` (NDJSON stream, runs under waitUntil); `copywriter.ts` (Haiku); `image-maker.ts` (Gemini, crop, photo branding); `video-maker.ts` (Omni jobs) and `video-store.ts` (pending video rows); `scan/info-pages.ts` (about and services pages); `limiter.ts` (Durable Object) and `limits.ts` (429 responses).
-- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook, `website-fill.ts`); `components/` shared UI (AppShell with the sidebar and phone menu, Button, Card, Field, Alert, ImageTile, AdvertText, PhotoPicker, CarouselSlides, VideoPanel, UsagePanel...); `lib/slide-render.ts` draws carousel slides on a canvas and `lib/brand-strip.ts` draws the brand strip. `/` is the Home page (allowance, what to make, the last few adverts); `/get-found` is the Search Console panel; each thing you can make is its own page under `/create`: `/create`, `/create/photo`, `/create/carousel`, `/create/video`. The old top-level `/photo`, `/carousel` and `/video` redirect there.
+- `frontend/src/App.tsx` routes and guards; `pages/` (SignIn, VerifyEmail, ForgotPassword, Onboarding, Generator, Library grid, LibraryItem detail + delete, Settings); `profile/` (draft, fields, website scan hook, `website-fill.ts`); `components/` shared UI (AppShell with the sidebar and phone menu, Button, Card, Field, Alert, ImageTile, AdvertText, PhotoPicker, CarouselSlides, VideoPanel, UsagePanel...); `lib/slide-render.ts` draws carousel slides on a canvas and `lib/brand-strip.ts` draws the brand strip. `/` is the Home page (allowance, what to make, the last few adverts); `/get-found` is the Search Console panel; `/reviews` is the review request link and QR code; each thing you can make is its own page under `/create`: `/create`, `/create/photo`, `/create/carousel`, `/create/video`. The old top-level `/photo`, `/carousel` and `/video` redirect there.
 
 ## Hard rules
 - Follow the TrackShows auth pattern. Do not invent a new auth approach.

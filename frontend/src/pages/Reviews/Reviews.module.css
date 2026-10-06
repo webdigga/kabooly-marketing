@@ -1,0 +1,45 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.lead {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  max-width: 40rem;
+}
+
+.url {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-lg);
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.qr {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.code {
+  width: 11rem;
+  height: 11rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background-color: var(--color-white);
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}

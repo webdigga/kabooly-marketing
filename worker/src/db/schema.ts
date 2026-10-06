@@ -128,6 +128,21 @@ export const profileServices = sqliteTable(
   (t) => [index("profile_services_user_id_idx").on(t.userId, t.position)]
 );
 
+// The short link that asks a customer for a Google review:
+// marketing.kabooly.com/r/{slug} sends them to the business's own Google
+// review page. One per account, and the slug never changes once it is
+// printed on something.
+export const reviewLinks = sqliteTable("review_links", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  slug: text("slug").notNull().unique(),
+  // Where it sends people. Only ever a Google address (checked on save).
+  target: text("target").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 // A customer's own Google accounts, one row per service they connect.
 // Business Profile joins this list when that stage is built; Google has to
 // approve access to it first.

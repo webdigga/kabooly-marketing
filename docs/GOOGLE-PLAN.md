@@ -76,11 +76,18 @@ than as empty sections.
 3. Reviews and replies. Their Business Profile reviews pulled in, each with a
    reply drafted in their tone of voice, copied out and pasted into Google by
    them.
-4. Review requests. A short link and a QR code they can print or text, asking
-   a customer for a review. The single biggest local ranking lever, and it
-   needs no API at all. The link lives on marketing.kabooly.com (David,
-   2026-10-06), so it works for Marketing-only customers who have no site
-   from us.
+4. DONE 2026-10-06, not deployed. Review requests at `/reviews`. The
+   customer pastes the share link from their own Google Business Profile
+   (no API, so this ships without Google's approval), and the app mints
+   `marketing.kabooly.com/r/{slug}`: a seven character code, stored in
+   `review_links`, redirecting to their Google review page. The slug never
+   changes, so a printed QR code keeps working when they change the Google
+   address. The page also draws the QR code in the browser (`lib/qr.ts`,
+   `qrcode` loaded only on that page) and writes the message to text a
+   customer. `/r/*` is in `run_worker_first`, so the Worker answers it
+   rather than the SPA. The target must be an https Google address, checked
+   on save, or the short link would be an open redirect on Kabooly's own
+   domain.
 5. Google posts. A Business Profile post as a fourth platform tick box in the
    existing advert flow: image at Google's size plus the words, downloaded and
    posted by hand like the other three.

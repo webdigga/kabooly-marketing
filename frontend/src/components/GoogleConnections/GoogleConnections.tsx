@@ -29,7 +29,11 @@ export default function GoogleConnections() {
   const [connections, setConnections] = useState<Connection[] | null>(null)
   const [removing, setRemoving] = useState(false)
   const [failed, setFailed] = useState(false)
-  const outcome = OUTCOMES[params.get('google') ?? '']
+  // Held in state, not read from the address bar on every render: clearing
+  // the query string is a navigation, which lands a render later than the
+  // connection itself and would leave the old message on screen.
+  const [outcomeKey, setOutcomeKey] = useState(params.get('google') ?? '')
+  const outcome = OUTCOMES[outcomeKey]
 
   useEffect(() => {
     api<{ connections: Connection[] }>('/api/google/connections').then(
@@ -47,6 +51,7 @@ export default function GoogleConnections() {
       await api('/api/google/search_console', { method: 'DELETE' })
       setConnections((was) => (was ?? []).filter((c) => c.service !== 'search_console'))
       // The banner from the connect flow no longer describes what is there.
+      setOutcomeKey('')
       if (params.has('google')) setParams({}, { replace: true })
     } catch {
       setFailed(true)

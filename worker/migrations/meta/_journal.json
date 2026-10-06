@@ -71,6 +71,13 @@
       "when": 1791287449619,
       "tag": "0009_goofy_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791291194083,
+      "tag": "0010_conscious_norrin_radd",
+      "breakpoints": true
     }
   ]
 }

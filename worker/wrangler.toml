@@ -12,7 +12,8 @@ routes = [{ pattern = "marketing.kabooly.com", custom_domain = true }]
 [assets]
 directory = "../frontend/dist"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+# /r/* is the public review request link, which the Worker redirects.
+run_worker_first = ["/api/*", "/r/*"]
 
 [[d1_databases]]
 binding = "DB"

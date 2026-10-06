@@ -17,6 +17,7 @@ const ownedTables = [
   schema.advertVideos,
   schema.subscriptions,
   schema.googleConnections,
+  schema.reviewLinks,
 ];
 
 const NOW = 1_760_000_000;
@@ -49,6 +50,9 @@ async function seed(): Promise<void> {
     ).bind(NOW),
     testEnv.DB.prepare(
       "INSERT INTO google_connections (user_id, service, refresh_token, account, created_at, updated_at) VALUES ('u1', 'search_console', 'sealed', 'u1@example.com', ?1, ?1)"
+    ).bind(NOW),
+    testEnv.DB.prepare(
+      "INSERT INTO review_links (user_id, slug, target, created_at, updated_at) VALUES ('u1', 'abc2345', 'https://g.page/r/x/review', ?1, ?1)"
     ).bind(NOW),
   ]);
 }
@@ -101,6 +105,7 @@ describe("schema", () => {
       "advert_videos",
       "subscriptions",
       "google_connections",
+      "review_links",
     ]) {
       expect(await count(table)).toBe(0);
     }
