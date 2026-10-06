@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { json, mockApi, PROFILE, renderApp, signedIn, USAGE } from './helpers'
+import { callsTo, json, mockApi, PROFILE, renderApp, signedIn, USAGE } from './helpers'
 
 vi.mock('../src/lib/auth-client', async () => ({ authClient: (await import('./auth-mock')).authMock }))
 
@@ -68,5 +68,45 @@ describe('get found', () => {
     expect(await screen.findByText(/Nothing close enough to nudge yet/)).toBeInTheDocument()
     expect(screen.getByText(/has not recorded any searches yet/)).toBeInTheDocument()
     expect(screen.queryByTestId('search-slipped')).not.toBeInTheDocument()
+  })
+
+  it('works out ideas from the real searches and carries one into the create screen', async () => {
+    mockApi({
+      ...base,
+      'POST /api/topics/suggest': () => json({ topic: 'Spring ovens' }),
+      'GET /api/search-console/overview': () => json(OVERVIEW),
+      'GET /api/search-console/ideas': () =>
+        json({
+          ideas: [
+            {
+              phrase: 'end of tenancy clean',
+              topic: 'End of tenancy cleans in Twickenham, booked this week',
+              why: 'Shown 1200 times but you sit at place 14.',
+            },
+          ],
+        }),
+    })
+    renderApp('/get-found')
+    await userEvent.click(await screen.findByTestId('ask-ideas'))
+    const card = await screen.findByTestId('search-ideas')
+    expect(await within(card).findByText('end of tenancy clean')).toBeInTheDocument()
+    expect(within(card).getByText('Shown 1200 times but you sit at place 14.')).toBeInTheDocument()
+
+    await userEvent.click(within(card).getByTestId('make-idea-end of tenancy clean'))
+    await screen.findByRole('heading', { name: 'Image advert' })
+    // The idea's topic is used as it is, and nothing is suggested over it.
+    expect(screen.getByTestId('topic-input')).toHaveValue('End of tenancy cleans in Twickenham, booked this week')
+    expect(callsTo('POST', '/api/topics/suggest')).toHaveLength(0)
+  })
+
+  it('says so when there is not enough search data for ideas yet', async () => {
+    mockApi({
+      ...base,
+      'GET /api/search-console/overview': () => json(OVERVIEW),
+      'GET /api/search-console/ideas': () => json({ error: 'nope', code: 'no_searches' }, 409),
+    })
+    renderApp('/get-found')
+    await userEvent.click(await screen.findByTestId('ask-ideas'))
+    expect(await screen.findByText(/has not recorded enough searches yet/)).toBeInTheDocument()
   })
 })

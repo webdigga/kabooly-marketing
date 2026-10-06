@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { hostOf, periods, pickSite, slippedPages } from "../src/search-console";
-import { mockClaude } from "./ai-mocks";
+import { ANTHROPIC_URL, KEYWORD_IDEAS, mockClaude } from "./ai-mocks";
 import { callsTo, installFetchMock, onFetch } from "./fetch-mock";
 import { apiFetch, mockEmail, testEnv, verifiedUser, withProfile } from "./helpers";
 import { REVOKE_URL, TOKEN_URL, USERINFO_URL } from "../src/google/oauth";
@@ -150,6 +150,48 @@ describe("the search panel", () => {
     expect(body.totals).toEqual({ clicks: 0, impressions: 0, position: 0 });
     expect(body.topQueries).toEqual([{ query: "", clicks: 0, impressions: 0, position: 0 }]);
     expect(body.nearly).toEqual([]);
+  });
+});
+
+describe("keyword ideas", () => {
+  const IDEAS = "/api/search-console/ideas";
+
+  it("works them out from the real searches and says what the numbers show", async () => {
+    const cookie = await connected();
+    mockSites([{ siteUrl: "sc-domain:acme-cleaning.co.uk" }]);
+    mockFigures();
+    const res = await apiFetch(cookie, IDEAS);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ideas: KEYWORD_IDEAS });
+    const asked = callsTo(ANTHROPIC_URL).at(-1)?.body ?? "";
+    expect(asked).toContain("end of tenancy clean | shown 1200 | visits 5 | place 14.6");
+    expect(asked).toContain("Acme Cleaning");
+  });
+
+  it("asks for a connection and a property first, like the panel does", async () => {
+    const { cookie } = await verifiedUser();
+    await withProfile(cookie);
+    expect(await (await apiFetch(cookie, IDEAS)).json()).toMatchObject({ code: "not_connected" });
+  });
+
+  it("says so when Google has recorded almost nothing", async () => {
+    const cookie = await connected();
+    mockSites([{ siteUrl: "sc-domain:acme-cleaning.co.uk" }]);
+    // One search, below the threshold worth writing about.
+    onFetch(QUERY_URL, () => Response.json({ rows: [{ keys: ["acme cleaning"], impressions: 2, clicks: 0, position: 1 }] }));
+    const res = await apiFetch(cookie, IDEAS);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "no_searches" });
+  });
+
+  it("answers 502 when the model fails", async () => {
+    const cookie = await connected();
+    mockSites([{ siteUrl: "sc-domain:acme-cleaning.co.uk" }]);
+    mockFigures();
+    onFetch(ANTHROPIC_URL, () => new Response("{}", { status: 400 }));
+    const res = await apiFetch(cookie, IDEAS);
+    expect(res.status).toBe(502);
+    expect(await res.json()).toMatchObject({ error: "The ideas could not be worked out. Try again." });
   });
 });
 

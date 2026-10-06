@@ -61,6 +61,14 @@ interface ClaudeRequest {
 
 // Answers the way each prompt expects: topics and adverts as text, carousel
 // slides and website profile reads as a call to their tool.
+export const KEYWORD_IDEAS = [
+  {
+    phrase: "end of tenancy clean",
+    topic: "End of tenancy cleans in Twickenham, booked this week",
+    why: "Shown 1200 times but you sit at place 14.",
+  },
+];
+
 export const REVIEW_REPLY = "Thanks Jane, glad the oven came up well. See you next time.";
 
 export function mockClaude(advert = "Spring is here. Book your oven clean in Twickenham today.", topic = "Spring oven cleaning"): void {
@@ -72,6 +80,7 @@ export function mockClaude(advert = "Spring is here. Book your oven clean in Twi
     if (tool === "record_video_plan") return Response.json(claudeToolCall(tool, VIDEO_PLAN));
     if (tool === "record_story_words") return Response.json(claudeToolCall(tool, STORY_WORDS));
     if (tool === "record_reply") return Response.json(claudeToolCall(tool, { reply: REVIEW_REPLY }));
+    if (tool === "record_ideas") return Response.json(claudeToolCall(tool, { ideas: KEYWORD_IDEAS }));
     return Response.json(claudeMessage(body.system.includes("advert topics") ? topic : advert));
   });
 }

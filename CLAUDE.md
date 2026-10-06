@@ -37,6 +37,8 @@ Doing:  The Google block is built end to end, none of it deployed:
         - Google reviews with drafted replies at /reviews.
         - Google Business Profile as a fourth platform tick box, unticked
           by default.
+        - Keyword ideas on /get-found, from their own search terms, each
+          with a button that carries the topic to /create?topic=...
         Nothing is ever posted for the customer, on any platform, in any
         format: we make it, they post it.
 Before it works live (David, not code):
@@ -51,8 +53,8 @@ Before it works live (David, not code):
           business.manage to the consent screen. The reviews page cannot run
           at all until that is approved, and has never been exercised
           against the real API.
-Next:   Keyword ideas, the last stage in docs/GOOGLE-PLAN.md, built from
-        the Search Console terms rather than guessed.
+Next:   Nothing agreed. The Google block is finished; deploy it, then see
+        what the live data looks like.
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 

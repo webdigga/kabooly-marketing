@@ -105,9 +105,16 @@ than as empty sections.
    Google existed has no brand strip for it, so `makePlatformImage` falls
    back to another platform's strip, which is the same artwork at the same
    share of the width; the right one is written on the next profile save.
-6. Keyword ideas. What to write and post about next, built from the Search
-   Console terms rather than guessed. Deliberately last: without stage 2 it is
-   Haiku inventing keywords, which is what everyone else's free tool does.
+6. DONE 2026-10-06, not deployed. Keyword ideas, as a card on `/get-found`
+   behind a button (it costs a Haiku call, so it is asked for rather than
+   loaded). `GET /api/search-console/ideas` reads up to 60 searches from the
+   last 28 days, drops anything shown fewer than five times, and asks Haiku
+   for four openings: each one names the real search phrase, what the
+   numbers show, and an advert topic. "Make this advert" carries the topic
+   to `/create?topic=...`, which uses it as it is and asks for no
+   suggestion. The prompt forbids inventing a phrase and bans the jargon
+   (no "keyword", "CTR" or "impressions"). `no_searches` comes back as a 409
+   when Google has recorded almost nothing yet.
 
 ## Before stage 1 can be used live
 

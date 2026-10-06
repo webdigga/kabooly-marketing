@@ -1,7 +1,11 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
+import { suggestKeywordIdeas } from "./copywriter";
 import { connectionToken } from "./google/store";
 import { GoogleError } from "./google/oauth";
+import { limited } from "./limits";
 import { requireProfile } from "./profile";
+import type { Profile } from "./profile";
 import type { AppEnv } from "./session";
 
 export const searchConsoleApi = new Hono<AppEnv>();
@@ -168,15 +172,30 @@ export function nearlyThere(rows: Row[]): QueryLine[] {
     .slice(0, SHOWN);
 }
 
-searchConsoleApi.get("/search-console/overview", async (c) => {
+interface Reading {
+  profile: Profile;
+  token: string;
+  site: string;
+}
+
+// Everything a read needs: the profile, a fresh access token and the
+// property that matches their website. Each thing that is missing has its
+// own plain reason, which the page turns into one sentence.
+async function reading(c: Context<AppEnv>): Promise<Reading | Response> {
   const profile = await requireProfile(c);
   if (profile instanceof Response) return profile;
   const token = await connectionToken(c.env, c.get("userId"), "search_console");
   if (!token) return c.json({ error: "Connect Google Search Console first", code: "not_connected" }, 409);
   if (!profile.websiteUrl) return c.json({ error: "Add your website address first", code: "no_website" }, 409);
-
   const site = pickSite(await listSites(token), profile.websiteUrl);
   if (!site) return c.json({ error: "That Google account cannot see your website", code: "no_property" }, 409);
+  return { profile, token, site };
+}
+
+searchConsoleApi.get("/search-console/overview", async (c) => {
+  const found = await reading(c);
+  if (found instanceof Response) return found;
+  const { token, site } = found;
 
   const { now, before } = periods();
   const [totals, totalsBefore, queries, pages, pagesBefore] = await Promise.all([
@@ -197,4 +216,28 @@ searchConsoleApi.get("/search-console/overview", async (c) => {
     nearly: nearlyThere(queries),
     slipped: slippedPages(pages, pagesBefore),
   });
+});
+
+// How many searches the ideas are chosen from. More than the panel shows,
+// because the useful ones are often further down the list.
+const IDEA_ROWS = 60;
+const MIN_IMPRESSIONS = 5;
+
+searchConsoleApi.get("/search-console/ideas", async (c) => {
+  const found = await reading(c);
+  if (found instanceof Response) return found;
+  const { profile, token, site } = found;
+
+  const rows = await query(token, site, { ...window(periods().now), dimensions: ["query"], rowLimit: IDEA_ROWS });
+  const lines = rows.map(lineOf).filter((line) => line.query && line.impressions >= MIN_IMPRESSIONS);
+  if (!lines.length) {
+    return c.json({ error: "Google has not recorded enough searches yet", code: "no_searches" }, 409);
+  }
+  // Writing counts against the same text allowance as advert copy.
+  return limited(
+    c,
+    { kind: "text", units: 0, holdLock: false },
+    async () => ({ response: c.json({ ideas: await suggestKeywordIdeas(c.env, profile, lines) }), unitsMade: 0 }),
+    "The ideas could not be worked out. Try again."
+  );
 });

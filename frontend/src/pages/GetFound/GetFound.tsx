@@ -1,12 +1,14 @@
-import { ArrowDownRight, ArrowUpRight, Minus, Search } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Lightbulb, Minus, Search, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Alert from '../../components/Alert/Alert'
+import Button from '../../components/Button/Button'
 import { buttonClass } from '../../components/Button/buttonClass'
 import Card from '../../components/Card/Card'
 import LoadError from '../../components/LoadError/LoadError'
 import PageLoader from '../../components/PageLoader/PageLoader'
 import { ApiError, api } from '../../lib/api'
+import { limitMessage } from '../../lib/limits'
 import styles from './GetFound.module.css'
 
 interface Totals {
@@ -26,6 +28,12 @@ interface SlippedPage {
   page: string
   position: number
   was: number
+}
+
+interface Idea {
+  phrase: string
+  topic: string
+  why: string
 }
 
 interface Overview {
@@ -126,6 +134,73 @@ function Nearly({ lines }: { lines: QueryLine[] }) {
   )
 }
 
+// What to make next, from the business's own figures. Asked for on request
+// rather than on landing, because it costs a Haiku call.
+function Ideas() {
+  const [ideas, setIdeas] = useState<Idea[] | null>(null)
+  const [working, setWorking] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  async function ask() {
+    setWorking(true)
+    setProblem(null)
+    try {
+      const body = await api<{ ideas: Idea[] }>('/api/search-console/ideas')
+      setIdeas(body.ideas)
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : undefined
+      setProblem(
+        limitMessage(err) ??
+          (code === 'no_searches'
+            ? 'Google has not recorded enough searches yet. Come back in a few weeks.'
+            : 'The ideas could not be worked out. Try again.'),
+      )
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <Card
+      title="What to make next"
+      description="Four things worth making, chosen from what people actually searched for."
+      testId="search-ideas"
+    >
+      {ideas && (
+        <ul className={styles.ideas} role="list">
+          {ideas.map((idea) => (
+            <li key={idea.phrase} className={styles.idea}>
+              <p className={styles.phrase}>{idea.phrase}</p>
+              <p className={styles.note}>{idea.why}</p>
+              <p className={styles.topic}>{idea.topic}</p>
+              <Link
+                to={`/create?topic=${encodeURIComponent(idea.topic)}`}
+                className={buttonClass({ variant: 'secondary', size: 'sm' })}
+                data-testid={`make-idea-${idea.phrase}`}
+              >
+                <Sparkles size={16} aria-hidden="true" />
+                Make this advert
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {problem && <Alert tone="warning">{problem}</Alert>}
+      <div>
+        <Button
+          variant={ideas ? 'ghost' : 'primary'}
+          icon={<Lightbulb size={18} aria-hidden="true" />}
+          loading={working}
+          onClick={() => void ask()}
+          data-testid="ask-ideas"
+        >
+          {ideas ? 'Think of some more' : 'Give me some ideas'}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
 function pathOf(url: string): string {
   try {
     return new URL(url).pathname
@@ -189,6 +264,8 @@ export default function GetFound() {
           >
             <Figures data={data} />
           </Card>
+
+          <Ideas />
 
           <Card title="Nearly there" description="You already show up for these, just too far down for anyone to find you. An advert or a page about one of these is the quickest win." testId="search-nearly">
             {data.nearly.length > 0 ? <Nearly lines={data.nearly} /> : <p className={styles.empty}>Nothing close enough to nudge yet.</p>}

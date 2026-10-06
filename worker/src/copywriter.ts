@@ -327,3 +327,52 @@ export async function writeReviewReply(env: Env, profile: Profile, review: Revie
   });
   return reply;
 }
+
+const IDEAS_SYSTEM = `You turn a small business's real Google search data into things they can make this week.
+You are given the searches people actually used before reaching their website, with how often each appeared, how many clicks it won and the average position.
+Pick the 4 best openings and write one idea for each. Favour, in this order: searches where they appear often but sit below position eight, searches with impressions and no clicks, and searches that describe a service they actually offer.
+For each idea:
+- phrase: the search term from the data, copied exactly as given. Never invent one.
+- topic: what to make, written as an advert topic this tool can use straight away, at most 15 words, plain and specific to the business.
+- why: one short sentence, at most 20 words, saying what the numbers show. Use the real figures.
+Plain words only: no emoji, no hashtags, no jargon like "SEO", "keyword", "funnel", "CTR" or "impressions share". Say "shown", "visits" and "place in the results". UK English spelling.
+Never invent prices, offers, services or figures the data does not show. Ignore searches for other businesses by name.`;
+
+const ideasSchema = z.object({
+  ideas: z
+    .array(
+      z.object({
+        phrase: z.string().trim().min(1).max(200),
+        topic: z.string().trim().min(1).max(200),
+        why: z.string().trim().min(1).max(200),
+      })
+    )
+    .min(1)
+    .max(4),
+});
+
+export type KeywordIdeas = z.infer<typeof ideasSchema>["ideas"];
+
+export interface SearchLine {
+  query: string;
+  clicks: number;
+  impressions: number;
+  position: number;
+}
+
+// What to make next, from the business's own Search Console figures rather
+// than from a guess at what people might type.
+export async function suggestKeywordIdeas(env: Env, profile: Profile, lines: SearchLine[]): Promise<KeywordIdeas> {
+  const rows = lines
+    .map((l) => `${l.query} | shown ${String(l.impressions)} | visits ${String(l.clicks)} | place ${l.position.toFixed(1)}`)
+    .join("\n");
+  const prompt = `${describeBusiness(profile)}\n\n<searches>\n${rows}\n</searches>`;
+  const { ideas } = await structured(env, {
+    system: IDEAS_SYSTEM,
+    prompt,
+    maxTokens: 1024,
+    name: "record_ideas",
+    schema: ideasSchema,
+  });
+  return ideas;
+}
