@@ -27,7 +27,8 @@ Built:  Not deployed, in two batches.
         part is in the kabooly repo), and the whole Google block below.
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
         docs/GOOGLE-PLAN.md (the Google block: stages, decisions, gates).
-Doing:  The Google block is built end to end, none of it deployed:
+Google: The whole block in docs/GOOGLE-PLAN.md is built, none of it
+        deployed:
         - Home page at / and the create screens grouped under /create.
         - Search Console connection in Settings, and the panel at
           /get-found (figures against the previous four weeks, the searches
@@ -40,7 +41,8 @@ Doing:  The Google block is built end to end, none of it deployed:
         - Keyword ideas on /get-found, from their own search terms, each
           with a button that carries the topic to /create?topic=...
         Nothing is ever posted for the customer, on any platform, in any
-        format: we make it, they post it.
+        format: we make it, they post it. Both Google connections are
+        read-only in spirit, and refresh tokens are encrypted in D1.
 Before it works live (David, not code):
         - Add https://marketing.kabooly.com/api/google/callback and
           http://localhost:5173/api/google/callback as redirect URIs on the
@@ -53,8 +55,9 @@ Before it works live (David, not code):
           business.manage to the consent screen. The reviews page cannot run
           at all until that is approved, and has never been exercised
           against the real API.
-Next:   Nothing agreed. The Google block is finished; deploy it, then see
-        what the live data looks like.
+Next:   Nothing agreed. Everything above is waiting on a deploy, so the
+        sensible next step is David pushing it and the Google setup above,
+        then looking at real figures before building anything else.
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 
