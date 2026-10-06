@@ -393,23 +393,32 @@ describe('loading the account', () => {
 })
 
 describe('google connections', () => {
-  it('offers a link to connect Search Console when nothing is connected', async () => {
+  it('offers both connections separately when nothing is connected', async () => {
     mockApi(base)
     renderApp('/settings')
     const card = await screen.findByTestId('google-connections')
-    // The card is on screen before the connection state arrives.
+    // The cards are on screen before the connection state arrives.
     expect(await within(card).findByTestId('connect-search-console')).toHaveAttribute('href', '/api/google/search_console/connect')
+    expect(within(card).getByTestId('connect-business-profile')).toHaveAttribute('href', '/api/google/business_profile/connect')
     expect(within(card).queryByTestId('disconnect-search-console')).not.toBeInTheDocument()
+  })
+
+  it('leaves the other connection alone when one is connected', async () => {
+    mockApi({ ...base, 'GET /api/google/connections': () => json({ connections: [CONNECTED] }) })
+    renderApp('/settings')
+    expect(await screen.findByTestId('search-console-account')).toHaveTextContent('david@kabooly.com')
+    expect(screen.getByTestId('connect-business-profile')).toBeInTheDocument()
+    expect(screen.queryByTestId('business-profile-account')).not.toBeInTheDocument()
   })
 
   it('shows the connected account and disconnects it', async () => {
     mockApi({ ...base, 'GET /api/google/connections': () => json({ connections: [CONNECTED] }), 'DELETE /api/google/search_console': () => json({ removed: true }) })
     renderApp('/settings?google=connected')
-    expect(await screen.findByText('Google Search Console is connected.')).toBeInTheDocument()
+    expect(await screen.findByText('That Google account is connected.')).toBeInTheDocument()
     expect(await screen.findByTestId('search-console-account')).toHaveTextContent('david@kabooly.com')
     await userEvent.click(screen.getByTestId('disconnect-search-console'))
     expect(await screen.findByTestId('connect-search-console')).toBeInTheDocument()
-    expect(screen.queryByText('Google Search Console is connected.')).not.toBeInTheDocument()
+    expect(screen.queryByText('That Google account is connected.')).not.toBeInTheDocument()
     expect(callsTo('DELETE', '/api/google/search_console')).toHaveLength(1)
   })
 

@@ -109,7 +109,8 @@ describe("the parts on their own", () => {
 
   it("makes slugs that are short and free of letters people mix up", () => {
     const slug = newSlug();
-    expect(slug).toMatch(/^[a-hjkmnp-z2-9]{7}$/);
+    expect(slug).toMatch(/^[a-kmnp-z2-9]{7}$/);
+    expect(slug).not.toMatch(/[lo01]/);
     expect(new Set(Array.from({ length: 50 }, () => newSlug())).size).toBe(50);
   });
 

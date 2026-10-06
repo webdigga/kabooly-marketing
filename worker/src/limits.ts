@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { Env } from "./env";
+import type { AppEnv } from "./session";
 import type { Admission, Allowance, GenerationKind, Usage } from "./limiter";
 
 function limiter(env: Env, userId: string) {
@@ -110,5 +111,29 @@ export function deniedResponse(c: Context, denied: Denied): Response {
         },
         429
       );
+  }
+}
+
+// Runs one piece of limited work: admitted by the account's limiter, with
+// the lease always finished so the in-flight lock is released and anything
+// that failed is refunded.
+export async function limited(
+  c: Context<AppEnv>,
+  request: GenerationRequest,
+  work: () => Promise<{ response: Response; unitsMade: number }>,
+  failureMessage = "Generation failed. Try again."
+): Promise<Response> {
+  const lease = await beginGeneration(c.env, c.get("userId"), request);
+  if (isDenied(lease)) return deniedResponse(c, lease);
+  let unitsMade = 0;
+  try {
+    const result = await work();
+    unitsMade = result.unitsMade;
+    return result.response;
+  } catch (err) {
+    console.error(`${request.kind} work failed`, err);
+    return c.json({ error: failureMessage }, 502);
+  } finally {
+    await lease.finish(unitsMade);
   }
 }

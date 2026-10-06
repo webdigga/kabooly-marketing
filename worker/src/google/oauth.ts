@@ -14,6 +14,10 @@ export const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 // never writes to anyone's Google account.
 const SCOPES: Record<GoogleService, string> = {
   search_console: "https://www.googleapis.com/auth/webmasters.readonly",
+  // The Business Profile API has no read-only scope: reviews and replies
+  // live in the old v4 endpoints, which only accept business.manage. This
+  // app only ever reads with it.
+  business_profile: "https://www.googleapis.com/auth/business.manage",
 };
 
 // The redirect URI Google sends the customer back to. It has to match one

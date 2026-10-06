@@ -144,9 +144,7 @@ export const reviewLinks = sqliteTable("review_links", {
 });
 
 // A customer's own Google accounts, one row per service they connect.
-// Business Profile joins this list when that stage is built; Google has to
-// approve access to it first.
-export const GOOGLE_SERVICES = ["search_console"] as const;
+export const GOOGLE_SERVICES = ["search_console", "business_profile"] as const;
 export type GoogleService = (typeof GOOGLE_SERVICES)[number];
 
 export const googleConnections = sqliteTable(

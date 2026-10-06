@@ -53,7 +53,7 @@ describe('asking for reviews', () => {
         return json({ link: stored.link })
       },
     })
-    renderApp('/reviews')
+    renderApp('/reviews/ask')
     expect(await screen.findByTestId('review-empty')).toBeInTheDocument()
     expect(screen.getByTestId('save-review-link')).toBeDisabled()
 
@@ -72,7 +72,7 @@ describe('asking for reviews', () => {
 
   it('copies the link and the message', async () => {
     mockApi({ ...base, 'GET /api/review-request': () => json(saved()) })
-    renderApp('/reviews')
+    renderApp('/reviews/ask')
     await userEvent.click(await screen.findByTestId('copy-url'))
     expect(writeText).toHaveBeenCalledWith(URL_FOR)
     expect(await within(screen.getByTestId('review-link')).findByText('Copied')).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('asking for reviews', () => {
       'GET /api/review-request': () => json({ link: null, url: null, message: null }),
       'PUT /api/review-link': () => json({ error: 'That is not a Google address.', code: 'not_google' }, 400),
     })
-    renderApp('/reviews')
+    renderApp('/reviews/ask')
     await userEvent.type(await screen.findByTestId('review-target-input'), 'https://example.com/leave-a-review')
     await userEvent.click(screen.getByTestId('save-review-link'))
     expect(await screen.findByText('That is not a Google address.')).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('asking for reviews', () => {
   it('offers a retry when the link cannot be loaded', async () => {
     let fail = true
     mockApi({ ...base, 'GET /api/review-request': () => (fail ? json({}, 500) : json(saved())) })
-    renderApp('/reviews')
+    renderApp('/reviews/ask')
     expect(await screen.findByText(/could not be loaded/)).toBeInTheDocument()
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
@@ -105,7 +105,7 @@ describe('asking for reviews', () => {
   it('says so when the QR code cannot be drawn', async () => {
     qr.drawQrCode.mockRejectedValueOnce(new Error('no canvas'))
     mockApi({ ...base, 'GET /api/review-request': () => json(saved()) })
-    renderApp('/reviews')
+    renderApp('/reviews/ask')
     expect(await screen.findByText(/QR code could not be drawn/)).toBeInTheDocument()
   })
 })

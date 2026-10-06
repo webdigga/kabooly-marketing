@@ -25,7 +25,7 @@ import type { ImageStyle } from "./db/schema";
 import type { Platform } from "./db/schema";
 import { uploadsPrefix } from "./files";
 import { streamGeneration, withRetry } from "./generation";
-import { beginGeneration, deniedResponse, isDenied, usageFor, usageJson } from "./limits";
+import { beginGeneration, deniedResponse, isDenied, limited, usageFor, usageJson } from "./limits";
 import type { GenerationRequest } from "./limits";
 import { requireProfile } from "./profile";
 import type { AppEnv } from "./session";
@@ -48,26 +48,6 @@ function failed(c: AppContext): Response {
 
 // Runs one limited piece of work: admitted by the account's limiter, and
 // always reported back so the lock is released and failures refunded.
-async function limited(
-  c: AppContext,
-  request: GenerationRequest,
-  work: () => Promise<{ response: Response; unitsMade: number }>
-): Promise<Response> {
-  const lease = await beginGeneration(c.env, c.get("userId"), request);
-  if (isDenied(lease)) return deniedResponse(c, lease);
-  let unitsMade = 0;
-  try {
-    const result = await work();
-    unitsMade = result.unitsMade;
-    return result.response;
-  } catch (err) {
-    console.error(`${request.kind} generation failed`, err);
-    return failed(c);
-  } finally {
-    await lease.finish(unitsMade);
-  }
-}
-
 const suggestBody = z.object({
   avoid: z.array(z.string().max(MAX_TOPIC_LENGTH)).max(10).default([]),
 });

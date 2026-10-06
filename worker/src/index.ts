@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { advertsApi } from "./adverts";
+import { businessProfileApi } from "./business-profile";
 import { createAuth } from "./auth";
 import type { Env } from "./env";
 import { filesApi } from "./files";
@@ -37,6 +38,7 @@ api.route("/", advertsApi);
 api.route("/", googleApi);
 api.route("/", searchConsoleApi);
 api.route("/", reviewsApi);
+api.route("/", businessProfileApi);
 api.onError((err, c) => {
   console.error(err);
   return c.json({ error: "Internal error" }, 500);

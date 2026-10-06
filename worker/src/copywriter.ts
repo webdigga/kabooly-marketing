@@ -288,3 +288,42 @@ export async function planVideo(env: Env, profile: Profile, topic: string, direc
     schema: videoPlanSchema,
   });
 }
+
+const REPLY_SYSTEM = `You write a small business owner's public reply to a Google review, in their voice.
+The reply is read by the reviewer and by everyone else deciding whether to use the business, so it is short, warm and specific.
+- Thank the reviewer by first name where there is one.
+- Mention the actual thing they talked about, in your own words. Never copy their sentences back at them.
+- At most 45 words, two or three sentences.
+- A happy review: thank them and invite them back. Do not ask them to review again.
+- An unhappy review (three stars or fewer): apologise once, take it seriously, say what happens next and offer to sort it out directly. Never argue, never blame the customer, never make excuses.
+- A review with no words: thank them for the rating.
+Plain words only: no emoji, no hashtags, no quotation marks, no web address, no phone number. UK English spelling.
+Never invent refunds, discounts, compensation, prices, offers or facts the business has not given. Never claim to remember a visit you cannot know about.`;
+
+const replySchema = z.object({ reply: z.string().trim().min(1).max(400) });
+
+export interface ReviewForReply {
+  author: string;
+  rating: number;
+  comment: string | null;
+}
+
+// The owner's reply to one review, for them to read, edit and paste into
+// Google themselves.
+export async function writeReviewReply(env: Env, profile: Profile, review: ReviewForReply): Promise<string> {
+  const lines = [
+    describeBusiness(profile),
+    `\nTone of voice: ${toneGuide(profile.tone)}`,
+    `\nReviewer's name: ${review.author || "not given"}`,
+    `Stars out of five: ${String(review.rating)}`,
+    `What they wrote: ${review.comment ?? "nothing, a rating only"}`,
+  ];
+  const { reply } = await structured(env, {
+    system: REPLY_SYSTEM,
+    prompt: lines.join("\n"),
+    maxTokens: 400,
+    name: "record_reply",
+    schema: replySchema,
+  });
+  return reply;
+}

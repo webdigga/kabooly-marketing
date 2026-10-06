@@ -1,4 +1,4 @@
-import { Camera, Clapperboard, GalleryHorizontal, House, Images, Menu, Search, Settings, Sparkles, Star, X } from 'lucide-react'
+import { Camera, Clapperboard, GalleryHorizontal, House, Images, Menu, QrCode, Search, Settings, Sparkles, Star, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import Logo from '../Logo/Logo'
@@ -23,7 +23,10 @@ const CREATE: NavItem[] = [
 
 const FOUND: NavItem[] = [{ to: '/get-found', label: 'Search Console', icon: Search }]
 
-const REPUTATION: NavItem[] = [{ to: '/reviews', label: 'Ask for reviews', icon: Star }]
+const REPUTATION: NavItem[] = [
+  { to: '/reviews', label: 'Your reviews', icon: Star, end: true },
+  { to: '/reviews/ask', label: 'Ask for reviews', icon: QrCode },
+]
 
 const ACCOUNT: NavItem[] = [{ to: '/settings', label: 'Settings', icon: Settings }]
 

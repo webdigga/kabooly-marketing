@@ -73,9 +73,17 @@ than as empty sections.
    states (`not_connected`, `no_website`, `no_property`, `no_profile`) come
    back as 409s with a code, and the page turns each into one plain
    sentence.
-3. Reviews and replies. Their Business Profile reviews pulled in, each with a
-   reply drafted in their tone of voice, copied out and pasted into Google by
-   them.
+3. BUILT 2026-10-06, cannot be used until Google approves Business Profile
+   API access, and untested against the real API. Reviews and replies at
+   `/reviews`. `GET /api/reviews` finds the account and its first location
+   (Account Management and Business Information APIs), then reads the last
+   20 reviews from the old v4 endpoint, newest first. `POST
+   /api/reviews/reply` writes one reply with Haiku in the business's tone,
+   counted against the text allowance, and hands it back as text for the
+   customer to edit and paste. Nothing is posted to Google. Blocked states
+   (`not_connected`, `no_location`) come back as 409s with a code. The
+   Business Profile connection is its own button in Settings, asking for
+   `business.manage` only because reviews have no read-only scope.
 4. DONE 2026-10-06, not deployed. Review requests at `/reviews`. The
    customer pastes the share link from their own Google Business Profile
    (no API, so this ships without Google's approval), and the app mints
@@ -116,8 +124,9 @@ than as empty sections.
   the older v4 endpoints, which have no read-only scope, so the ask is
   `business.manage` even though we never write.
 - Stages 1, 2, 4 and 6 do not depend on the Business Profile application.
-  Stages 3 and 5 do. Build in that order so a refusal costs us two stages, not
-  six.
+  Stages 3 and 5 do. Stage 3 is written but cannot be exercised until the
+  application is approved, so its first real run is also its first test
+  against Google.
 
 ## Decisions taken
 

@@ -8,6 +8,7 @@ import Home from './pages/Home/Home'
 import Library from './pages/Library/Library'
 import LibraryItem from './pages/LibraryItem/LibraryItem'
 import Onboarding from './pages/Onboarding/Onboarding'
+import ReviewReplies from './pages/ReviewReplies/ReviewReplies'
 import Reviews from './pages/Reviews/Reviews'
 import SetPassword from './pages/SetPassword/SetPassword'
 import Settings from './pages/Settings/Settings'
@@ -40,7 +41,8 @@ export function AppRoutes() {
             <Route path="/carousel" element={<Navigate to="/create/carousel" replace />} />
             <Route path="/video" element={<Navigate to="/create/video" replace />} />
             <Route path="/get-found" element={<GetFound />} />
-            <Route path="/reviews" element={<Reviews />} />
+            <Route path="/reviews" element={<ReviewReplies />} />
+            <Route path="/reviews/ask" element={<Reviews />} />
             <Route path="/library" element={<Library />} />
             <Route path="/library/:id" element={<LibraryItem />} />
             <Route path="/settings" element={<Settings />} />

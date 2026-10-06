@@ -182,8 +182,8 @@ describe("disconnecting", () => {
 describe("unknown services", () => {
   it("are not found, connecting or disconnecting", async () => {
     const { cookie } = await verifiedUser();
-    expect((await apiFetch(cookie, "/api/google/business_profile/connect")).status).toBe(404);
-    expect((await apiFetch(cookie, "/api/google/business_profile", { method: "DELETE" })).status).toBe(404);
+    expect((await apiFetch(cookie, "/api/google/analytics/connect")).status).toBe(404);
+    expect((await apiFetch(cookie, "/api/google/analytics", { method: "DELETE" })).status).toBe(404);
   });
 });
 

@@ -61,6 +61,8 @@ interface ClaudeRequest {
 
 // Answers the way each prompt expects: topics and adverts as text, carousel
 // slides and website profile reads as a call to their tool.
+export const REVIEW_REPLY = "Thanks Jane, glad the oven came up well. See you next time.";
+
 export function mockClaude(advert = "Spring is here. Book your oven clean in Twickenham today.", topic = "Spring oven cleaning"): void {
   onFetch(ANTHROPIC_URL, async (req) => {
     const body: ClaudeRequest = await req.json();
@@ -69,6 +71,7 @@ export function mockClaude(advert = "Spring is here. Book your oven clean in Twi
     if (tool === "record_profile") return Response.json(claudeToolCall(tool, DETAILS));
     if (tool === "record_video_plan") return Response.json(claudeToolCall(tool, VIDEO_PLAN));
     if (tool === "record_story_words") return Response.json(claudeToolCall(tool, STORY_WORDS));
+    if (tool === "record_reply") return Response.json(claudeToolCall(tool, { reply: REVIEW_REPLY }));
     return Response.json(claudeMessage(body.system.includes("advert topics") ? topic : advert));
   });
 }
