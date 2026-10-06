@@ -13,28 +13,46 @@ Done:   2026-09-17, deployed: account emails are HTML with the shared
         email hello@kabooly.com". To delete an account by hand: cancel in
         Stripe, delete the D1 user row (cascades) AND the R2 prefix
         users/{userId}/.
-Built:  2026-09-17 and 18, not deployed: monthly caps, captioned videos
-        (Gemini Omni Flash at 720p), own-photo posts, carousels, website
-        fill, Nano Banana Pro images branded with a browser-drawn brand
-        strip, and a sidebar navigation with a page per format. Live checks
-        in docs/PLAN.md "Built 2026-09-17".
+Built:  Not deployed, in two batches.
+        2026-09-17 and 18: monthly caps, captioned videos (Gemini Omni
+        Flash at 720p), own-photo posts, carousels, website fill, Nano
+        Banana Pro images with a browser-drawn brand strip, and a sidebar
+        with a page per format. Live checks in docs/PLAN.md.
+        2026-09-28 to 2026-10-06: image adverts at 4:5 for Instagram and
+        Facebook (Meta's own feed spec; 1200x630 was the link-preview
+        size), a photo or designed-graphic look with an option for the
+        model to place the real logo, carousel slide one branded and shaded,
+        a dialog for every delete and bulk delete in the library, footer
+        links and schema sameAs for the Facebook and Nextdoor pages (that
+        part is in the kabooly repo), and the whole Google block below.
 Spec:   docs/PLAN.md (full brief, decisions, open questions).
-Doing:  Google block (docs/GOOGLE-PLAN.md). Built, not deployed: the Home
-        page and /create grouping, and the Search Console connection
-        (Settings card, OAuth, encrypted refresh tokens). Before it works
-        live: the callback redirect URI on the OAuth client, the
-        webmasters.readonly scope verified, and the GOOGLE_TOKEN_KEY secret.
-        Also built: the Search Console panel at /get-found, review requests
-        at /reviews/ask (short link plus QR code), and Google reviews with
-        drafted replies at /reviews. The reviews half needs Google to
-        approve Business Profile API access before it can run at all, and
-        has never been exercised against the real API. Google posts are built too, as a
-        fourth platform tick box needing no API. Everything in the block is
-        built; only the reviews half waits on Google.
-Next:   Google block agreed 2026-10-06, nothing built: docs/GOOGLE-PLAN.md.
-        Search Console connect, Business Profile reviews, review requests,
-        Google posts, keyword ideas. Nothing is ever posted for the
-        customer, in any format: we make it, they post it.
+        docs/GOOGLE-PLAN.md (the Google block: stages, decisions, gates).
+Doing:  The Google block is built end to end, none of it deployed:
+        - Home page at / and the create screens grouped under /create.
+        - Search Console connection in Settings, and the panel at
+          /get-found (figures against the previous four weeks, the searches
+          sitting at places 8 to 20, pages that slipped).
+        - Review requests at /reviews/ask: marketing.kabooly.com/r/{slug},
+          a QR code and the message to send.
+        - Google reviews with drafted replies at /reviews.
+        - Google Business Profile as a fourth platform tick box, unticked
+          by default.
+        Nothing is ever posted for the customer, on any platform, in any
+        format: we make it, they post it.
+Before it works live (David, not code):
+        - Add https://marketing.kabooly.com/api/google/callback and
+          http://localhost:5173/api/google/callback as redirect URIs on the
+          Google OAuth client.
+        - Add webmasters.readonly to the OAuth consent screen and get it
+          verified. Until then only test users can connect.
+        - wrangler secret put GOOGLE_TOKEN_KEY, 32 random bytes base64url:
+          openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
+        - Apply for Google Business Profile API access and add
+          business.manage to the consent screen. The reviews page cannot run
+          at all until that is approved, and has never been exercised
+          against the real API.
+Next:   Keyword ideas, the last stage in docs/GOOGLE-PLAN.md, built from
+        the Search Console terms rather than guessed.
 Don't:  add anything outside the brief (see "Explicitly out of scope").
 ```
 
